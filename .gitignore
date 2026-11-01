@@ -1,0 +1,8 @@
+target/
+node_modules/
+.env
+*.local.md
+.claude/
+.dev/
+data/
+/compose/data/

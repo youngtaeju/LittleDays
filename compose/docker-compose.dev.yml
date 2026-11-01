@@ -1,0 +1,20 @@
+# 개발용 Postgres 만. web·server 는 호스트에서 실행.
+# 호스트 포트는 POSTGRES_PORT (기본 5432).
+name: littledays-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: littledays
+      POSTGRES_PASSWORD: littledays
+      POSTGRES_DB: littledays
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U littledays -d littledays"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
