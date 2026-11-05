@@ -47,6 +47,11 @@ async fn first_signup_creates_owner(pool: sqlx::PgPool) {
         .await
         .expect("instance_name");
     assert_eq!(name, json!("우리집"));
+
+    assert_eq!(res.cookie("ld_session").value().len(), 43);
+    let me = server.get("/api/auth/me").await;
+    me.assert_status_ok();
+    me.assert_json(&json);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -97,6 +102,40 @@ async fn username_case_insensitive_unique(pool: sqlx::PgPool) {
     .await
     .expect_err("duplicate");
     assert!(matches!(err, AppError::Conflict("auth.usernameTaken")));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn update_role_reports_missing_user(pool: sqlx::PgPool) {
+    let user = users::queries::create(
+        &pool,
+        NewUser {
+            username: "dad".to_string(),
+            password_hash: "x".to_string(),
+            display_name: "아빠".to_string(),
+            role: Role::Family,
+            email: None,
+            locale: "ko".to_string(),
+        },
+    )
+    .await
+    .expect("user");
+
+    assert!(
+        users::queries::update_role(&pool, user.id, Role::Guardian)
+            .await
+            .expect("update")
+    );
+    let updated = users::queries::find_by_id(&pool, user.id)
+        .await
+        .expect("find")
+        .expect("exists");
+    assert_eq!(updated.role, Role::Guardian);
+
+    assert!(
+        !users::queries::update_role(&pool, uuid::Uuid::now_v7(), Role::Owner)
+            .await
+            .expect("update missing")
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]

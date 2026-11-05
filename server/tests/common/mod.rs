@@ -17,13 +17,21 @@ pub fn test_config() -> Config {
     }
 }
 
-pub async fn test_server(pool: PgPool) -> TestServer {
-    let state = AppState {
+fn state(pool: PgPool) -> AppState {
+    AppState {
         pool,
         config: Arc::new(test_config()),
-    };
+    }
+}
+
+pub async fn test_server(pool: PgPool) -> TestServer {
     TestServer::builder()
         .save_cookies()
-        .build(build_router(state))
+        .build(build_router(state(pool)))
         .expect("test server")
+}
+
+/// 쿠키 자동 저장 없음. 요청마다 인증 수단을 직접 지정.
+pub async fn test_server_without_cookies(pool: PgPool) -> TestServer {
+    TestServer::new(build_router(state(pool))).expect("test server")
 }
