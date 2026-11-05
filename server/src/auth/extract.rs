@@ -87,7 +87,11 @@ impl FromRequestParts<AppState> for CurrentUser {
 }
 
 /// 세션 발급 전 단계라 CSRF 검사 제외. 라우트 템플릿 기준.
-const CSRF_EXEMPT: &[&str] = &["/api/auth/login", "/api/auth/signup"];
+const CSRF_EXEMPT: &[&str] = &[
+    "/api/auth/login",
+    "/api/auth/signup",
+    "/api/invites/{raw}/accept",
+];
 const CSRF_HEADER_VALUE: HeaderValue = HeaderValue::from_static("LittleDays");
 
 /// 쿠키 인증의 상태 변경 요청에 `X-Requested-With: LittleDays` 요구.

@@ -1,3 +1,4 @@
+use axum::http::{HeaderMap, header};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -30,6 +31,13 @@ pub struct SessionInfo {
     pub last_seen_at: DateTime<Utc>,
     /// 요청에 사용된 세션 여부.
     pub current: bool,
+}
+
+/// 세션 생성 시 기록용. 비 ASCII 등 해석 불가 값은 `None`.
+pub fn user_agent(headers: &HeaderMap) -> Option<&str> {
+    headers
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
 }
 
 /// 원문 토큰과 세션 ID 반환. DB 에는 SHA-256 해시만 저장.

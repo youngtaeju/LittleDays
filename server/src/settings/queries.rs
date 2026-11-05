@@ -14,3 +14,10 @@ pub async fn set(exec: impl PgExecutor<'_>, key: &str, value: Value) -> AppResul
     .await?;
     Ok(())
 }
+
+pub async fn get(exec: impl PgExecutor<'_>, key: &str) -> AppResult<Option<Value>> {
+    let value = sqlx::query_scalar!("SELECT value FROM settings WHERE key = $1", key)
+        .fetch_optional(exec)
+        .await?;
+    Ok(value)
+}

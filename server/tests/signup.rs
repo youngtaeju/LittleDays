@@ -17,10 +17,9 @@ fn body(username: &str, password: &str) -> Value {
     })
 }
 
-async fn assert_error(server: &TestServer, payload: Value, status: StatusCode, key: &str) {
+async fn assert_signup_error(server: &TestServer, payload: Value, status: StatusCode, key: &str) {
     let res = server.post("/api/auth/signup").json(&payload).await;
-    res.assert_status(status);
-    res.assert_json(&json!({ "error": key, "params": {} }));
+    common::assert_error(&res, status, key);
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -70,7 +69,7 @@ async fn second_signup_is_closed(pool: sqlx::PgPool) {
         .json(&body("mom", "password123"))
         .await
         .assert_status(StatusCode::CREATED);
-    assert_error(
+    assert_signup_error(
         &server,
         body("dad", "password123"),
         StatusCode::FORBIDDEN,
@@ -159,40 +158,40 @@ async fn signup_validates_input(pool: sqlx::PgPool) {
     let server = common::test_server(pool).await;
     let bad = StatusCode::BAD_REQUEST;
 
-    assert_error(
+    assert_signup_error(
         &server,
         body("ab", "password123"),
         bad,
         "auth.usernameInvalid",
     )
     .await;
-    assert_error(
+    assert_signup_error(
         &server,
         body("bad name!", "password123"),
         bad,
         "auth.usernameInvalid",
     )
     .await;
-    assert_error(
+    assert_signup_error(
         &server,
         body(&"a".repeat(33), "password123"),
         bad,
         "auth.usernameInvalid",
     )
     .await;
-    assert_error(&server, body("mom", "short"), bad, "auth.passwordTooShort").await;
+    assert_signup_error(&server, body("mom", "short"), bad, "auth.passwordTooShort").await;
 
     let mut p = body("mom", "password123");
     p["display_name"] = json!("   ");
-    assert_error(&server, p, bad, "auth.displayNameInvalid").await;
+    assert_signup_error(&server, p, bad, "auth.displayNameInvalid").await;
 
     let mut p = body("mom", "password123");
     p["display_name"] = json!("가".repeat(65));
-    assert_error(&server, p, bad, "auth.displayNameInvalid").await;
+    assert_signup_error(&server, p, bad, "auth.displayNameInvalid").await;
 
     let mut p = body("mom", "password123");
     p["instance_name"] = json!("");
-    assert_error(&server, p, bad, "settings.instanceNameInvalid").await;
+    assert_signup_error(&server, p, bad, "settings.instanceNameInvalid").await;
 
     // 글자 수 기준 경계값(64자 한글)은 통과.
     let mut p = body("mom", "password123");
@@ -214,10 +213,9 @@ async fn signup_rejects_malformed_body(pool: sqlx::PgPool) {
         .content_type("application/json")
         .text("{not json")
         .await;
-    res.assert_status(bad);
-    res.assert_json(&json!({ "error": "request.invalidBody", "params": {} }));
+    common::assert_error(&res, bad, "request.invalidBody");
 
-    assert_error(
+    assert_signup_error(
         &server,
         json!({ "username": "mom" }),
         bad,

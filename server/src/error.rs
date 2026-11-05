@@ -3,7 +3,9 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use serde::Serialize;
 use serde_json::{Value, json};
+use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -28,6 +30,25 @@ pub enum AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+impl AppError {
+    /// 파라미터 없는 400.
+    pub fn bad_request(key: &'static str) -> Self {
+        AppError::BadRequest {
+            key,
+            params: json!({}),
+        }
+    }
+}
+
+/// 에러 응답 본문 스키마(OpenAPI 전용). 실제 직렬화는 `IntoResponse`.
+#[derive(Serialize, ToSchema)]
+pub struct ErrorBody {
+    /// i18n 키. 예: `auth.required`.
+    error: String,
+    /// 번역 파라미터.
+    params: Value,
+}
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
