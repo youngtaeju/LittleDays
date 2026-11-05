@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE sessions SET last_seen_at = now(), expires_at = now() + interval '30 days'\n         WHERE id = $1 AND last_seen_at < now() - interval '1 hour'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f3b1c1aa0703cd4134af16ed098f79312a5cf50f72aa28c122df5f124d3f1248"
+}
