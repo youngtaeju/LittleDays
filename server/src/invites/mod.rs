@@ -49,8 +49,11 @@ pub struct Invite {
     pub created_by: Uuid,
     pub created_at: DateTime<Utc>,
     pub expires_at: DateTime<Utc>,
+    #[schema(required = true)]
     pub used_by: Option<Uuid>,
+    #[schema(required = true)]
     pub used_at: Option<DateTime<Utc>>,
+    #[schema(required = true)]
     pub revoked_at: Option<DateTime<Utc>>,
     /// 조회 시점 DB 시각 기준 계산값.
     pub status: InviteStatus,

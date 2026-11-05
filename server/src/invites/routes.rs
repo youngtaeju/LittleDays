@@ -43,6 +43,7 @@ pub struct CreateInviteRequest {
     /// `guardian` 또는 `family`.
     role: Role,
     /// 기본 72, 1~720.
+    #[schema(minimum = 1, maximum = 720)]
     expires_in_hours: Option<u32>,
 }
 

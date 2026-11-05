@@ -518,4 +518,28 @@ async fn openapi_documents_invite_endpoints(pool: PgPool) {
         error_ref
     );
     assert!(doc["components"]["schemas"]["ErrorBody"].is_object());
+
+    let schemas = &doc["components"]["schemas"];
+    let required = |name: &str, field: &str| {
+        schemas[name]["required"]
+            .as_array()
+            .is_some_and(|r| r.contains(&json!(field)))
+    };
+    for (name, field) in [
+        ("User", "email"),
+        ("User", "disabled_at"),
+        ("Invite", "used_by"),
+        ("Invite", "used_at"),
+        ("Invite", "revoked_at"),
+        ("SessionInfo", "user_agent"),
+    ] {
+        assert!(required(name, field), "{name}.{field} required");
+    }
+    let expiry = &schemas["CreateInviteRequest"]["properties"]["expires_in_hours"];
+    assert_eq!(expiry["minimum"], 1);
+    assert_eq!(expiry["maximum"], 720);
+    assert_eq!(
+        schemas["ErrorBody"]["properties"]["params"]["type"],
+        "object"
+    );
 }

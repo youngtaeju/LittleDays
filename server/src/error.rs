@@ -47,6 +47,7 @@ pub struct ErrorBody {
     /// i18n 키. 예: `auth.required`.
     error: String,
     /// 번역 파라미터.
+    #[schema(value_type = Object)]
     params: Value,
 }
 

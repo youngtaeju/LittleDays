@@ -50,7 +50,7 @@ pub struct PatchMeRequest {
     display_name: Option<String>,
     /// `ko` 또는 `en`.
     locale: Option<String>,
-    /// 빈 문자열이면 삭제.
+    /// 생략 또는 `null` 이면 유지, 빈 문자열이면 삭제.
     email: Option<String>,
 }
 

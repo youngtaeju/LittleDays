@@ -21,9 +21,11 @@ pub struct User {
     pub username: String,
     pub display_name: String,
     pub role: Role,
+    #[schema(required = true)]
     pub email: Option<String>,
     pub locale: String,
     pub created_at: DateTime<Utc>,
+    #[schema(required = true)]
     pub disabled_at: Option<DateTime<Utc>>,
 }
 

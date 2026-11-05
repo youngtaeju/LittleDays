@@ -26,6 +26,7 @@ pub struct SessionWithUser {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SessionInfo {
     pub id: Uuid,
+    #[schema(required = true)]
     pub user_agent: Option<String>,
     pub created_at: DateTime<Utc>,
     pub last_seen_at: DateTime<Utc>,
