@@ -15,6 +15,8 @@ pub enum AppError {
     Forbidden(&'static str),
     #[error("unauthorized: {0}")]
     Unauthorized(&'static str),
+    #[error("method not allowed: {0}")]
+    MethodNotAllowed(&'static str),
     #[error("gone: {0}")]
     Gone(&'static str),
     #[error("bad request: {key}")]
@@ -34,6 +36,7 @@ impl IntoResponse for AppError {
             AppError::Conflict(key) => (StatusCode::CONFLICT, key, json!({})),
             AppError::Forbidden(key) => (StatusCode::FORBIDDEN, key, json!({})),
             AppError::Unauthorized(key) => (StatusCode::UNAUTHORIZED, key, json!({})),
+            AppError::MethodNotAllowed(key) => (StatusCode::METHOD_NOT_ALLOWED, key, json!({})),
             AppError::Gone(key) => (StatusCode::GONE, key, json!({})),
             AppError::BadRequest { key, params } => (StatusCode::BAD_REQUEST, key, params),
             AppError::Db(e) => {

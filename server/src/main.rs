@@ -1,5 +1,7 @@
+use std::{net::SocketAddr, sync::Arc};
+
 use clap::{Parser, Subcommand};
-use littledays::{config::Config, db};
+use littledays::{app::build_router, config::Config, db, state::AppState};
 
 #[derive(Parser)]
 #[command(name = "littledays", version, about = "LittleDays server")]
@@ -30,7 +32,21 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Serve => tracing::info!("serve: not implemented yet"),
+        Cmd::Serve => {
+            let config = Config::from_env()?;
+            let pool = db::connect(&config.database_url).await?;
+            if config.auto_migrate {
+                db::migrate(&pool).await?;
+            }
+            let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
+            let state = AppState {
+                pool,
+                config: Arc::new(config),
+            };
+            let listener = tokio::net::TcpListener::bind(addr).await?;
+            tracing::info!(%addr, "listening");
+            axum::serve(listener, build_router(state)).await?;
+        }
         Cmd::Migrate => {
             let config = Config::from_env()?;
             let pool = db::connect(&config.database_url).await?;
