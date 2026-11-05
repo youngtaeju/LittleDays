@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use littledays::{config::Config, db};
 
 #[derive(Parser)]
 #[command(name = "littledays", version, about = "LittleDays server")]
@@ -30,7 +31,12 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
         Cmd::Serve => tracing::info!("serve: not implemented yet"),
-        Cmd::Migrate => tracing::info!("migrate: not implemented yet"),
+        Cmd::Migrate => {
+            let config = Config::from_env()?;
+            let pool = db::connect(&config.database_url).await?;
+            db::migrate(&pool).await?;
+            println!("migrations applied");
+        }
     }
     Ok(())
 }
