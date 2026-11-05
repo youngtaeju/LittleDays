@@ -134,6 +134,22 @@ pub async fn delete_all_for_user(exec: impl PgExecutor<'_>, user_id: Uuid) -> Ap
     Ok(())
 }
 
+/// `keep` 외 해당 사용자 세션 전부 삭제.
+pub async fn delete_all_except(
+    exec: impl PgExecutor<'_>,
+    user_id: Uuid,
+    keep: Uuid,
+) -> AppResult<()> {
+    sqlx::query!(
+        "DELETE FROM sessions WHERE user_id = $1 AND id <> $2",
+        user_id,
+        keep,
+    )
+    .execute(exec)
+    .await?;
+    Ok(())
+}
+
 /// 만료 세션 제외. 최근 사용 순.
 pub async fn list_for_user(
     exec: impl PgExecutor<'_>,

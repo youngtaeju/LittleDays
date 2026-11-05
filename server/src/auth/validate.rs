@@ -1,5 +1,8 @@
 use crate::error::{AppError, AppResult};
 
+/// 지원 UI 언어.
+const LOCALES: &[&str] = &["ko", "en"];
+
 /// 가입·초대 수락 공용. 정규화(소문자) 사용자명 반환.
 pub fn validate_credentials(username: &str, password: &str) -> AppResult<String> {
     let username = username.to_lowercase();
@@ -10,10 +13,16 @@ pub fn validate_credentials(username: &str, password: &str) -> AppResult<String>
     if !(3..=32).contains(&len) || !valid_chars {
         return Err(AppError::bad_request("auth.usernameInvalid"));
     }
+    validate_password(password)?;
+    Ok(username)
+}
+
+/// 가입·초대 수락·비밀번호 변경 공용. 8자 이상.
+pub fn validate_password(password: &str) -> AppResult<()> {
     if password.chars().count() < 8 {
         return Err(AppError::bad_request("auth.passwordTooShort"));
     }
-    Ok(username)
+    Ok(())
 }
 
 /// 앞뒤 공백 제거 후 1~64자.
@@ -26,6 +35,15 @@ pub fn trimmed_name(raw: &str, key: &'static str) -> AppResult<String> {
     let name = raw.trim();
     if (1..=64).contains(&name.chars().count()) {
         Ok(name.to_string())
+    } else {
+        Err(AppError::bad_request(key))
+    }
+}
+
+/// `ko`, `en` 만 허용. 실패 시 `key` 로 400.
+pub fn validate_locale(raw: &str, key: &'static str) -> AppResult<String> {
+    if LOCALES.contains(&raw) {
+        Ok(raw.to_string())
     } else {
         Err(AppError::bad_request(key))
     }

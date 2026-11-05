@@ -29,8 +29,6 @@ use crate::{
 
 const DEFAULT_EXPIRY_HOURS: u32 = 72;
 const MAX_EXPIRY_HOURS: u32 = 720;
-/// `instance_name` 미설정 시 표시 이름.
-const DEFAULT_INSTANCE_NAME: &str = "LittleDays";
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
@@ -180,13 +178,10 @@ async fn preview_invite(
     Path(raw): Path<String>,
 ) -> AppResult<AxumJson<InvitePreview>> {
     let invite = find_active(&state.pool, &raw).await?;
-    let instance_name = settings::queries::get(&state.pool, "instance_name")
-        .await?
-        .and_then(|v| v.as_str().map(str::to_string))
-        .unwrap_or_else(|| DEFAULT_INSTANCE_NAME.to_string());
+    let settings = settings::queries::load(&state.pool).await?;
     Ok(AxumJson(InvitePreview {
         role: invite.role,
-        instance_name,
+        instance_name: settings.instance_name,
         expires_at: invite.expires_at,
     }))
 }
@@ -217,6 +212,7 @@ async fn accept_invite(
     // 무효 초대의 해시 비용 회피. 확정 검사는 트랜잭션 내 행 잠금 후.
     let invite = find_active(&state.pool, &raw).await?;
     let password_hash = password::hash_async(req.password).await?;
+    let default_locale = settings::queries::load(&state.pool).await?.default_locale;
 
     let mut tx = state.pool.begin().await?;
     let invite = queries::find_for_update(&mut *tx, invite.id)
@@ -232,7 +228,7 @@ async fn accept_invite(
             display_name,
             role: invite.role,
             email: None,
-            locale: "ko".to_string(),
+            locale: default_locale,
         },
     )
     .await?;

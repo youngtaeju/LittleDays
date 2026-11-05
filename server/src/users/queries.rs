@@ -1,7 +1,7 @@
 use sqlx::PgExecutor;
 use uuid::Uuid;
 
-use super::{NewUser, Role, User, UserRecord};
+use super::{NewUser, ProfileUpdate, Role, User, UserRecord};
 use crate::error::{AppError, AppResult};
 
 pub async fn count(exec: impl PgExecutor<'_>) -> AppResult<i64> {
@@ -94,4 +94,68 @@ pub async fn update_role(exec: impl PgExecutor<'_>, id: Uuid, role: Role) -> App
         .execute(exec)
         .await?;
     Ok(result.rows_affected() > 0)
+}
+
+/// 비활성화 시 최초 시각 유지. 갱신 여부 반환(대상 없음 → false).
+pub async fn set_disabled(exec: impl PgExecutor<'_>, id: Uuid, disabled: bool) -> AppResult<bool> {
+    let result = sqlx::query!(
+        "UPDATE users
+         SET disabled_at = CASE WHEN $2 THEN COALESCE(disabled_at, now()) ELSE NULL END
+         WHERE id = $1",
+        id,
+        disabled,
+    )
+    .execute(exec)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// `None` 필드는 유지. 대상 없음 → `None`.
+pub async fn update_profile(
+    exec: impl PgExecutor<'_>,
+    id: Uuid,
+    update: ProfileUpdate,
+) -> AppResult<Option<User>> {
+    let email_set = update.email.is_some();
+    let email = update.email.flatten();
+    let user = sqlx::query_as!(
+        User,
+        r#"UPDATE users
+           SET display_name = COALESCE($2, display_name),
+               locale = COALESCE($3, locale),
+               email = CASE WHEN $4 THEN $5 ELSE email END
+           WHERE id = $1
+           RETURNING id, username, display_name, role AS "role: Role", email, locale,
+                     created_at, disabled_at"#,
+        id,
+        update.display_name,
+        update.locale,
+        email_set,
+        email,
+    )
+    .fetch_optional(exec)
+    .await?;
+    Ok(user)
+}
+
+pub async fn password_hash(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<String>> {
+    let hash = sqlx::query_scalar!("SELECT password_hash FROM users WHERE id = $1", id)
+        .fetch_optional(exec)
+        .await?;
+    Ok(hash)
+}
+
+pub async fn update_password(
+    exec: impl PgExecutor<'_>,
+    id: Uuid,
+    password_hash: &str,
+) -> AppResult<()> {
+    sqlx::query!(
+        "UPDATE users SET password_hash = $2 WHERE id = $1",
+        id,
+        password_hash,
+    )
+    .execute(exec)
+    .await?;
+    Ok(())
 }

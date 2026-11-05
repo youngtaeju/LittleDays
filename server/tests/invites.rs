@@ -121,6 +121,7 @@ async fn owner_creates_invite_and_guest_accepts(pool: PgPool) {
     assert_eq!(accepted["user"]["role"], "guardian");
     assert_eq!(accepted["user"]["username"], "dad");
     assert_eq!(accepted["user"]["display_name"], "아빠");
+    assert_eq!(accepted["user"]["locale"], "ko");
     assert!(accepted["user"].get("password_hash").is_none());
     assert_eq!(res.cookie(session::COOKIE_NAME).value().len(), 43);
 
@@ -472,6 +473,23 @@ async fn concurrent_accept_only_one_wins(pool: PgPool) {
         .await
         .expect("count");
     assert_eq!(users, 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn accept_uses_default_locale_setting(pool: PgPool) {
+    let owner = owner_server(&pool).await;
+    owner
+        .patch("/api/settings")
+        .add_header(XRW, XRW_VALUE)
+        .json(&json!({ "default_locale": "en" }))
+        .await
+        .assert_status_ok();
+    let (_, raw) = invite(&owner, "family").await;
+
+    let guest = common::test_server_without_cookies(pool).await;
+    let res = accept(&guest, &raw, accept_body("dad")).await;
+    res.assert_status(StatusCode::CREATED);
+    assert_eq!(res.json::<Value>()["user"]["locale"], "en");
 }
 
 #[sqlx::test(migrations = "./migrations")]

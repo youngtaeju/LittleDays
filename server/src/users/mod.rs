@@ -4,6 +4,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub mod queries;
+pub mod routes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize, Deserialize, ToSchema)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
@@ -40,4 +41,11 @@ pub struct NewUser {
     pub role: Role,
     pub email: Option<String>,
     pub locale: String,
+}
+
+/// 본인 프로필 부분 갱신. `None` 은 유지, `email: Some(None)` 은 삭제.
+pub struct ProfileUpdate {
+    pub display_name: Option<String>,
+    pub locale: Option<String>,
+    pub email: Option<Option<String>>,
 }

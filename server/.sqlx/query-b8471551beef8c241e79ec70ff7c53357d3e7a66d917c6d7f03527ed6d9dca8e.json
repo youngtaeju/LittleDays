@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users\n         SET disabled_at = CASE WHEN $2 THEN COALESCE(disabled_at, now()) ELSE NULL END\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b8471551beef8c241e79ec70ff7c53357d3e7a66d917c6d7f03527ed6d9dca8e"
+}
