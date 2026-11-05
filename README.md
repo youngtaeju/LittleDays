@@ -8,17 +8,63 @@
 
 ## 개발 환경
 
-```bash
-# PostgreSQL (127.0.0.1:5432, 변경은 POSTGRES_PORT)
-docker compose -f compose/docker-compose.dev.yml up -d --wait
+필요한 도구는 다음과 같습니다.
 
-cd server
-cp .env.example .env          # SECRET_KEY 는 openssl rand -hex 32 로 생성
-cargo run -- migrate
-cargo run -- serve            # http://localhost:8080
+- Docker
+- Rust (툴체인은 `rust-toolchain.toml` 로 고정)
+- `sqlx-cli`: SQL 쿼리를 바꿀 때 필요합니다.
+  `cargo install sqlx-cli --version 0.8.6 --locked --no-default-features --features postgres,rustls`
+
+### 실행
+
+```bash
+scripts/dev-db.sh             # PowerShell 7+: scripts/dev-db.ps1
+cd server && cargo run -- serve
 ```
 
-검증 명령: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`
+다른 터미널에서 확인합니다.
+
+```bash
+curl http://localhost:8080/api/health
+```
+
+`scripts/dev-db.*` 는 개발용 PostgreSQL 기동, `server/.env` 생성(없을 때만, `SECRET_KEY` 자동 생성), 마이그레이션을 차례로 실행합니다. `.ps1` 은 PowerShell 7 이상이 필요하고, Windows 에서 `.sh` 는 Git Bash 또는 WSL 에서 실행합니다.
+
+- 8080 포트가 사용 중이면 `server/.env` 의 `PORT` 를 바꿉니다.
+- 5432 포트가 사용 중이면 `POSTGRES_PORT` 를 지정해 실행합니다. 이미 만든 `server/.env` 는 `DATABASE_URL` 의 포트를 직접 맞춰야 합니다.
+
+  ```bash
+  POSTGRES_PORT=5433 scripts/dev-db.sh
+  ```
+
+  ```powershell
+  $env:POSTGRES_PORT = '5433'; ./scripts/dev-db.ps1
+  ```
+
+- API 문서(OpenAPI)는 `GET /api/openapi.json` 입니다.
+
+### 테스트와 검사
+
+`cargo test` 와 `cargo sqlx prepare` 는 개발용 DB 가 떠 있고 마이그레이션이 적용된 상태여야 하므로 `scripts/dev-db.*` 를 먼저 실행합니다. `server/` 에서 실행하면 `DATABASE_URL` 을 `server/.env` 에서 읽습니다. `.env` 가 없는 환경(CI 등)이나 다른 DB 를 쓸 때만 셸에 `DATABASE_URL` 을 지정합니다.
+
+CI 와 같은 검사는 `server/` 에서 실행합니다.
+
+```bash
+cargo fmt --check
+SQLX_OFFLINE=true cargo clippy --locked --all-targets -- -D warnings
+cargo sqlx prepare --check -- --all-targets
+cargo test --locked
+```
+
+PowerShell 에서는 `SQLX_OFFLINE` 을 환경 변수로 지정합니다. 이후 빌드에 영향을 주므로 실행 뒤 해제하거나 별도 셸을 사용합니다.
+
+```powershell
+$env:SQLX_OFFLINE = 'true'
+cargo clippy --locked --all-targets -- -D warnings
+Remove-Item Env:SQLX_OFFLINE
+```
+
+SQL 쿼리를 바꾼 뒤에는 `cargo sqlx prepare -- --all-targets` 를 실행하고 `server/.sqlx/` 를 함께 커밋합니다.
 
 ## 라이선스
 
