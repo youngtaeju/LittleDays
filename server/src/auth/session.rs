@@ -1,3 +1,4 @@
+use axum::http::{HeaderMap, header};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -25,11 +26,19 @@ pub struct SessionWithUser {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct SessionInfo {
     pub id: Uuid,
+    #[schema(required = true)]
     pub user_agent: Option<String>,
     pub created_at: DateTime<Utc>,
     pub last_seen_at: DateTime<Utc>,
     /// 요청에 사용된 세션 여부.
     pub current: bool,
+}
+
+/// 세션 생성 시 기록용. 비 ASCII 등 해석 불가 값은 `None`.
+pub fn user_agent(headers: &HeaderMap) -> Option<&str> {
+    headers
+        .get(header::USER_AGENT)
+        .and_then(|v| v.to_str().ok())
 }
 
 /// 원문 토큰과 세션 ID 반환. DB 에는 SHA-256 해시만 저장.
@@ -123,6 +132,22 @@ pub async fn delete_all_for_user(exec: impl PgExecutor<'_>, user_id: Uuid) -> Ap
     sqlx::query!("DELETE FROM sessions WHERE user_id = $1", user_id)
         .execute(exec)
         .await?;
+    Ok(())
+}
+
+/// `keep` 외 해당 사용자 세션 전부 삭제.
+pub async fn delete_all_except(
+    exec: impl PgExecutor<'_>,
+    user_id: Uuid,
+    keep: Uuid,
+) -> AppResult<()> {
+    sqlx::query!(
+        "DELETE FROM sessions WHERE user_id = $1 AND id <> $2",
+        user_id,
+        keep,
+    )
+    .execute(exec)
+    .await?;
     Ok(())
 }
 

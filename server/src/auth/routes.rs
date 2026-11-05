@@ -1,12 +1,12 @@
 use axum::{
     Json as AxumJson,
     extract::State,
-    http::{HeaderMap, StatusCode, header},
+    http::{HeaderMap, StatusCode},
 };
 use axum_extra::extract::CookieJar;
 use chrono::{DateTime, Duration, SubsecRound, Utc};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::Value;
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
@@ -15,10 +15,10 @@ use super::{
     extract::{self, CurrentUser},
     password,
     session::{self, SessionInfo},
-    token,
+    token, validate,
 };
 use crate::{
-    error::{AppError, AppResult},
+    error::{AppError, AppResult, ErrorBody},
     request::{Json, Path},
     settings,
     state::AppState,
@@ -72,50 +72,15 @@ pub struct StatusResponse {
     signup_open: bool,
 }
 
-fn bad_request(key: &'static str) -> AppError {
-    AppError::BadRequest {
-        key,
-        params: json!({}),
-    }
-}
-
-fn user_agent(headers: &HeaderMap) -> Option<&str> {
-    headers
-        .get(header::USER_AGENT)
-        .and_then(|v| v.to_str().ok())
-}
-
-fn normalize_username(raw: &str) -> AppResult<String> {
-    let username = raw.to_lowercase();
-    let len = username.chars().count();
-    let valid_chars = username
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_');
-    if (3..=32).contains(&len) && valid_chars {
-        Ok(username)
-    } else {
-        Err(bad_request("auth.usernameInvalid"))
-    }
-}
-
-fn trimmed_name(raw: &str, key: &'static str) -> AppResult<String> {
-    let name = raw.trim();
-    if (1..=64).contains(&name.chars().count()) {
-        Ok(name.to_string())
-    } else {
-        Err(bad_request(key))
-    }
-}
-
 #[utoipa::path(
     post,
     path = "/api/auth/signup",
     request_body = SignupRequest,
     responses(
         (status = 201, description = "첫 사용자(owner) 생성, 세션 쿠키 발급", body = UserResponse),
-        (status = 400, description = "입력 검증 실패"),
-        (status = 403, description = "가입 닫힘 (이미 사용자 존재)"),
-        (status = 409, description = "사용자명 중복"),
+        (status = 400, description = "입력 검증 실패", body = ErrorBody),
+        (status = 403, description = "가입 닫힘 (이미 사용자 존재)", body = ErrorBody),
+        (status = 409, description = "사용자명 중복", body = ErrorBody),
     )
 )]
 async fn signup(
@@ -124,12 +89,9 @@ async fn signup(
     jar: CookieJar,
     Json(req): Json<SignupRequest>,
 ) -> AppResult<(StatusCode, CookieJar, AxumJson<UserResponse>)> {
-    let username = normalize_username(&req.username)?;
-    if req.password.chars().count() < 8 {
-        return Err(bad_request("auth.passwordTooShort"));
-    }
-    let display_name = trimmed_name(&req.display_name, "auth.displayNameInvalid")?;
-    let instance_name = trimmed_name(&req.instance_name, "settings.instanceNameInvalid")?;
+    let username = validate::validate_credentials(&req.username, &req.password)?;
+    let display_name = validate::validate_display_name(&req.display_name)?;
+    let instance_name = validate::trimmed_name(&req.instance_name, "settings.instanceNameInvalid")?;
 
     // 가입 닫힘 시 해시 비용 회피. 경합 대비 확정 검사는 트랜잭션 내부.
     if users::queries::count(&state.pool).await? > 0 {
@@ -157,7 +119,7 @@ async fn signup(
     )
     .await?;
     settings::queries::set(&mut *tx, "instance_name", Value::String(instance_name)).await?;
-    let (raw, _) = session::create(&mut *tx, user.id, user_agent(&headers)).await?;
+    let (raw, _) = session::create(&mut *tx, user.id, session::user_agent(&headers)).await?;
     tx.commit().await?;
 
     Ok((
@@ -183,8 +145,8 @@ async fn status(State(state): State<AppState>) -> AppResult<AxumJson<StatusRespo
     request_body = LoginRequest,
     responses(
         (status = 200, description = "로그인, 세션 쿠키 발급", body = UserResponse),
-        (status = 400, description = "본문 형식 오류"),
-        (status = 401, description = "자격 증명 불일치 또는 비활성 사용자"),
+        (status = 400, description = "본문 형식 오류", body = ErrorBody),
+        (status = 401, description = "자격 증명 불일치 또는 비활성 사용자", body = ErrorBody),
     )
 )]
 async fn login(
@@ -210,7 +172,8 @@ async fn login(
         return Err(AppError::Unauthorized("auth.disabled"));
     }
 
-    let (raw, _) = session::create(&state.pool, record.user.id, user_agent(&headers)).await?;
+    let (raw, _) =
+        session::create(&state.pool, record.user.id, session::user_agent(&headers)).await?;
     Ok((
         jar.add(session::cookie(&state.config, raw)),
         AxumJson(UserResponse { user: record.user }),
@@ -222,7 +185,7 @@ async fn login(
     path = "/api/auth/logout",
     responses(
         (status = 204, description = "유효 세션이면 삭제. 세션 유무와 무관하게 쿠키 제거"),
-        (status = 403, description = "CSRF 헤더 누락"),
+        (status = 403, description = "CSRF 헤더 누락", body = ErrorBody),
     )
 )]
 async fn logout(
@@ -247,7 +210,7 @@ async fn logout(
     path = "/api/auth/me",
     responses(
         (status = 200, description = "현재 사용자", body = UserResponse),
-        (status = 401, description = "인증 필요 또는 비활성 사용자"),
+        (status = 401, description = "인증 필요 또는 비활성 사용자", body = ErrorBody),
     )
 )]
 async fn me(current: CurrentUser) -> AxumJson<UserResponse> {
@@ -259,7 +222,7 @@ async fn me(current: CurrentUser) -> AxumJson<UserResponse> {
     path = "/api/auth/sessions",
     responses(
         (status = 200, description = "본인 세션 목록", body = SessionsResponse),
-        (status = 401, description = "인증 필요"),
+        (status = 401, description = "인증 필요", body = ErrorBody),
     )
 )]
 async fn list_sessions(
@@ -276,10 +239,10 @@ async fn list_sessions(
     params(("id" = Uuid, Path, description = "세션 ID")),
     responses(
         (status = 204, description = "세션 삭제"),
-        (status = 400, description = "잘못된 세션 ID 형식"),
-        (status = 401, description = "인증 필요"),
-        (status = 403, description = "CSRF 헤더 누락"),
-        (status = 404, description = "본인 세션 아님 또는 없음"),
+        (status = 400, description = "잘못된 세션 ID 형식", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "본인 세션 아님 또는 없음", body = ErrorBody),
     )
 )]
 async fn revoke_session(
@@ -299,8 +262,8 @@ async fn revoke_session(
     path = "/api/auth/media-token",
     responses(
         (status = 200, description = "미디어 URL 서명 토큰 (1시간)", body = MediaTokenResponse),
-        (status = 401, description = "인증 필요"),
-        (status = 403, description = "CSRF 헤더 누락"),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "CSRF 헤더 누락", body = ErrorBody),
     )
 )]
 async fn media_token(

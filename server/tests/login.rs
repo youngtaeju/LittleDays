@@ -1,9 +1,10 @@
 mod common;
 
-use axum::http::{HeaderName, HeaderValue, StatusCode, header};
+use axum::http::{HeaderValue, StatusCode};
 use axum_extra::extract::cookie::{Cookie, SameSite};
-use axum_test::{TestResponse, TestServer};
+use axum_test::TestResponse;
 use chrono::Utc;
+use common::{XRW, XRW_VALUE, assert_error, login, login_body, signup, signup_body};
 use littledays::{
     auth::{session, token},
     users::{self, NewUser, Role},
@@ -11,43 +12,6 @@ use littledays::{
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
-
-const XRW: HeaderName = HeaderName::from_static("x-requested-with");
-const XRW_VALUE: HeaderValue = HeaderValue::from_static("LittleDays");
-
-fn signup_body() -> Value {
-    json!({
-        "username": "mom",
-        "password": "password123",
-        "display_name": "엄마",
-        "instance_name": "우리집",
-    })
-}
-
-fn login_body(password: &str) -> Value {
-    json!({ "username": "mom", "password": password })
-}
-
-fn assert_error(res: &TestResponse, status: StatusCode, key: &str) {
-    res.assert_status(status);
-    res.assert_json(&json!({ "error": key, "params": {} }));
-}
-
-async fn signup(server: &TestServer) -> Cookie<'static> {
-    let res = server.post("/api/auth/signup").json(&signup_body()).await;
-    res.assert_status(StatusCode::CREATED);
-    res.cookie(session::COOKIE_NAME)
-}
-
-async fn login(server: &TestServer, user_agent: &str) -> Cookie<'static> {
-    let res = server
-        .post("/api/auth/login")
-        .add_header(header::USER_AGENT, user_agent)
-        .json(&login_body("password123"))
-        .await;
-    res.assert_status_ok();
-    res.cookie(session::COOKIE_NAME)
-}
 
 async fn session_count(pool: &PgPool) -> i64 {
     sqlx::query_scalar!(r#"SELECT count(*) AS "n!" FROM sessions"#)
