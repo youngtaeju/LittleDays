@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      DATABASE_URL: postgres://littledays:littledays@localhost:5432/littledays
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: littledays
+          POSTGRES_PASSWORD: littledays
+          POSTGRES_DB: littledays
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U littledays"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@1.99
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: server
+      - name: sqlx-cli 설치
+        run: cargo install sqlx-cli --version 0.8.6 --locked --no-default-features --features postgres,rustls
+      - name: fmt
+        run: cargo fmt --check
+      - name: 마이그레이션 적용
+        run: cargo sqlx migrate run
+      - name: clippy (오프라인 .sqlx 검증)
+        run: cargo clippy --locked --all-targets -- -D warnings
+        env:
+          SQLX_OFFLINE: "true"
+      - name: sqlx prepare 검사
+        run: cargo sqlx prepare --check -- --all-targets
+      - name: test
+        run: cargo test --locked
