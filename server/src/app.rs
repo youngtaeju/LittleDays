@@ -6,13 +6,15 @@ use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 
 use crate::{
-    auth, error::AppError, invites, openapi::ApiDoc, routes, settings, state::AppState, users,
+    auth, babies, error::AppError, invites, openapi::ApiDoc, routes, settings, state::AppState,
+    users,
 };
 
 pub fn build_router(state: AppState) -> Router {
     let (api, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(routes::health::router())
         .merge(auth::routes::router())
+        .merge(babies::routes::router())
         .merge(invites::routes::router())
         .merge(settings::routes::router())
         .merge(users::routes::router())

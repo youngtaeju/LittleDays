@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n               SELECT 1 FROM assets\n               WHERE id = $1 AND status = 'ready' AND kind = 'photo' AND deleted_at IS NULL\n           ) AS \"ok!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ok!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b5eadb52bcdf9233681269ea8b91460c629783c779e69c95875e89ca1485eac9"
+}

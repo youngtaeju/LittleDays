@@ -1,0 +1,60 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, birth_date, sex AS \"sex: Sex\", avatar_asset_id, sort_order\n           FROM babies ORDER BY sort_order, created_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "birth_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "sex: Sex",
+        "type_info": {
+          "Custom": {
+            "name": "baby_sex",
+            "kind": {
+              "Enum": [
+                "female",
+                "male"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "avatar_asset_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "sort_order",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "cdcc4b2cfbb8dfdc1ba153e8cad8b4cfd8a53cbb6edad9bc6cdf9bf98bb80c52"
+}
