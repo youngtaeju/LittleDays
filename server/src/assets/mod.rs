@@ -8,6 +8,7 @@ pub mod cursor;
 pub mod files;
 pub mod queries;
 pub mod routes;
+pub mod trash;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize, Deserialize, ToSchema)]
 #[sqlx(type_name = "asset_kind", rename_all = "snake_case")]
@@ -132,6 +133,15 @@ pub struct AssetSummary {
     /// 파생물 파일 정보. 처리 전 `{}`.
     #[schema(value_type = DerivativesDoc)]
     pub derivatives: Value,
+}
+
+/// 휴지통 목록 항목.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct TrashItem {
+    #[serde(flatten)]
+    pub asset: AssetSummary,
+    /// 휴지통 이동 시각.
+    pub deleted_at: DateTime<Utc>,
 }
 
 /// 커서 페이지.

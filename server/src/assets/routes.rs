@@ -1,11 +1,11 @@
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{Asset, AssetSummary, MonthCount, Page, cursor, queries};
+use super::{Asset, AssetSummary, MonthCount, Page, TrashItem, cursor, queries, trash};
 use crate::{
     auth::extract::CurrentUser,
     babies,
@@ -21,9 +21,13 @@ pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(list_assets))
         .routes(routes!(list_months))
-        .routes(routes!(get_asset, patch_asset))
+        .routes(routes!(get_asset, patch_asset, trash_asset))
         .routes(routes!(put_asset_babies))
         .routes(routes!(retry_asset))
+        .routes(routes!(restore_asset))
+        .routes(routes!(delete_asset_permanently))
+        .routes(routes!(list_trash))
+        .routes(routes!(empty_trash))
 }
 
 const DEFAULT_LIMIT: i64 = 100;
@@ -46,6 +50,20 @@ struct ListQuery {
 struct MonthsQuery {
     /// 해당 아기가 태그된 자산만.
     baby_id: Option<Uuid>,
+}
+
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+struct TrashQuery {
+    /// 이전 응답의 `next_cursor`.
+    cursor: Option<String>,
+    /// 1~500, 기본 100.
+    limit: Option<i64>,
+}
+
+#[derive(Serialize, ToSchema)]
+struct Deleted {
+    deleted: u64,
 }
 
 /// 키가 있으면 `null` 포함 `Some`.
@@ -255,4 +273,145 @@ async fn retry_asset(
     tx.commit().await?;
     state.jobs_wake.notify_one();
     Ok((StatusCode::ACCEPTED, Json(asset)))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/assets/{id}",
+    params(("id" = Uuid, Path, description = "자산 ID")),
+    responses(
+        (status = 204, description = "휴지통으로 이동 (이미 휴지통이면 그대로). 대표사진 지정은 해제"),
+        (status = 400, description = "ID 형식 오류", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "guardian 이상 아님 또는 CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "자산 없음 (`asset.notFound`)", body = ErrorBody),
+    )
+)]
+async fn trash_asset(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<StatusCode> {
+    current.require(Role::Guardian)?;
+    let mut tx = state.pool.begin().await?;
+    if !queries::move_to_trash(&mut tx, id).await? {
+        return Err(AppError::NotFound("asset.notFound"));
+    }
+    tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/assets/{id}/restore",
+    params(("id" = Uuid, Path, description = "자산 ID")),
+    responses(
+        (status = 200, description = "복구된 자산", body = Asset),
+        (status = 400, description = "ID 형식 오류", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "guardian 이상 아님 또는 CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "자산 없음 (`asset.notFound`)", body = ErrorBody),
+        (status = 409, description = "휴지통 아님 (`asset.notInTrash`)", body = ErrorBody),
+    )
+)]
+async fn restore_asset(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Asset>> {
+    current.require(Role::Guardian)?;
+    let mut tx = state.pool.begin().await?;
+    if !queries::restore(&mut *tx, id).await? {
+        return Err(match queries::get(&mut *tx, id).await? {
+            Some(_) => AppError::conflict("asset.notInTrash"),
+            None => AppError::NotFound("asset.notFound"),
+        });
+    }
+    let asset = queries::get(&mut *tx, id)
+        .await?
+        .ok_or(AppError::NotFound("asset.notFound"))?;
+    tx.commit().await?;
+    Ok(Json(asset))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/assets/{id}/permanent",
+    params(("id" = Uuid, Path, description = "자산 ID")),
+    responses(
+        (status = 204, description = "영구 삭제 (원본, 파생물 포함)"),
+        (status = 400, description = "ID 형식 오류", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "guardian 이상 아님 또는 CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "자산 없음 (`asset.notFound`)", body = ErrorBody),
+        (status = 409, description = "휴지통 아님 (`asset.notInTrash`)", body = ErrorBody),
+    )
+)]
+async fn delete_asset_permanently(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<StatusCode> {
+    current.require(Role::Guardian)?;
+    if trash::purge(&state, &[id]).await? == 1 {
+        return Ok(StatusCode::NO_CONTENT);
+    }
+    Err(match queries::get(&state.pool, id).await? {
+        Some(_) => AppError::conflict("asset.notInTrash"),
+        None => AppError::NotFound("asset.notFound"),
+    })
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/trash",
+    params(TrashQuery),
+    responses(
+        (status = 200, description = "휴지통 이동 시각 최신순", body = Page<TrashItem>),
+        (status = 400, description = "쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`)", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "guardian 이상 아님", body = ErrorBody),
+    )
+)]
+async fn list_trash(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Query(q): Query<TrashQuery>,
+) -> AppResult<Json<Page<TrashItem>>> {
+    current.require(Role::Guardian)?;
+    let limit = q.limit.unwrap_or(DEFAULT_LIMIT);
+    if !(1..=MAX_LIMIT).contains(&limit) {
+        return Err(AppError::bad_request("request.invalidQuery"));
+    }
+    let after = q.cursor.as_deref().map(cursor::decode).transpose()?;
+    let tz = settings::queries::load(&state.pool).await?.timezone;
+    let mut items = queries::list_trash(&state.pool, &tz, after, limit + 1).await?;
+    let next_cursor = if items.len() as i64 > limit {
+        items.truncate(limit as usize);
+        items
+            .last()
+            .map(|last| cursor::encode(last.deleted_at, last.asset.id))
+    } else {
+        None
+    };
+    Ok(Json(Page { items, next_cursor }))
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/trash/empty",
+    responses(
+        (status = 200, description = "휴지통 비움", body = Deleted),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "guardian 이상 아님 또는 CSRF 헤더 누락", body = ErrorBody),
+    )
+)]
+async fn empty_trash(
+    State(state): State<AppState>,
+    current: CurrentUser,
+) -> AppResult<Json<Deleted>> {
+    current.require(Role::Guardian)?;
+    let ids = queries::trash_ids(&state.pool).await?;
+    let deleted = trash::purge(&state, &ids).await?;
+    Ok(Json(Deleted { deleted }))
 }

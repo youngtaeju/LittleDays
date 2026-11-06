@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgExecutor;
 use uuid::Uuid;
 
-use super::{Asset, AssetKind, AssetStatus, AssetSummary, MonthCount, TakenAtSource};
+use super::{Asset, AssetKind, AssetStatus, AssetSummary, MonthCount, TakenAtSource, TrashItem};
 use crate::error::AppResult;
 
 pub async fn get(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Asset>> {
@@ -280,6 +280,136 @@ pub async fn remove_babies_except(
         "DELETE FROM asset_babies WHERE asset_id = $1 AND baby_id <> ALL($2::uuid[])",
         asset_id,
         keep,
+    )
+    .execute(exec)
+    .await?;
+    Ok(())
+}
+
+/// 휴지통으로. 이미 휴지통이면 시각 유지. 대표사진 해제. 행이 있었으면 `true`.
+pub async fn move_to_trash(tx: &mut sqlx::PgConnection, id: Uuid) -> AppResult<bool> {
+    let res = sqlx::query!(
+        "UPDATE assets SET deleted_at = COALESCE(deleted_at, now()) WHERE id = $1",
+        id
+    )
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query!(
+        "UPDATE babies SET avatar_asset_id = NULL WHERE avatar_asset_id = $1",
+        id
+    )
+    .execute(&mut *tx)
+    .await?;
+    Ok(res.rows_affected() == 1)
+}
+
+/// 휴지통 상태일 때만 복구. 복구했으면 `true`.
+pub async fn restore(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
+    let res = sqlx::query!(
+        "UPDATE assets SET deleted_at = NULL WHERE id = $1 AND deleted_at IS NOT NULL",
+        id
+    )
+    .execute(exec)
+    .await?;
+    Ok(res.rows_affected() == 1)
+}
+
+/// 휴지통 목록. `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
+pub async fn list_trash(
+    exec: impl PgExecutor<'_>,
+    timezone: &str,
+    cursor: Option<(DateTime<Utc>, Uuid)>,
+    limit: i64,
+) -> AppResult<Vec<TrashItem>> {
+    let (cursor_ts, cursor_id) = cursor.unzip();
+    let rows = sqlx::query!(
+        r#"SELECT a.id, a.kind AS "kind: AssetKind", a.status AS "status: AssetStatus",
+                  a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS "local_date!",
+                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color,
+                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
+                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
+                            WHERE ab.asset_id = a.id), '{}') AS "baby_ids!",
+                  a.derivatives, a.deleted_at AS "deleted_at!"
+           FROM assets a
+           WHERE a.deleted_at IS NOT NULL
+             AND ($2::timestamptz IS NULL OR (a.deleted_at, a.id) < ($2, $3::uuid))
+           ORDER BY a.deleted_at DESC, a.id DESC
+           LIMIT $4"#,
+        timezone,
+        cursor_ts,
+        cursor_id,
+        limit,
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|r| TrashItem {
+            asset: AssetSummary {
+                id: r.id,
+                kind: r.kind,
+                status: r.status,
+                taken_at: r.taken_at,
+                local_date: r.local_date,
+                width: r.width,
+                height: r.height,
+                duration_ms: r.duration_ms,
+                blurhash: r.blurhash,
+                dominant_color: r.dominant_color,
+                baby_ids: r.baby_ids,
+                derivatives: r.derivatives,
+            },
+            deleted_at: r.deleted_at,
+        })
+        .collect())
+}
+
+pub async fn trash_ids(exec: impl PgExecutor<'_>) -> AppResult<Vec<Uuid>> {
+    let ids = sqlx::query_scalar!("SELECT id FROM assets WHERE deleted_at IS NOT NULL")
+        .fetch_all(exec)
+        .await?;
+    Ok(ids)
+}
+
+/// 휴지통 이동 후 `days` 일이 지난 행만 삭제. 판정과 삭제가 한 문장이라 그 사이 복구·재삭제와 경합 없음.
+pub async fn delete_expired_trash(exec: impl PgExecutor<'_>, days: i32) -> AppResult<Vec<Trashed>> {
+    let rows = sqlx::query_as!(
+        Trashed,
+        "DELETE FROM assets WHERE deleted_at < now() - make_interval(days => $1)
+         RETURNING id, original_path",
+        days
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows)
+}
+
+/// 영구 삭제 결과 행.
+pub struct Trashed {
+    pub id: Uuid,
+    /// `DATA_DIR` 기준 상대 경로.
+    pub original_path: String,
+}
+
+/// 휴지통 상태인 행만 삭제.
+pub async fn delete_trashed(exec: impl PgExecutor<'_>, ids: &[Uuid]) -> AppResult<Vec<Trashed>> {
+    let rows = sqlx::query_as!(
+        Trashed,
+        "DELETE FROM assets WHERE id = ANY($1::uuid[]) AND deleted_at IS NOT NULL
+         RETURNING id, original_path",
+        ids
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows)
+}
+
+/// 자산 id 목록의 작업 행 삭제.
+pub async fn delete_jobs(exec: impl PgExecutor<'_>, ids: &[Uuid]) -> AppResult<()> {
+    let ids: Vec<String> = ids.iter().map(Uuid::to_string).collect();
+    sqlx::query!(
+        "DELETE FROM jobs WHERE payload ->> 'asset_id' = ANY($1::text[])",
+        &ids
     )
     .execute(exec)
     .await?;
