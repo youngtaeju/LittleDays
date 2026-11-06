@@ -151,6 +151,14 @@ pub async fn delete_all_except(
     Ok(())
 }
 
+/// 만료 세션 삭제. 삭제 건수 반환.
+pub async fn delete_expired(exec: impl PgExecutor<'_>) -> AppResult<u64> {
+    let result = sqlx::query!("DELETE FROM sessions WHERE expires_at <= now()")
+        .execute(exec)
+        .await?;
+    Ok(result.rows_affected())
+}
+
 /// 만료 세션 제외. 최근 사용 순.
 pub async fn list_for_user(
     exec: impl PgExecutor<'_>,
