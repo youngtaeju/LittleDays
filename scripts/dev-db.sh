@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 # 개발용 Postgres 기동 + server/.env 생성(없을 때만) + 마이그레이션.
 # POSTGRES_PORT 지정 시 compose 호스트 포트와 DATABASE_URL 포트에 반영.
+# 마이그레이션은 sqlx-cli 사용. 앱 빌드 자체가 마이그레이션된 DB 요구(sqlx 매크로) → 앱 바이너리로는 빈 DB 마이그레이션 불가.
 set -euo pipefail
+
+if ! cargo sqlx --version >/dev/null 2>&1; then
+  echo "sqlx-cli 필요: cargo install sqlx-cli --version 0.8.6 --locked --no-default-features --features postgres,rustls" >&2
+  exit 1
+fi
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 env_file="$root/server/.env"
@@ -23,4 +29,4 @@ if [ ! -e "$env_file" ]; then
 fi
 
 cd "$root/server"
-cargo run -- migrate
+cargo sqlx migrate run
