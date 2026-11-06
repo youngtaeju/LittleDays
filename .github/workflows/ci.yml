@@ -17,7 +17,7 @@ env:
 
 jobs:
   server:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: server
@@ -39,6 +39,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
+      - name: 시스템 패키지 설치
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config zlib1g-dev libheif-dev libheif-plugin-libde265 libheif-plugin-aomenc libheif-plugin-dav1d ffmpeg
       - uses: dtolnay/rust-toolchain@1.99
         with:
           components: rustfmt, clippy

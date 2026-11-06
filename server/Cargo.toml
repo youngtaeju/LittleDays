@@ -30,6 +30,13 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 dotenvy = "0.15"
 futures-util = "0.3"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+libheif-rs = { version = "3", default-features = false, features = ["v1_17"] }
+webp = "0.3"
+fast_image_resize = "6"
+moxcms = "0.8"
+kamadak-exif = "0.6"
+blurhash = "0.2"
 
 [dev-dependencies]
 tempfile = "3"
