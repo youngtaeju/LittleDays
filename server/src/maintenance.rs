@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use tokio::{sync::watch, task::JoinHandle};
 
-use crate::{auth::session, error::AppResult, state::AppState, uploads};
+use crate::{assets::trash, auth::session, error::AppResult, state::AppState, uploads};
 
 const INTERVAL: Duration = Duration::from_secs(3600);
 
@@ -17,6 +17,7 @@ pub async fn run_once(state: &AppState) -> AppResult<()> {
             "expired uploads",
             uploads::queries::delete_expired(state).await,
         ),
+        ("expired trash", trash::purge_expired(state).await),
     ];
     let mut first_err = None;
     for (step, result) in steps {

@@ -7,11 +7,16 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use uuid::Uuid;
 
-use super::session;
+use chrono::Utc;
+use serde::Deserialize;
+use sqlx::PgPool;
+use utoipa::IntoParams;
+
+use super::{session, token};
 use crate::{
     error::{AppError, AppResult},
     state::AppState,
-    users::{Role, User},
+    users::{self, Role, User},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -64,25 +69,71 @@ pub(super) fn credentials(headers: &HeaderMap) -> Option<(String, AuthVia)> {
     Some((raw, AuthVia::Cookie))
 }
 
+/// 세션 자격 증명 검증. 정지 사용자는 세션 삭제 후 `auth.disabled`. 통과 시 `touch`.
+async fn authenticate_session(pool: &PgPool, raw: &str) -> AppResult<(User, Uuid)> {
+    let found = session::find_by_raw(pool, raw)
+        .await?
+        .ok_or(AppError::Unauthorized("auth.required"))?;
+    if found.user.disabled_at.is_some() {
+        session::delete(pool, found.session_id).await?;
+        return Err(AppError::Unauthorized("auth.disabled"));
+    }
+    session::touch(pool, found.session_id).await?;
+    Ok((found.user, found.session_id))
+}
+
 impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = AppError;
 
     async fn from_request_parts(parts: &mut Parts, state: &AppState) -> AppResult<Self> {
-        let required = || AppError::Unauthorized("auth.required");
-        let (raw, via) = credentials(&parts.headers).ok_or_else(required)?;
-        let found = session::find_by_raw(&state.pool, &raw)
-            .await?
-            .ok_or_else(required)?;
-        if found.user.disabled_at.is_some() {
-            session::delete(&state.pool, found.session_id).await?;
-            return Err(AppError::Unauthorized("auth.disabled"));
-        }
-        session::touch(&state.pool, found.session_id).await?;
+        let (raw, via) =
+            credentials(&parts.headers).ok_or(AppError::Unauthorized("auth.required"))?;
+        let (user, session_id) = authenticate_session(&state.pool, &raw).await?;
         Ok(CurrentUser {
-            user: found.user,
-            session_id: found.session_id,
+            user,
+            session_id,
             via,
         })
+    }
+}
+
+/// 미디어 URL 인증용 쿼리. 문서 전용 겸 추출용.
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct MediaQuery {
+    /// `POST /api/auth/media-token` 토큰. 세션 자격 증명이 없을 때만 사용.
+    pub t: Option<String>,
+}
+
+/// 미디어 바이트 요청 사용자. 세션 자격 증명(Bearer/쿠키)이 있으면 `CurrentUser` 와 같은 검증,
+/// 없으면 쿼리 `t` 의 미디어 토큰. 토큰은 세션과 무관해 정지 여부를 매번 확인.
+#[derive(Debug, Clone)]
+pub struct MediaUser {
+    pub user: User,
+}
+
+impl FromRequestParts<AppState> for MediaUser {
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &AppState) -> AppResult<Self> {
+        let required = || AppError::Unauthorized("auth.required");
+        if let Some((raw, _)) = credentials(&parts.headers) {
+            let (user, _) = authenticate_session(&state.pool, &raw).await?;
+            return Ok(MediaUser { user });
+        }
+        let token = axum::extract::Query::<MediaQuery>::try_from_uri(&parts.uri)
+            .ok()
+            .and_then(|q| q.0.t)
+            .ok_or_else(required)?;
+        let user_id = token::verify_media(&state.config.secret_key, &token, Utc::now())
+            .ok_or_else(required)?;
+        let user = users::queries::find_by_id(&state.pool, user_id)
+            .await?
+            .ok_or_else(required)?;
+        if user.disabled_at.is_some() {
+            return Err(AppError::Unauthorized("auth.disabled"));
+        }
+        Ok(MediaUser { user })
     }
 }
 

@@ -24,6 +24,7 @@ use crate::{
     auth::extract::CurrentUser,
     error::{AppError, AppResult, ErrorBody},
     media::storage,
+    openapi::BinaryBody,
     request::Path,
     state::AppState,
     users::Role,
@@ -314,7 +315,7 @@ async fn append_body(
         ("Tus-Resumable" = String, Header, description = "`1.0.0`"),
         ("Upload-Offset" = u64, Header, description = "현재 offset (HEAD 값)"),
     ),
-    request_body(content = Vec<u8>, content_type = "application/offset+octet-stream",
+    request_body(content = BinaryBody, content_type = "application/offset+octet-stream",
         description = "offset 부터 이어 붙일 바이트"),
     responses(
         (status = 204, description = "기록 완료. 만료 24시간 연장", headers(

@@ -1,6 +1,6 @@
 use axum::extract::{
     FromRequest, FromRequestParts,
-    rejection::{JsonRejection, PathRejection},
+    rejection::{JsonRejection, PathRejection, QueryRejection},
 };
 use serde_json::json;
 
@@ -31,6 +31,21 @@ impl From<PathRejection> for AppError {
         tracing::debug!(error = %rejection, "invalid path parameter");
         AppError::BadRequest {
             key: "request.invalidPath",
+            params: json!({}),
+        }
+    }
+}
+
+/// 쿼리 스트링 파싱 실패를 표준 에러 응답으로 변환하는 `axum::extract::Query` 대체.
+#[derive(FromRequestParts)]
+#[from_request(via(axum::extract::Query), rejection(AppError))]
+pub struct Query<T>(pub T);
+
+impl From<QueryRejection> for AppError {
+    fn from(rejection: QueryRejection) -> Self {
+        tracing::debug!(error = %rejection, "invalid query string");
+        AppError::BadRequest {
+            key: "request.invalidQuery",
             params: json!({}),
         }
     }

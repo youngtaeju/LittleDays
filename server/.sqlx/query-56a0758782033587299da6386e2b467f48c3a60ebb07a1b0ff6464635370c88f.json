@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE assets SET\n             caption = CASE WHEN $2 THEN $3 ELSE caption END,\n             taken_at = COALESCE($4, taken_at),\n             taken_at_source = CASE WHEN $4::timestamptz IS NULL\n                                    THEN taken_at_source ELSE 'manual'::taken_at_source END\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "56a0758782033587299da6386e2b467f48c3a60ebb07a1b0ff6464635370c88f"
+}
