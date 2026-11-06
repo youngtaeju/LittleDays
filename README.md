@@ -14,6 +14,8 @@
 - Rust (툴체인은 `rust-toolchain.toml` 로 고정)
 - `sqlx-cli`: 마이그레이션 적용과 SQL 쿼리 검사에 사용합니다.
   `cargo install sqlx-cli --version 0.8.6 --locked --no-default-features --features postgres,rustls`
+- 이미지·영상 처리용 시스템 패키지: 서버 빌드와 실행에 필요합니다. 아래는 Ubuntu 24.04 기준입니다.
+  `sudo apt-get install -y --no-install-recommends pkg-config zlib1g-dev libheif-dev libheif-plugin-libde265 libheif-plugin-aomenc libheif-plugin-dav1d ffmpeg`
 
 ### 실행
 

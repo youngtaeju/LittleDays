@@ -5,8 +5,8 @@ use clap::{Parser, Subcommand};
 use littledays::{
     app::build_router,
     config::Config,
-    db, maintenance,
-    media::storage,
+    db, jobs, maintenance,
+    media::{storage, video},
     shutdown::{forced, shutdown_signal},
     state::AppState,
 };
@@ -54,8 +54,16 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!(%addr, "listening");
             let (stop, force) = shutdown_signal()?;
             let maintenance = maintenance::spawn(state.clone(), stop.clone());
+            video::check_tools().await;
+            let requeued = jobs::requeue_running(&state.pool).await?;
+            if requeued > 0 {
+                tracing::info!(count = requeued, "requeued interrupted jobs");
+            }
+            let concurrency = state.config.worker_concurrency;
+            let workers = jobs::worker::spawn(state.clone(), concurrency, stop.clone());
+            tracing::info!(concurrency, "workers started");
             let mut serve_stop = stop.clone();
-            // 종료 대기 대상은 한 future 로 묶어 유예와 경쟁. 워커 join 도 여기에 추가.
+            // 종료 대기 대상은 한 future 로 묶어 유예와 경쟁.
             let drain = async {
                 axum::serve(listener, build_router(state))
                     .with_graceful_shutdown(async move {
@@ -63,6 +71,12 @@ async fn main() -> anyhow::Result<()> {
                     })
                     .await?;
                 maintenance.await?;
+                // 한 워커의 실패가 나머지 join 을 막지 않게.
+                for worker in workers {
+                    if let Err(err) = worker.await {
+                        tracing::error!(%err, "worker task failed");
+                    }
+                }
                 anyhow::Ok(())
             };
             tokio::select! {

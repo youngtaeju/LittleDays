@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE assets SET status = 'processing', processing_error = NULL\n         WHERE id = $1 AND status = 'failed'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "685b28f3827da9cbb964a48db29a13b2d08fa6dfb44eaba0b92af1f2ea5410f0"
+}
