@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM assets WHERE id = $1 AND status = 'failed'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "64a0117a34e64e2b44cff98c500f3de29b8eab923cf10d5265f17d5ad4fe2807"
+}

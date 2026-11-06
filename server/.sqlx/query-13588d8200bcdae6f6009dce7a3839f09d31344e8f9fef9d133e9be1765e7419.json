@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE assets SET status = $2::text::asset_status WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "13588d8200bcdae6f6009dce7a3839f09d31344e8f9fef9d133e9be1765e7419"
+}

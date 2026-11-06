@@ -1,10 +1,12 @@
 pub mod app;
+pub mod assets;
 pub mod auth;
 pub mod babies;
 pub mod config;
 pub mod db;
 pub mod error;
 pub mod invites;
+pub mod jobs;
 pub mod maintenance;
 pub mod media;
 pub mod openapi;

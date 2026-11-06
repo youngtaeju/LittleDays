@@ -1,3 +1,4 @@
+pub mod finalize;
 pub mod locks;
 pub mod queries;
 pub mod tus;

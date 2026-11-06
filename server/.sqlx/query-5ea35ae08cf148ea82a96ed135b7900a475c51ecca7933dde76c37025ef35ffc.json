@@ -1,0 +1,51 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, status AS \"status: AssetStatus\", original_path, deleted_at\n           FROM assets WHERE sha256 = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "status: AssetStatus",
+        "type_info": {
+          "Custom": {
+            "name": "asset_status",
+            "kind": {
+              "Enum": [
+                "processing",
+                "ready",
+                "failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "original_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "deleted_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "5ea35ae08cf148ea82a96ed135b7900a475c51ecca7933dde76c37025ef35ffc"
+}

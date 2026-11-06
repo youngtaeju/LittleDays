@@ -17,6 +17,7 @@ pub fn build_router(state: AppState) -> Router {
         .merge(babies::routes::router())
         .merge(invites::routes::router())
         .merge(settings::routes::router())
+        .merge(uploads::finalize::router())
         .merge(uploads::tus::router())
         .merge(users::routes::router())
         .split_for_parts();
