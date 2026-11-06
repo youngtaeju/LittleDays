@@ -4,3 +4,10 @@ async fn migrations_apply_and_tables_exist(pool: sqlx::PgPool) {
         .fetch_one(&pool).await.unwrap();
     assert_eq!(n, 4);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn media_tables_exist(pool: sqlx::PgPool) {
+    let n: i64 = sqlx::query_scalar("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('assets','babies','asset_babies','uploads','jobs')")
+        .fetch_one(&pool).await.unwrap();
+    assert_eq!(n, 5);
+}

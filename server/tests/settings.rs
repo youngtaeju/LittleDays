@@ -32,6 +32,7 @@ async fn defaults_then_patch(pool: PgPool) {
             "timezone": "Asia/Seoul",
             "default_locale": "ko",
             "derivatives_avif": false,
+            "trash_retention_days": 0,
         })
     );
 
@@ -46,6 +47,7 @@ async fn defaults_then_patch(pool: PgPool) {
         "timezone": "Europe/Paris",
         "default_locale": "ko",
         "derivatives_avif": false,
+        "trash_retention_days": 0,
     });
     res.assert_json(&expected);
     assert_eq!(get_settings(&server).await, expected);
@@ -61,6 +63,7 @@ async fn defaults_then_patch(pool: PgPool) {
         "timezone": "Europe/Paris",
         "default_locale": "en",
         "derivatives_avif": true,
+        "trash_retention_days": 0,
     }));
 }
 
@@ -181,6 +184,7 @@ async fn wrong_typed_stored_value_falls_back_to_default(pool: PgPool) {
             "timezone": "UTC",
             "default_locale": "ko",
             "derivatives_avif": false,
+            "trash_retention_days": 0,
         })
     );
 }
@@ -240,4 +244,22 @@ async fn openapi_documents_settings_and_user_endpoints(pool: PgPool) {
         );
     }
     assert!(doc["components"]["schemas"]["Settings"].is_object());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn trash_retention_days_roundtrip(pool: PgPool) {
+    let (server, _) = server_as(&pool, "mom", Role::Owner).await;
+    assert_eq!(get_settings(&server).await["trash_retention_days"], 0);
+
+    let res = patch_settings(&server, json!({ "trash_retention_days": 30 })).await;
+    res.assert_status_ok();
+    assert_eq!(res.json::<Value>()["trash_retention_days"], 30);
+    assert_eq!(get_settings(&server).await["trash_retention_days"], 30);
+
+    let res = patch_settings(&server, json!({ "trash_retention_days": 3651 })).await;
+    assert_error(
+        &res,
+        StatusCode::BAD_REQUEST,
+        "settings.trashRetentionInvalid",
+    );
 }

@@ -9,6 +9,7 @@ pub struct Config {
     pub data_dir: PathBuf,
     pub port: u16,
     pub auto_migrate: bool,
+    pub worker_concurrency: usize,
 }
 
 impl Config {
@@ -32,6 +33,9 @@ impl Config {
             Err(_) => true,
         };
 
+        let worker_concurrency =
+            parse_worker_concurrency(std::env::var("WORKER_CONCURRENCY").ok().as_deref())?;
+
         Ok(Config {
             database_url,
             public_url,
@@ -39,12 +43,21 @@ impl Config {
             data_dir,
             port,
             auto_migrate,
+            worker_concurrency,
         })
     }
 }
 
 fn required(key: &str) -> anyhow::Result<String> {
     std::env::var(key).with_context(|| format!("{key} is required"))
+}
+
+fn parse_worker_concurrency(v: Option<&str>) -> anyhow::Result<usize> {
+    let Some(v) = v else { return Ok(2) };
+    match v.parse::<usize>() {
+        Ok(n) if (1..=16).contains(&n) => Ok(n),
+        _ => bail!("WORKER_CONCURRENCY must be 1-16"),
+    }
 }
 
 fn parse_public_url(url: String) -> anyhow::Result<String> {
@@ -127,5 +140,16 @@ mod tests {
     #[test]
     fn public_url_rejects_other_schemes() {
         assert!(parse_public_url("ftp://x".into()).is_err());
+    }
+
+    #[test]
+    fn worker_concurrency_parsing() {
+        assert_eq!(parse_worker_concurrency(None).unwrap(), 2);
+        assert_eq!(parse_worker_concurrency(Some("1")).unwrap(), 1);
+        assert_eq!(parse_worker_concurrency(Some("16")).unwrap(), 16);
+        for bad in ["0", "17", "x"] {
+            let err = parse_worker_concurrency(Some(bad)).unwrap_err();
+            assert_eq!(err.to_string(), "WORKER_CONCURRENCY must be 1-16", "{bad}");
+        }
     }
 }

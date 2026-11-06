@@ -30,6 +30,9 @@ pub struct PatchSettingsRequest {
     /// `ko` 또는 `en`.
     default_locale: Option<String>,
     derivatives_avif: Option<bool>,
+    /// 0~3650. 0 은 자동 비우기 끔.
+    #[schema(maximum = 3650)]
+    trash_retention_days: Option<u32>,
 }
 
 #[utoipa::path(
@@ -83,6 +86,12 @@ async fn patch_settings(
     }
     if let Some(avif) = req.derivatives_avif {
         updates.push(("derivatives_avif", Value::Bool(avif)));
+    }
+    if let Some(days) = req.trash_retention_days {
+        if days > 3650 {
+            return Err(AppError::bad_request("settings.trashRetentionInvalid"));
+        }
+        updates.push(("trash_retention_days", Value::from(days)));
     }
 
     let mut tx = state.pool.begin().await?;

@@ -100,7 +100,13 @@ async fn username_case_insensitive_unique(pool: sqlx::PgPool) {
     )
     .await
     .expect_err("duplicate");
-    assert!(matches!(err, AppError::Conflict("auth.usernameTaken")));
+    assert!(matches!(
+        err,
+        AppError::Conflict {
+            key: "auth.usernameTaken",
+            ..
+        }
+    ));
 }
 
 #[sqlx::test(migrations = "./migrations")]

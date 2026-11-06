@@ -31,4 +31,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 dotenvy = "0.15"
 
 [dev-dependencies]
+tempfile = "3"
 axum-test = "17"

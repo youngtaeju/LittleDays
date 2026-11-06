@@ -14,6 +14,9 @@ pub struct Settings {
     pub default_locale: String,
     /// AVIF 파생물 생성 여부.
     pub derivatives_avif: bool,
+    /// 휴지통 자동 비우기 일수. 0 은 끔.
+    #[schema(maximum = 3650)]
+    pub trash_retention_days: u32,
 }
 
 impl Default for Settings {
@@ -23,6 +26,7 @@ impl Default for Settings {
             timezone: "Asia/Seoul".to_string(),
             default_locale: "ko".to_string(),
             derivatives_avif: false,
+            trash_retention_days: 0,
         }
     }
 }

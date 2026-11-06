@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO assets (id, kind, uploaded_by, original_path, original_filename, mime,\n                             size_bytes, sha256, taken_at, taken_at_source, status, derivatives,\n                             deleted_at, created_at)\n         VALUES ($1, $2::text::asset_kind, $3, $4, $5, $6, 1, $7, $8, 'upload_time',\n                 $9::text::asset_status, $10, $11, $12)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Bytea",
+        "Timestamptz",
+        "Text",
+        "Jsonb",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c04a6b5a6ee70206ebaac9c168dc504dd14bc7b0a4f1c4ec596d14f783c44a2c"
+}

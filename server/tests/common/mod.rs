@@ -4,16 +4,20 @@
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum_extra::extract::cookie::Cookie;
 use axum_test::{TestResponse, TestServer};
+use chrono::{DateTime, Utc};
 use littledays::{
     app::build_router,
     auth::{password, session},
     config::Config,
+    media::storage,
     state::AppState,
     users::{self, NewUser, Role, User},
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
+use tempfile::TempDir;
+use uuid::Uuid;
 
 pub const XRW: HeaderName = HeaderName::from_static("x-requested-with");
 pub const XRW_VALUE: HeaderValue = HeaderValue::from_static("LittleDays");
@@ -27,14 +31,12 @@ pub fn test_config() -> Config {
         data_dir: PathBuf::from("./data"),
         port: 0,
         auto_migrate: false,
+        worker_concurrency: 1,
     }
 }
 
 fn state(pool: PgPool) -> AppState {
-    AppState {
-        pool,
-        config: Arc::new(test_config()),
-    }
+    AppState::new(pool, test_config())
 }
 
 pub async fn test_server(pool: PgPool) -> TestServer {
@@ -42,6 +44,139 @@ pub async fn test_server(pool: PgPool) -> TestServer {
         .save_cookies()
         .build(build_router(state(pool)))
         .expect("test server")
+}
+
+pub struct MediaApp {
+    pub server: TestServer,
+    pub state: AppState,
+    pub user: User,
+    /// 드롭 시 임시 `DATA_DIR` 삭제.
+    pub data: TempDir,
+}
+
+/// 임시 `DATA_DIR` 를 쓰는 앱. `role` 사용자 생성 후 로그인한 쿠키 저장 서버.
+/// 기본 사용자명이 "mom" 이라 `login_as` 에는 다른 이름 사용.
+pub async fn media_app(pool: &PgPool, role: Role) -> MediaApp {
+    let data = tempfile::tempdir().expect("tempdir");
+    let mut config = test_config();
+    config.data_dir = data.path().to_path_buf();
+    storage::ensure_dirs(&config.data_dir).expect("ensure_dirs");
+    let state = AppState::new(pool.clone(), config);
+    let app = MediaApp {
+        server: cookie_server(&state),
+        user: create_user(pool, "mom", role).await,
+        state,
+        data,
+    };
+    login_user(&app.server, "mom").await;
+    app
+}
+
+impl MediaApp {
+    /// 같은 state·`DATA_DIR` 를 쓰는 다른 사용자 서버.
+    pub async fn login_as(&self, username: &str, role: Role) -> (TestServer, User) {
+        let user = create_user(&self.state.pool, username, role).await;
+        let server = cookie_server(&self.state);
+        login_user(&server, username).await;
+        (server, user)
+    }
+}
+
+fn cookie_server(state: &AppState) -> TestServer {
+    TestServer::builder()
+        .save_cookies()
+        .build(build_router(state.clone()))
+        .expect("test server")
+}
+
+async fn create_user(pool: &PgPool, username: &str, role: Role) -> User {
+    users::queries::create(
+        pool,
+        NewUser {
+            username: username.to_string(),
+            password_hash: password::hash(PASSWORD).expect("hash"),
+            display_name: username.to_string(),
+            role,
+            email: None,
+            locale: "ko".to_string(),
+        },
+    )
+    .await
+    .expect("user")
+}
+
+async fn login_user(server: &TestServer, username: &str) {
+    server
+        .post("/api/auth/login")
+        .json(&json!({ "username": username, "password": PASSWORD }))
+        .await
+        .assert_status_ok();
+}
+
+pub struct AssetSeed {
+    pub id: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub uploaded_by: Uuid,
+    pub kind: &'static str,
+    pub status: &'static str,
+    pub taken_at: DateTime<Utc>,
+    pub sha256: Vec<u8>,
+    pub deleted_at: Option<DateTime<Utc>>,
+    pub derivatives: Value,
+    pub original_path: String,
+    pub original_filename: String,
+    pub mime: String,
+}
+
+impl AssetSeed {
+    pub fn photo(uploaded_by: Uuid) -> AssetSeed {
+        let id = Uuid::now_v7();
+        let created_at = Utc::now();
+        AssetSeed {
+            id,
+            created_at,
+            uploaded_by,
+            kind: "photo",
+            status: "ready",
+            taken_at: Utc::now(),
+            sha256: rand::random::<[u8; 32]>().to_vec(),
+            deleted_at: None,
+            derivatives: json!({}),
+            original_path: storage::original_rel_path(created_at, id, "jpg")
+                .to_string_lossy()
+                .into_owned(),
+            original_filename: format!("{id}.jpg"),
+            mime: "image/jpeg".to_string(),
+        }
+    }
+}
+
+/// 파일 없이 행만 삽입. 반환은 asset id.
+pub async fn insert_asset(pool: &PgPool, seed: AssetSeed) -> Uuid {
+    let id = seed.id;
+    sqlx::query!(
+        "INSERT INTO assets (id, kind, uploaded_by, original_path, original_filename, mime,
+                             size_bytes, sha256, taken_at, taken_at_source, status, derivatives,
+                             deleted_at, created_at)
+         VALUES ($1, $2::text::asset_kind, $3, $4, $5, $6, 1, $7, $8, 'upload_time',
+                 $9::text::asset_status, $10, $11, $12)",
+        id,
+        seed.kind,
+        seed.uploaded_by,
+        seed.original_path,
+        seed.original_filename,
+        seed.mime,
+        seed.sha256,
+        seed.taken_at,
+        seed.status,
+        seed.derivatives,
+        seed.deleted_at,
+        seed.created_at,
+    )
+    .execute(pool)
+    .await
+    .expect("insert asset");
+    id
 }
 
 /// 쿠키 자동 저장 없음. 요청마다 인증 수단을 직접 지정.

@@ -113,7 +113,7 @@ pub async fn revoke(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<()> {
     .await?;
     match used {
         None => Err(AppError::NotFound("invite.notFound")),
-        Some(true) => Err(AppError::Conflict("invite.used")),
+        Some(true) => Err(AppError::conflict("invite.used")),
         Some(false) => Ok(()),
     }
 }
