@@ -117,3 +117,45 @@ pub async fn delete_failed(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<boo
         .await?;
     Ok(res.rows_affected() == 1)
 }
+
+/// 처리 대상 원본.
+pub struct Source {
+    pub kind: AssetKind,
+    /// `DATA_DIR` 기준 상대 경로.
+    pub original_path: String,
+}
+
+pub async fn source(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Source>> {
+    let found = sqlx::query_as!(
+        Source,
+        r#"SELECT kind AS "kind: AssetKind", original_path FROM assets WHERE id = $1"#,
+        id
+    )
+    .fetch_optional(exec)
+    .await?;
+    Ok(found)
+}
+
+/// 처리 실패 기록. 행이 있었으면 `true`.
+pub async fn mark_failed(exec: impl PgExecutor<'_>, id: Uuid, error: &str) -> AppResult<bool> {
+    let res = sqlx::query!(
+        "UPDATE assets SET status = 'failed', processing_error = $2 WHERE id = $1",
+        id,
+        error
+    )
+    .execute(exec)
+    .await?;
+    Ok(res.rows_affected() == 1)
+}
+
+/// `failed` 일 때만 `processing` 으로. 바꿨으면 `true`.
+pub async fn mark_retry(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
+    let res = sqlx::query!(
+        "UPDATE assets SET status = 'processing', processing_error = NULL
+         WHERE id = $1 AND status = 'failed'",
+        id
+    )
+    .execute(exec)
+    .await?;
+    Ok(res.rows_affected() == 1)
+}

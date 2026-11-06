@@ -137,6 +137,15 @@ pub async fn probe(path: &Path) -> Result<Probe> {
     parse_probe(&String::from_utf8_lossy(&out))
 }
 
+/// 기동 시 확인. 없으면 영상 처리만 실패하므로 경고만.
+pub async fn check_tools() {
+    for program in ["ffprobe", "ffmpeg"] {
+        if let Err(err) = run(program, os_args(&["-version"])).await {
+            tracing::warn!(program, error = %format!("{err:#}"), "not usable, video processing will fail");
+        }
+    }
+}
+
 pub fn playback_plan(ty: MediaType, p: &Probe) -> Playback {
     let audio_ok = matches!(p.audio_codec.as_deref(), None | Some("aac"));
     let codec_ok = p.video_codec == "h264" && p.pix_fmt.as_deref() == Some("yuv420p") && audio_ok;
@@ -166,9 +175,11 @@ pub async fn extract_poster(path: &Path, duration_ms: Option<i64>) -> Result<Rgb
     if png.is_empty() {
         bail!("포스터 프레임 없음");
     }
-    Ok(image::load_from_memory(&png)
-        .context("포스터 디코드 실패")?
-        .into_rgb8())
+    // PNG 디코드는 CPU 작업. 런타임 밖에서.
+    tokio::task::spawn_blocking(move || image::load_from_memory(&png).map(|img| img.into_rgb8()))
+        .await
+        .context("포스터 디코드 작업 실패")?
+        .context("포스터 디코드 실패")
 }
 
 pub async fn make_playback(src: &Path, dst: &Path, plan: Playback) -> Result<()> {

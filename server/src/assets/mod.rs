@@ -5,6 +5,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub mod queries;
+pub mod routes;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize, Deserialize, ToSchema)]
 #[sqlx(type_name = "asset_kind", rename_all = "snake_case")]

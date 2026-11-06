@@ -189,7 +189,7 @@ pub fn render(img: &RgbImage, out_dir: &Path, avif: bool) -> anyhow::Result<Rend
     write_webp(&thumb, THUMB_QUALITY, &out_dir.join("thumb.webp"))?;
     let mut preview_formats = vec!["webp".to_string()];
     if avif {
-        write_avif(&preview, &out_dir.join("preview.avif"))?;
+        write_avif(&preview, &out_dir.join("preview.avif")).context("avif")?;
         preview_formats.push("avif".to_string());
     }
 
@@ -258,7 +258,7 @@ fn write_avif(img: &RgbImage, path: &Path) -> anyhow::Result<()> {
         .encoder_descriptors(16, Some(CompressionFormat::Av1), None)
         .into_iter()
         .find(|d| d.id() == "aom")
-        .ok_or_else(|| anyhow!("avif: aom encoder plugin not found"))?;
+        .ok_or_else(|| anyhow!("aom encoder plugin not found"))?;
     let mut encoder = lib.encoder(descriptor)?;
     encoder.set_quality(EncoderQuality::Lossy(AVIF_QUALITY))?;
     encoder.set_parameter_value("speed", EncoderParameterValue::Int(AVIF_SPEED))?;
@@ -270,7 +270,7 @@ fn write_avif(img: &RgbImage, path: &Path) -> anyhow::Result<()> {
     let plane = planes
         .interleaved
         .as_mut()
-        .ok_or_else(|| anyhow!("avif: no interleaved plane"))?;
+        .ok_or_else(|| anyhow!("no interleaved plane"))?;
     let row = w as usize * 3;
     for (y, src) in img.as_raw().chunks_exact(row).enumerate() {
         let start = y * plane.stride;
