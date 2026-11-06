@@ -12,7 +12,7 @@
 
 - Docker
 - Rust (툴체인은 `rust-toolchain.toml` 로 고정)
-- `sqlx-cli`: SQL 쿼리를 바꿀 때 필요합니다.
+- `sqlx-cli`: 마이그레이션 적용과 SQL 쿼리 검사에 사용합니다.
   `cargo install sqlx-cli --version 0.8.6 --locked --no-default-features --features postgres,rustls`
 
 ### 실행
@@ -28,7 +28,9 @@ cd server && cargo run -- serve
 curl http://localhost:8080/api/health
 ```
 
-`scripts/dev-db.*` 는 개발용 PostgreSQL 기동, `server/.env` 생성(없을 때만, `SECRET_KEY` 자동 생성), 마이그레이션을 차례로 실행합니다. `.ps1` 은 PowerShell 7 이상이 필요하고, Windows 에서 `.sh` 는 Git Bash 또는 WSL 에서 실행합니다.
+`scripts/dev-db.*` 는 개발용 PostgreSQL 기동, `server/.env` 생성(없을 때만, `SECRET_KEY` 자동 생성), 마이그레이션(`cargo sqlx migrate run`)을 차례로 실행합니다. `.ps1` 은 PowerShell 7 이상이 필요하고, Windows 에서 `.sh` 는 Git Bash 또는 WSL 에서 실행합니다.
+
+서버는 빌드할 때 sqlx 가 SQL 쿼리를 개발용 DB 스키마와 대조하므로, 마이그레이션이 적용되지 않은 DB 에서는 빌드가 실패합니다. 마이그레이션이 추가된 변경을 받은 뒤에는 빌드 전에 `scripts/dev-db.*` 를 다시 실행합니다.
 
 - 8080 포트가 사용 중이면 `server/.env` 의 `PORT` 를 바꿉니다.
 - 5432 포트가 사용 중이면 `POSTGRES_PORT` 를 지정해 실행합니다. 이미 만든 `server/.env` 는 `DATABASE_URL` 의 포트를 직접 맞춰야 합니다.
