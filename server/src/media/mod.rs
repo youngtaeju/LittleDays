@@ -3,3 +3,4 @@ pub mod hash;
 pub mod image;
 pub mod sniff;
 pub mod storage;
+pub mod video;

@@ -1,0 +1,35 @@
+{
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "hevc",
+            "codec_type": "video",
+            "width": 1920,
+            "height": 1080,
+            "pix_fmt": "yuv420p10le",
+            "duration": "5.120000",
+            "tags": {
+                "creation_time": "2024-05-01T01:20:31.000000Z"
+            },
+            "side_data_list": [
+                {
+                    "side_data_type": "Display Matrix",
+                    "rotation": -90
+                }
+            ]
+        },
+        {
+            "index": 1,
+            "codec_name": "aac",
+            "codec_type": "audio"
+        }
+    ],
+    "format": {
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "duration": "5.120000",
+        "tags": {
+            "creation_time": "2024-05-01T01:20:31.000000Z",
+            "com.apple.quicktime.creationdate": "2024-05-01T10:20:30+0900"
+        }
+    }
+}

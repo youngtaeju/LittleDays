@@ -67,3 +67,29 @@ $ vips icc_transform p3.jpg out.png srgb --embedded
 $ vips getpoint out.png 32 32
 217 42 52
 ```
+
+## 영상 fixture
+
+영상 처리 테스트(`tests/media_video.rs`, `media/video.rs` 단위 테스트)용 합성 클립과 ffprobe 출력입니다. 호스트 ffmpeg 6.1.1(Ubuntu 24.04, libx264/libx265)로 만들었습니다. 이 디렉터리에서 실행합니다.
+
+| 파일 | 내용 |
+|---|---|
+| `clip-h264.mp4` | 2초 160x120 15fps, H.264 yuv420p + AAC mono, `creation_time=2024-06-01T03:00:00Z` |
+| `clip-hevc.mov` | 2초 160x120 15fps, HEVC yuv420p + AAC mono, displaymatrix 회전 90(표시 120x160), 같은 `creation_time` |
+| `probe/h264.json`, `probe/hevc-rotated.json` | 위 두 클립의 실제 `ffprobe` 출력 |
+| `probe/apple-creationdate.json` | 아이폰 형태 출력을 필요한 필드만 남겨 손으로 축약한 것. `com.apple.quicktime.creationdate`(`2024-05-01T10:20:30+0900`)와 `side_data_list` rotation -90 포함. 실제 클립 없음 |
+
+```bash
+ffmpeg -v error -y -f lavfi -i testsrc2=size=160x120:rate=15:duration=2 -f lavfi -i sine=frequency=440:duration=2 \
+  -c:v libx264 -pix_fmt yuv420p -preset veryfast -crf 28 -c:a aac -b:a 32k -shortest \
+  -metadata creation_time=2024-06-01T03:00:00Z -movflags +faststart clip-h264.mp4
+
+ffmpeg -v error -y -f lavfi -i testsrc2=size=160x120:rate=15:duration=2 -f lavfi -i sine=frequency=440:duration=2 \
+  -c:v libx265 -tag:v hvc1 -pix_fmt yuv420p -x265-params log-level=error -crf 30 -c:a aac -b:a 32k -shortest \
+  -metadata creation_time=2024-06-01T03:00:00Z -f mp4 /tmp/hevc-src.mp4
+ffmpeg -v error -y -display_rotation:v 90 -i /tmp/hevc-src.mp4 -c copy \
+  -metadata creation_time=2024-06-01T03:00:00Z -f mov clip-hevc.mov
+
+ffprobe -v error -print_format json -show_format -show_streams clip-h264.mp4 > probe/h264.json
+ffprobe -v error -print_format json -show_format -show_streams clip-hevc.mov > probe/hevc-rotated.json
+```
