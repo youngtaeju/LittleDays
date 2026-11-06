@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgExecutor;
 use uuid::Uuid;
 
-use super::{Asset, AssetKind, AssetStatus, TakenAtSource};
+use super::{Asset, AssetKind, AssetStatus, AssetSummary, MonthCount, TakenAtSource};
 use crate::error::AppResult;
 
 pub async fn get(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Asset>> {
@@ -158,4 +158,105 @@ pub async fn mark_retry(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> 
     .execute(exec)
     .await?;
     Ok(res.rows_affected() == 1)
+}
+
+/// 휴지통 제외 목록. `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
+pub async fn list(
+    exec: impl PgExecutor<'_>,
+    timezone: &str,
+    cursor: Option<(DateTime<Utc>, Uuid)>,
+    baby_id: Option<Uuid>,
+    limit: i64,
+) -> AppResult<Vec<AssetSummary>> {
+    let (cursor_ts, cursor_id) = cursor.unzip();
+    let rows = sqlx::query_as!(
+        AssetSummary,
+        r#"SELECT a.id, a.kind AS "kind: AssetKind", a.status AS "status: AssetStatus",
+                  a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS "local_date!",
+                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color,
+                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
+                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
+                            WHERE ab.asset_id = a.id), '{}') AS "baby_ids!",
+                  a.derivatives
+           FROM assets a
+           WHERE a.deleted_at IS NULL
+             AND ($2::timestamptz IS NULL OR (a.taken_at, a.id) < ($2, $3::uuid))
+             AND ($4::uuid IS NULL OR EXISTS (
+                   SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $4))
+           ORDER BY a.taken_at DESC, a.id DESC
+           LIMIT $5"#,
+        timezone,
+        cursor_ts,
+        cursor_id,
+        baby_id,
+        limit,
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows)
+}
+
+/// 휴지통 제외 월별 개수. 최신 월부터.
+pub async fn months(
+    exec: impl PgExecutor<'_>,
+    timezone: &str,
+    baby_id: Option<Uuid>,
+) -> AppResult<Vec<MonthCount>> {
+    let rows = sqlx::query_as!(
+        MonthCount,
+        r#"SELECT to_char(a.taken_at AT TIME ZONE $1, 'YYYY-MM') AS "month!",
+                  count(*) AS "count!"
+           FROM assets a
+           WHERE a.deleted_at IS NULL
+             AND ($2::uuid IS NULL OR EXISTS (
+                   SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $2))
+           GROUP BY 1
+           ORDER BY 1 DESC"#,
+        timezone,
+        baby_id,
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows)
+}
+
+/// 캡션과 촬영 시각 갱신. `caption` 이 `Some` 이면 덮어씀(내부 `None` 은 비움).
+/// `taken_at` 지정 시 출처 `manual`. 행이 있었으면 `true`.
+pub async fn update_meta(
+    exec: impl PgExecutor<'_>,
+    id: Uuid,
+    caption: Option<Option<&str>>,
+    taken_at: Option<DateTime<Utc>>,
+) -> AppResult<bool> {
+    let res = sqlx::query!(
+        "UPDATE assets SET
+             caption = CASE WHEN $2 THEN $3 ELSE caption END,
+             taken_at = COALESCE($4, taken_at),
+             taken_at_source = CASE WHEN $4::timestamptz IS NULL
+                                    THEN taken_at_source ELSE 'manual'::taken_at_source END
+         WHERE id = $1",
+        id,
+        caption.is_some(),
+        caption.flatten(),
+        taken_at,
+    )
+    .execute(exec)
+    .await?;
+    Ok(res.rows_affected() == 1)
+}
+
+/// 목록에 없는 태그 제거. 유지되는 태그 행은 그대로.
+pub async fn remove_babies_except(
+    exec: impl PgExecutor<'_>,
+    asset_id: Uuid,
+    keep: &[Uuid],
+) -> AppResult<()> {
+    sqlx::query!(
+        "DELETE FROM asset_babies WHERE asset_id = $1 AND baby_id <> ALL($2::uuid[])",
+        asset_id,
+        keep,
+    )
+    .execute(exec)
+    .await?;
+    Ok(())
 }

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM asset_babies WHERE asset_id = $1 AND baby_id <> ALL($2::uuid[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "64e9aa92d387db1d4f25a6ef1e390984a6fe4eb522618c5f316905f93efcc390"
+}
