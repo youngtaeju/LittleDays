@@ -5,6 +5,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub mod cursor;
+pub mod files;
 pub mod queries;
 pub mod routes;
 

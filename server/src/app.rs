@@ -13,6 +13,7 @@ use crate::{
 pub fn build_router(state: AppState) -> Router {
     let (api, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(routes::health::router())
+        .merge(assets::files::router())
         .merge(assets::routes::router())
         .merge(auth::routes::router())
         .merge(babies::routes::router())

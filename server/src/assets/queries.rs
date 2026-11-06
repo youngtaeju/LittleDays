@@ -136,6 +136,31 @@ pub async fn source(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Sou
     Ok(found)
 }
 
+/// 바이트 서빙에 필요한 값.
+pub struct FileInfo {
+    pub kind: AssetKind,
+    pub status: AssetStatus,
+    pub mime: String,
+    pub original_filename: String,
+    /// `DATA_DIR` 기준 상대 경로.
+    pub original_path: String,
+    pub derivatives: serde_json::Value,
+    pub deleted_at: Option<DateTime<Utc>>,
+}
+
+pub async fn file_info(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<FileInfo>> {
+    let found = sqlx::query_as!(
+        FileInfo,
+        r#"SELECT kind AS "kind: AssetKind", status AS "status: AssetStatus", mime,
+                  original_filename, original_path, derivatives, deleted_at
+           FROM assets WHERE id = $1"#,
+        id
+    )
+    .fetch_optional(exec)
+    .await?;
+    Ok(found)
+}
+
 /// 처리 실패 기록. 행이 있었으면 `true`.
 pub async fn mark_failed(exec: impl PgExecutor<'_>, id: Uuid, error: &str) -> AppResult<bool> {
     let res = sqlx::query!(
