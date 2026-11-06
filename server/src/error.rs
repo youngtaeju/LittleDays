@@ -21,6 +21,12 @@ pub enum AppError {
     MethodNotAllowed(&'static str),
     #[error("gone: {0}")]
     Gone(&'static str),
+    #[error("precondition failed: {0}")]
+    PreconditionFailed(&'static str),
+    #[error("payload too large: {0}")]
+    PayloadTooLarge(&'static str),
+    #[error("unsupported media type: {0}")]
+    UnsupportedMediaType(&'static str),
     #[error("bad request: {key}")]
     BadRequest { key: &'static str, params: Value },
     #[error("database error: {0}")]
@@ -68,6 +74,11 @@ impl IntoResponse for AppError {
             AppError::Unauthorized(key) => (StatusCode::UNAUTHORIZED, key, json!({})),
             AppError::MethodNotAllowed(key) => (StatusCode::METHOD_NOT_ALLOWED, key, json!({})),
             AppError::Gone(key) => (StatusCode::GONE, key, json!({})),
+            AppError::PreconditionFailed(key) => (StatusCode::PRECONDITION_FAILED, key, json!({})),
+            AppError::PayloadTooLarge(key) => (StatusCode::PAYLOAD_TOO_LARGE, key, json!({})),
+            AppError::UnsupportedMediaType(key) => {
+                (StatusCode::UNSUPPORTED_MEDIA_TYPE, key, json!({}))
+            }
             AppError::BadRequest { key, params } => (StatusCode::BAD_REQUEST, key, params),
             AppError::Db(e) => {
                 tracing::error!(error = %e, "database error");
