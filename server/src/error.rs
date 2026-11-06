@@ -11,8 +11,8 @@ use utoipa::ToSchema;
 pub enum AppError {
     #[error("not found: {0}")]
     NotFound(&'static str),
-    #[error("conflict: {0}")]
-    Conflict(&'static str),
+    #[error("conflict: {key}")]
+    Conflict { key: &'static str, params: Value },
     #[error("forbidden: {0}")]
     Forbidden(&'static str),
     #[error("unauthorized: {0}")]
@@ -39,6 +39,14 @@ impl AppError {
             params: json!({}),
         }
     }
+
+    /// 파라미터 없는 409.
+    pub fn conflict(key: &'static str) -> Self {
+        AppError::Conflict {
+            key,
+            params: json!({}),
+        }
+    }
 }
 
 /// 에러 응답 본문 스키마(OpenAPI 전용). 실제 직렬화는 `IntoResponse`.
@@ -55,7 +63,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, key, params) = match self {
             AppError::NotFound(key) => (StatusCode::NOT_FOUND, key, json!({})),
-            AppError::Conflict(key) => (StatusCode::CONFLICT, key, json!({})),
+            AppError::Conflict { key, params } => (StatusCode::CONFLICT, key, params),
             AppError::Forbidden(key) => (StatusCode::FORBIDDEN, key, json!({})),
             AppError::Unauthorized(key) => (StatusCode::UNAUTHORIZED, key, json!({})),
             AppError::MethodNotAllowed(key) => (StatusCode::METHOD_NOT_ALLOWED, key, json!({})),

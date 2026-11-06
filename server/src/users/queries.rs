@@ -30,7 +30,7 @@ pub async fn create(exec: impl PgExecutor<'_>, new: NewUser) -> AppResult<User> 
     .await
     .map_err(|e| match &e {
         sqlx::Error::Database(db) if db.constraint() == Some("users_username_lower_idx") => {
-            AppError::Conflict("auth.usernameTaken")
+            AppError::conflict("auth.usernameTaken")
         }
         _ => AppError::Db(e),
     })

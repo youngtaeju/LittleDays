@@ -1,4 +1,6 @@
-use axum::{Json, Router, middleware, routing::get};
+use axum::{
+    Json, Router, body::Body, extract::MatchedPath, http::Request, middleware, routing::get,
+};
 use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
@@ -20,7 +22,16 @@ pub fn build_router(state: AppState) -> Router {
         .method_not_allowed_fallback(method_not_allowed)
         .fallback(not_found)
         .layer(middleware::from_fn(auth::extract::csrf_layer))
-        .layer(TraceLayer::new_for_http())
+        .layer(
+            // 쿼리의 media token, path 의 초대 토큰이 로그에 남지 않게 라우트 템플릿만 기록.
+            TraceLayer::new_for_http().make_span_with(|req: &Request<Body>| {
+                let route = req
+                    .extensions()
+                    .get::<MatchedPath>()
+                    .map_or("-", MatchedPath::as_str);
+                tracing::debug_span!("request", method = %req.method(), route)
+            }),
+        )
         .with_state(state)
 }
 

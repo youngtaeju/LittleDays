@@ -9,3 +9,12 @@ pub struct AppState {
     pub pool: PgPool,
     pub config: Arc<Config>,
 }
+
+impl AppState {
+    pub fn new(pool: PgPool, config: Config) -> AppState {
+        AppState {
+            pool,
+            config: Arc::new(config),
+        }
+    }
+}

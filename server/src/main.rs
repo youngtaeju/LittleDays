@@ -1,7 +1,7 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::net::SocketAddr;
 
 use clap::{Parser, Subcommand};
-use littledays::{app::build_router, config::Config, db, state::AppState};
+use littledays::{app::build_router, config::Config, db, media::storage, state::AppState};
 
 #[derive(Parser)]
 #[command(name = "littledays", version, about = "LittleDays server")]
@@ -39,10 +39,8 @@ async fn main() -> anyhow::Result<()> {
                 db::migrate(&pool).await?;
             }
             let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
-            let state = AppState {
-                pool,
-                config: Arc::new(config),
-            };
+            storage::ensure_dirs(&config.data_dir)?;
+            let state = AppState::new(pool, config);
             let listener = tokio::net::TcpListener::bind(addr).await?;
             tracing::info!(%addr, "listening");
             axum::serve(listener, build_router(state)).await?;

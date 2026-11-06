@@ -4,6 +4,7 @@ pub mod config;
 pub mod db;
 pub mod error;
 pub mod invites;
+pub mod media;
 pub mod openapi;
 pub mod request;
 pub mod routes;

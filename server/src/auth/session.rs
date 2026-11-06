@@ -205,6 +205,7 @@ mod tests {
             data_dir: PathBuf::new(),
             port: 0,
             auto_migrate: false,
+            worker_concurrency: 1,
         }
     }
 

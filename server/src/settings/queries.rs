@@ -29,6 +29,9 @@ pub async fn load(exec: impl PgExecutor<'_>) -> AppResult<Settings> {
             "timezone" => assign(&mut settings.timezone, &row.key, row.value),
             "default_locale" => assign(&mut settings.default_locale, &row.key, row.value),
             "derivatives_avif" => assign(&mut settings.derivatives_avif, &row.key, row.value),
+            "trash_retention_days" => {
+                assign(&mut settings.trash_retention_days, &row.key, row.value)
+            }
             _ => {}
         }
     }
