@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT baby_id, tagged_by FROM asset_babies",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "baby_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "tagged_by",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "2750b2f319033a8a6db8ee1225ded38945c08be8649ba9c6e77d08dd1342ded6"
+}

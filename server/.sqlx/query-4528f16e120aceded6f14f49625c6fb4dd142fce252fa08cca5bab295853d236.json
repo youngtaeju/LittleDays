@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE assets SET status = 'ready', deleted_at = now() WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4528f16e120aceded6f14f49625c6fb4dd142fce252fa08cca5bab295853d236"
+}

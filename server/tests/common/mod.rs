@@ -4,6 +4,7 @@
 use axum::http::{HeaderName, HeaderValue, StatusCode, header};
 use axum_extra::extract::cookie::Cookie;
 use axum_test::{TestResponse, TestServer};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use chrono::{DateTime, Utc};
 use littledays::{
     app::build_router,
@@ -22,6 +23,9 @@ use uuid::Uuid;
 pub const XRW: HeaderName = HeaderName::from_static("x-requested-with");
 pub const XRW_VALUE: HeaderValue = HeaderValue::from_static("LittleDays");
 pub const PASSWORD: &str = "password123";
+pub const TUS_RESUMABLE: HeaderName = HeaderName::from_static("tus-resumable");
+pub const TUS_VERSION: HeaderValue = HeaderValue::from_static("1.0.0");
+pub const OFFSET_STREAM: &str = "application/offset+octet-stream";
 
 pub fn test_config() -> Config {
     Config {
@@ -80,6 +84,66 @@ impl MediaApp {
         login_user(&server, username).await;
         (server, user)
     }
+}
+
+/// `filename` 만 실은 tus 생성. 201 확인 후 업로드 id 반환.
+pub async fn tus_create(app: &MediaApp, length: usize, filename: &str) -> Uuid {
+    let res = app
+        .server
+        .post("/api/uploads")
+        .add_header(XRW, XRW_VALUE)
+        .add_header(TUS_RESUMABLE, TUS_VERSION)
+        .add_header("upload-length", length.to_string())
+        .add_header(
+            "upload-metadata",
+            format!("filename {}", STANDARD.encode(filename)),
+        )
+        .await;
+    res.assert_status(StatusCode::CREATED);
+    let location = res.header(header::LOCATION);
+    let location = location.to_str().expect("location");
+    location
+        .strip_prefix("/api/uploads/")
+        .expect("relative location")
+        .parse()
+        .expect("upload id")
+}
+
+pub async fn tus_patch(app: &MediaApp, id: Uuid, offset: usize, bytes: &[u8]) -> TestResponse {
+    app.server
+        .patch(&format!("/api/uploads/{id}"))
+        .add_header(XRW, XRW_VALUE)
+        .add_header(TUS_RESUMABLE, TUS_VERSION)
+        .add_header("upload-offset", offset.to_string())
+        .content_type(OFFSET_STREAM)
+        .bytes(bytes.to_vec().into())
+        .await
+}
+
+/// 생성 + PATCH 1회로 전체 바이트 업로드.
+pub async fn upload_bytes(app: &MediaApp, bytes: &[u8], filename: &str) -> Uuid {
+    let id = tus_create(app, bytes.len(), filename).await;
+    tus_patch(app, id, 0, bytes)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    id
+}
+
+/// 같은 state 로 실제 포트에 뜬 서버와 그 서버에서 `mom` 로그인한 `Cookie` 헤더 값.
+/// 생 TCP 요청용.
+pub async fn http_server(app: &MediaApp) -> (TestServer, String) {
+    let server = TestServer::builder()
+        .http_transport()
+        .build(build_router(app.state.clone()))
+        .expect("http test server");
+    let res = server
+        .post("/api/auth/login")
+        .json(&json!({ "username": "mom", "password": PASSWORD }))
+        .await;
+    res.assert_status_ok();
+    let cookie = res.cookie(session::COOKIE_NAME);
+    let header = format!("{}={}", cookie.name(), cookie.value());
+    (server, header)
 }
 
 fn cookie_server(state: &AppState) -> TestServer {

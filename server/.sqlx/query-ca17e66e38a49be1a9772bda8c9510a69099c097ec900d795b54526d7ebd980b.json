@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO uploads (id, user_id, length, metadata, expires_at)\n         VALUES ($1, $2, $3, $4, now() + interval '24 hours')\n         RETURNING id, user_id, length, metadata, expires_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "length",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "metadata",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "expires_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Int8",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ca17e66e38a49be1a9772bda8c9510a69099c097ec900d795b54526d7ebd980b"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO asset_babies (asset_id, baby_id, tagged_by)\n         SELECT $1, baby_id, $3 FROM unnest($2::uuid[]) AS t(baby_id)\n         ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "581d20d288d27c8e26b2106f8e404d36838b6373bcf216d02918221fa74405f8"
+}

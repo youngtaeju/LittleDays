@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kind, payload, status::text AS \"status!\" FROM jobs",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "payload",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 2,
+        "name": "status!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "eb20eca823cc4a2366412a8d5d5215ce3679443e3fbf14facb7cfbb4b3bcae5d"
+}

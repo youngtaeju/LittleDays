@@ -1,0 +1,49 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO assets (id, kind, uploaded_by, original_path, original_filename, mime,\n                             size_bytes, sha256, taken_at, taken_at_source, file_modified_at,\n                             created_at)\n         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        {
+          "Custom": {
+            "name": "asset_kind",
+            "kind": {
+              "Enum": [
+                "photo",
+                "video"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Int8",
+        "Bytea",
+        "Timestamptz",
+        {
+          "Custom": {
+            "name": "taken_at_source",
+            "kind": {
+              "Enum": [
+                "exif",
+                "video_meta",
+                "file_mtime",
+                "upload_time",
+                "import",
+                "manual"
+              ]
+            }
+          }
+        },
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8a25681aa267205b65647d785837397ba6f55e06ef9b143abc372ffc253728ff"
+}
