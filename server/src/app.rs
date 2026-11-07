@@ -7,7 +7,7 @@ use utoipa_axum::router::OpenApiRouter;
 
 use crate::{
     assets, auth, babies, error::AppError, invites, openapi::ApiDoc, routes, settings,
-    state::AppState, uploads, users,
+    state::AppState, uploads, users, web,
 };
 
 // 라우터 트리와 OpenAPI 문서의 단일 출처.
@@ -33,10 +33,15 @@ pub fn openapi() -> utoipa::openapi::OpenApi {
 pub fn build_router(state: AppState) -> Router {
     let (api, openapi) = api_router().split_for_parts();
 
-    api.route("/api/openapi.json", get(|| async move { Json(openapi) }))
-        .method_not_allowed_fallback(method_not_allowed)
-        .fallback(not_found)
-        .layer(middleware::from_fn(auth::extract::csrf_layer))
+    let api = api
+        .route("/api/openapi.json", get(|| async move { Json(openapi) }))
+        .method_not_allowed_fallback(method_not_allowed);
+    let app = match &state.config.web_dir {
+        Some(dir) => api.merge(web::router(dir)),
+        None => api.fallback(not_found),
+    };
+
+    app.layer(middleware::from_fn(auth::extract::csrf_layer))
         .layer(
             // 쿼리의 media token, path 의 초대 토큰이 로그에 남지 않게 라우트 템플릿만 기록.
             TraceLayer::new_for_http().make_span_with(|req: &Request<Body>| {
@@ -50,7 +55,7 @@ pub fn build_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn not_found() -> AppError {
+pub(crate) async fn not_found() -> AppError {
     AppError::NotFound("server.notFound")
 }
 

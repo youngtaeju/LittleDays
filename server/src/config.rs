@@ -10,6 +10,8 @@ pub struct Config {
     pub port: u16,
     pub auto_migrate: bool,
     pub worker_concurrency: usize,
+    /// 빌드된 SPA 디렉터리. 없으면 API 만 서빙.
+    pub web_dir: Option<PathBuf>,
 }
 
 impl Config {
@@ -36,6 +38,8 @@ impl Config {
         let worker_concurrency =
             parse_worker_concurrency(std::env::var("WORKER_CONCURRENCY").ok().as_deref())?;
 
+        let web_dir = parse_web_dir(std::env::var("WEB_DIR").ok().as_deref())?;
+
         Ok(Config {
             database_url,
             public_url,
@@ -44,6 +48,7 @@ impl Config {
             port,
             auto_migrate,
             worker_concurrency,
+            web_dir,
         })
     }
 }
@@ -58,6 +63,17 @@ fn parse_worker_concurrency(v: Option<&str>) -> anyhow::Result<usize> {
         Ok(n) if (1..=16).contains(&n) => Ok(n),
         _ => bail!("WORKER_CONCURRENCY must be 1-16"),
     }
+}
+
+fn parse_web_dir(v: Option<&str>) -> anyhow::Result<Option<PathBuf>> {
+    let Some(v) = v.filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    let dir = PathBuf::from(v);
+    if !dir.join("index.html").is_file() {
+        bail!("WEB_DIR must contain index.html");
+    }
+    Ok(Some(dir))
 }
 
 fn parse_public_url(url: String) -> anyhow::Result<String> {
@@ -151,5 +167,19 @@ mod tests {
             let err = parse_worker_concurrency(Some(bad)).unwrap_err();
             assert_eq!(err.to_string(), "WORKER_CONCURRENCY must be 1-16", "{bad}");
         }
+    }
+
+    #[test]
+    fn web_dir_requires_index() {
+        assert_eq!(parse_web_dir(None).unwrap(), None);
+        assert_eq!(parse_web_dir(Some("")).unwrap(), None);
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().to_str().unwrap();
+        let err = parse_web_dir(Some(path)).unwrap_err();
+        assert_eq!(err.to_string(), "WEB_DIR must contain index.html");
+
+        std::fs::write(dir.path().join("index.html"), "x").unwrap();
+        assert_eq!(parse_web_dir(Some(path)).unwrap(), Some(dir.path().into()));
     }
 }

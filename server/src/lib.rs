@@ -17,3 +17,4 @@ pub mod shutdown;
 pub mod state;
 pub mod uploads;
 pub mod users;
+pub mod web;

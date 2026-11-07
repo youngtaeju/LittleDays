@@ -52,6 +52,13 @@ cd server && cargo run -q -- openapi > ../web/openapi.json && cd ../web && pnpm 
 
 `web/openapi.json` 과 `web/src/api/schema.d.ts` 는 CI 에서 최신 여부를 검사합니다.
 
+빌드된 웹을 서버 한 프로세스로 함께 서빙할 수도 있습니다. `web/dist` 를 만든 뒤 서버를 `WEB_DIR` 과 함께 시작하면 같은 origin 에서 SPA 와 API 를 모두 받습니다. `WEB_DIR` 에는 `index.html` 이 있어야 합니다.
+
+```bash
+cd web && pnpm build
+cd ../server && WEB_DIR=../web/dist PORT=18080 cargo run -- serve
+```
+
 ### 포트
 
 - 8080 포트가 사용 중이면 `server/.env` 의 `PORT` 를 바꿉니다.
