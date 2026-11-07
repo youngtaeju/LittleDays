@@ -10,8 +10,9 @@ use crate::{
     state::AppState, uploads, users,
 };
 
-pub fn build_router(state: AppState) -> Router {
-    let (api, openapi) = OpenApiRouter::with_openapi(ApiDoc::openapi())
+// 라우터 트리와 OpenAPI 문서의 단일 출처.
+fn api_router() -> OpenApiRouter<AppState> {
+    OpenApiRouter::with_openapi(ApiDoc::openapi())
         .merge(routes::health::router())
         .merge(assets::files::router())
         .merge(assets::routes::router())
@@ -22,7 +23,15 @@ pub fn build_router(state: AppState) -> Router {
         .merge(uploads::finalize::router())
         .merge(uploads::tus::router())
         .merge(users::routes::router())
-        .split_for_parts();
+}
+
+// DB, 환경 변수 없이 문서만 생성.
+pub fn openapi() -> utoipa::openapi::OpenApi {
+    api_router().split_for_parts().1
+}
+
+pub fn build_router(state: AppState) -> Router {
+    let (api, openapi) = api_router().split_for_parts();
 
     api.route("/api/openapi.json", get(|| async move { Json(openapi) }))
         .method_not_allowed_fallback(method_not_allowed)

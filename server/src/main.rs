@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use littledays::{
-    app::build_router,
+    app::{build_router, openapi},
     config::Config,
     db, jobs, maintenance,
     media::{storage, video},
@@ -24,6 +24,8 @@ enum Cmd {
     Serve,
     /// DB 마이그레이션 적용
     Migrate,
+    /// OpenAPI 문서를 표준 출력으로 출력 (설정, DB 불필요)
+    Openapi,
 }
 
 fn init_tracing() {
@@ -36,9 +38,12 @@ fn init_tracing() {
 async fn main() -> anyhow::Result<()> {
     // .env 는 개발 편의용. 없어도 무시.
     dotenvy::dotenv().ok();
-    init_tracing();
 
     let cli = Cli::parse();
+    // openapi 는 표준 출력 JSON 오염 방지를 위해 로그 초기화 제외.
+    if !matches!(cli.cmd, Cmd::Openapi) {
+        init_tracing();
+    }
     match cli.cmd {
         Cmd::Serve => {
             let config = Config::from_env()?;
@@ -91,6 +96,7 @@ async fn main() -> anyhow::Result<()> {
             db::migrate(&pool).await?;
             println!("migrations applied");
         }
+        Cmd::Openapi => println!("{}", serde_json::to_string_pretty(&openapi())?),
     }
     Ok(())
 }
