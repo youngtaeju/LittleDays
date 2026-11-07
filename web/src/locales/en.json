@@ -63,8 +63,44 @@
     "sexMale": "Male",
     "add": "Add baby"
   },
-  "photo": {
-    "title": "Photo"
+  "viewer": {
+    "info": "Info",
+    "prev": "Previous",
+    "next": "Next",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Fit to screen",
+    "failed": "Couldn't process this file.",
+    "retry": "Process again",
+    "takenAt": "Date taken",
+    "sourceLabel": "Source",
+    "source": {
+      "exif": "Photo metadata",
+      "video_meta": "Video metadata",
+      "file_mtime": "File modified time",
+      "upload_time": "Upload time",
+      "import": "Import",
+      "manual": "Set manually"
+    },
+    "timezone": "Time zone",
+    "caption": "Caption",
+    "noCaption": "No caption.",
+    "camera": "Camera",
+    "babies": "Babies",
+    "noBabies": "No babies tagged.",
+    "edit": "Edit",
+    "editCaption": "Edit caption",
+    "editTakenAt": "Edit date taken",
+    "editBabies": "Edit baby tags",
+    "download": "Download original",
+    "setAvatar": "Set as profile photo",
+    "setAvatarTitle": "Whose profile photo should this be?",
+    "avatarSet": "Set as {{name}}'s profile photo",
+    "trash": "Move to trash",
+    "trashTitle": "Move to trash?",
+    "trashDescription": "You can restore it from the trash.",
+    "trashed": "Moved to trash",
+    "undo": "Undo",
+    "restored": "Restored"
   },
   "notFound": {
     "title": "Page not found.",

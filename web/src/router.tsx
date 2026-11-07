@@ -16,6 +16,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { AppShell } from '@/shell/AppShell'
 import { TimelinePage } from '@/timeline/TimelinePage'
+import { ViewerPage } from '@/viewer/ViewerPage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -159,11 +160,14 @@ const settingsRoute = createRoute({
   component: () => <Placeholder title="nav.settings" />,
 })
 
-// 뷰어는 셸 없이 전체 화면.
+// 뷰어는 셸 없이 전체 화면. baby 는 이전/다음 목록의 필터.
 const photoRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/photo/$id',
-  component: () => <Placeholder title="photo.title" />,
+  validateSearch: (s: Record<string, unknown>): { baby?: string } => ({
+    baby: typeof s.baby === 'string' ? s.baby : undefined,
+  }),
+  component: ViewerPage,
 })
 
 const routeTree = rootRoute.addChildren([
@@ -187,7 +191,13 @@ export function createAppRouter(
   queryClient: QueryClient,
   history?: RouterHistory,
 ) {
-  return createRouter({ routeTree, context: { queryClient }, history })
+  return createRouter({
+    routeTree,
+    context: { queryClient },
+    history,
+    // 뷰어를 닫고 돌아오면 타임라인 스크롤 위치 복원.
+    scrollRestoration: true,
+  })
 }
 
 export type AppRouter = ReturnType<typeof createAppRouter>

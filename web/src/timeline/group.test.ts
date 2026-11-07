@@ -10,7 +10,9 @@ function item(id: string, local_date: string, taken_at: string): AssetSummary {
 const originalTz = process.env.TZ
 
 afterEach(() => {
-  process.env.TZ = originalTz
+  // undefined 대입은 문자열 "undefined" 로 저장.
+  if (originalTz === undefined) delete process.env.TZ
+  else process.env.TZ = originalTz
 })
 
 describe('groupByLocalDate', () => {

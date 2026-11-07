@@ -16,6 +16,14 @@ describe('ageAt', () => {
     expect(ageAt(birth, date)).toEqual(expected)
   })
 
+  // 말일 생일: 말일 보정 기념일 당일이 0일.
+  it.each([
+    ['2024-09-30', { kind: 'monthsDays', months: 6, days: 0 }],
+    ['2024-10-01', { kind: 'monthsDays', months: 6, days: 1 }],
+  ])('month_end_birth_on_%s', (date, expected) => {
+    expect(ageAt('2024-03-31', date)).toEqual(expected)
+  })
+
   it('before_birth_is_null', () => {
     expect(ageAt(birth, '2024-01-30')).toBeNull()
   })

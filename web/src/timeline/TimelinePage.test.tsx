@@ -242,11 +242,8 @@ describe('TimelinePage', () => {
     )
   })
 
-  it('processing_tile_polls_until_ready', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    const id = 'a1'
-    let polls = 0
-    renderTimeline({
+  function processingRoutes(id: string, onPoll: () => number) {
+    return {
       assets: () =>
         page([
           assetSummaryFixture(id, {
@@ -256,25 +253,40 @@ describe('TimelinePage', () => {
           }),
         ]),
       extra: {
-        [`GET /api/assets/${id}`]: () => {
-          polls += 1
-          return json(
+        [`GET /api/assets/${id}`]: () =>
+          json(
             200,
-            polls === 1
+            onPoll() === 1
               ? assetFixture(id, { status: 'processing', derivatives: {} })
               : assetFixture(id),
-          )
-        },
+          ),
       },
-    })
+    }
+  }
+
+  it('processing_tile_polls_until_ready', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const id = 'a1'
+    let polls = 0
+    renderTimeline(processingRoutes(id, () => (polls += 1)))
 
     expect(
       await screen.findByRole('img', { name: ko.timeline.processing }),
     ).toBeInTheDocument()
     expect(document.querySelector('img[src$="thumb.webp"]')).toBeNull()
+    const link = screen.getByRole('link', {
+      name: `사진, 5월 10일 금요일, ${ko.timeline.processing}`,
+    })
 
+    // 화면에 들어오면 즉시 1회, 이후 5초 간격.
+    act(() => {
+      intersectAll()
+    })
+    await waitFor(() => {
+      expect(polls).toBe(1)
+    })
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000)
+      await vi.advanceTimersByTimeAsync(5000)
     })
 
     await waitFor(() => {
@@ -286,12 +298,30 @@ describe('TimelinePage', () => {
       screen.queryByRole('img', { name: ko.timeline.processing }),
     ).not.toBeInTheDocument()
     expect(polls).toBe(2)
+    // 처리 완료 후에도 같은 링크 노드(다시 마운트 안 됨, 포커스 유지).
+    expect(screen.getByRole('link', { name: '사진, 5월 10일 금요일' })).toBe(
+      link,
+    )
 
     // 준비 완료 후 폴링 종료.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(9000)
+      await vi.advanceTimersByTimeAsync(15_000)
     })
     expect(polls).toBe(2)
+  })
+
+  it('offscreen_processing_tile_does_not_poll', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    let polls = 0
+    renderTimeline(processingRoutes('a1', () => (polls += 1)))
+
+    expect(
+      await screen.findByRole('img', { name: ko.timeline.processing }),
+    ).toBeInTheDocument()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15_000)
+    })
+    expect(polls).toBe(0)
   })
 
   it('failed_tile_shows_warning', async () => {
@@ -310,6 +340,51 @@ describe('TimelinePage', () => {
         name: `사진, 5월 10일 금요일, ${ko.timeline.failed}`,
       }),
     ).toBeInTheDocument()
+  })
+
+  it('day_header_names_up_to_two_tagged_babies', async () => {
+    initI18n('en')
+    const sky = babyFixture({ birth_date: '2024-01-31' })
+    const sea = babyFixture({
+      id: '00000000-0000-4000-8000-0000000000b2',
+      name: '바다',
+      birth_date: '2023-03-10',
+      sort_order: 1,
+    })
+    const star = babyFixture({
+      id: '00000000-0000-4000-8000-0000000000b3',
+      name: '별',
+      birth_date: '2023-01-01',
+      sort_order: 2,
+    })
+    renderTimeline({
+      babies: [sky, sea, star],
+      assets: () =>
+        page([
+          // 태그 순서와 무관하게 sort_order 순 앞 2명.
+          assetSummaryFixture('a1', { baby_ids: [star.id, sea.id, sky.id] }),
+          assetSummaryFixture('a2', {
+            local_date: '2024-05-09',
+            baby_ids: [sky.id],
+          }),
+          assetSummaryFixture('a3', { local_date: '2024-05-08', baby_ids: [] }),
+        ]),
+      extra: {
+        'GET /api/auth/me': () =>
+          json(200, { user: { ...userFixture('guardian'), locale: 'en' } }),
+      },
+    })
+
+    // 문자열은 en.json 의 age.* 값 기준.
+    expect(
+      await screen.findByText('하늘 3 mo 10 d · 바다 1 y 2 mo'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('하늘 Day 99')).toBeInTheDocument()
+    // 태그된 아기가 없는 날은 나이 줄 없음.
+    const untagged = screen.getByRole('heading', {
+      name: 'Wednesday, May 8',
+    })
+    expect(untagged.parentElement?.querySelector('p')).toBeNull()
   })
 
   it('empty_state_for_family_has_no_upload_button', async () => {

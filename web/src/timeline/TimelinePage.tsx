@@ -1,5 +1,5 @@
 import { getRouteApi, Link } from '@tanstack/react-router'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AssetSummary, Baby } from '@/api/types'
 import { hasRole, useMe } from '@/auth/session'
@@ -63,10 +63,50 @@ function DayHeader({
   )
 }
 
-// 처리 중 타일만 폴링 구독. 나머지 타일은 쿼리 관찰자 없음.
-function ProcessingTile({ item }: { item: AssetSummary }) {
-  useProcessingPoll(item)
-  return <Tile item={item} />
+// 처리 중 항목 폴링만 담당. 타일과 형제라 처리 완료 시 타일(Link)이 다시 마운트되지 않음(포커스 유지).
+function ProcessingPoll({
+  item,
+  target,
+}: {
+  item: AssetSummary
+  target: RefObject<HTMLElement | null>
+}) {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = target.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        const last = entries.at(-1)
+        if (last) setVisible(last.isIntersecting)
+      },
+      { rootMargin: '200px 0px' },
+    )
+    io.observe(el)
+    return () => {
+      io.disconnect()
+    }
+  }, [target])
+  useProcessingPoll(item, visible)
+  return null
+}
+
+function TileItem({
+  item,
+  baby,
+}: {
+  item: AssetSummary
+  baby: string | undefined
+}) {
+  const ref = useRef<HTMLLIElement>(null)
+  return (
+    <li ref={ref}>
+      <Tile item={item} baby={baby} />
+      {item.status === 'processing' && (
+        <ProcessingPoll item={item} target={ref} />
+      )}
+    </li>
+  )
 }
 
 export function TimelinePage() {
@@ -155,13 +195,7 @@ export function TimelinePage() {
               <DayHeader day={day} babies={babies} filter={baby} />
               <ul className="-mx-4 grid grid-cols-3 gap-[2px] sm:mx-0 sm:grid-cols-4 lg:grid-cols-6">
                 {day.items.map((item) => (
-                  <li key={item.id}>
-                    {item.status === 'processing' ? (
-                      <ProcessingTile item={item} />
-                    ) : (
-                      <Tile item={item} />
-                    )}
-                  </li>
+                  <TileItem key={item.id} item={item} baby={baby} />
                 ))}
               </ul>
             </div>

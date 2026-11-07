@@ -195,9 +195,12 @@ describe('guards', () => {
   })
 
   it('photo_direct_entry_applies_locale', async () => {
-    mockFetch(authRoutes({ me: { ...userFixture('family'), locale: 'en' } }))
+    mockFetch({
+      ...authRoutes({ me: { ...userFixture('family'), locale: 'en' } }),
+      'GET /api/assets/x': () => apiError(404, 'asset.notFound'),
+    })
     renderApp('/photo/x')
-    await screen.findByRole('heading', { name: en.photo.title })
+    await screen.findByText(en.errors.asset.notFound)
     expect(document.documentElement.lang).toBe('en')
   })
 })

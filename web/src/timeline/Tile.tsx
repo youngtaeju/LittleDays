@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { LoaderCircle, Play, TriangleAlert } from 'lucide-react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AssetSummary } from '@/api/types'
 import { Blurhash } from './Blurhash'
@@ -14,7 +15,15 @@ function formatDuration(ms: number): string {
 }
 
 // 정사각 썸네일. 바탕은 dominant_color → blurhash → 썸네일 순으로 덮음.
-export function Tile({ item }: { item: AssetSummary }) {
+// baby: 뷰어 이전/다음이 같은 필터 목록을 따르도록 전달.
+// memo: 목록 캐시 교체 시 바뀐 항목만 다시 그림(나머지 항목은 같은 객체).
+export const Tile = memo(function Tile({
+  item,
+  baby,
+}: {
+  item: AssetSummary
+  baby: string | undefined
+}) {
   const { t, i18n } = useTranslation()
   const video = item.kind === 'video'
   const duration =
@@ -38,6 +47,7 @@ export function Tile({ item }: { item: AssetSummary }) {
     <Link
       to="/photo/$id"
       params={{ id: item.id }}
+      search={{ baby }}
       aria-label={label}
       className="relative block aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2"
       style={
@@ -79,4 +89,4 @@ export function Tile({ item }: { item: AssetSummary }) {
       )}
     </Link>
   )
-}
+})
