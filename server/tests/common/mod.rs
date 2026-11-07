@@ -36,6 +36,7 @@ pub fn test_config() -> Config {
         port: 0,
         auto_migrate: false,
         worker_concurrency: 1,
+        web_dir: None,
     }
 }
 

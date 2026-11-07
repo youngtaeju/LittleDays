@@ -61,3 +61,33 @@ jobs:
         run: cargo sqlx prepare --check -- --all-targets
       - name: test
         run: cargo test --locked
+      - name: OpenAPI 문서 신선도 검사
+        run: cargo run -q --locked -- openapi > ../web/openapi.json && git diff --exit-code ../web/openapi.json
+
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: 의존성 설치
+        run: pnpm install --frozen-lockfile
+      - name: lint
+        run: pnpm lint
+      - name: typecheck
+        run: pnpm typecheck
+      - name: test
+        run: pnpm test
+      - name: build
+        run: pnpm build
+      - name: 생성 타입 신선도 검사
+        run: pnpm gen:api:check

@@ -1,0 +1,114 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #f5f7f6;
+  --foreground: #22282c;
+  --card: #ffffff;
+  --card-foreground: #22282c;
+  --popover: #ffffff;
+  --popover-foreground: #22282c;
+  --primary: #a85e12;
+  --primary-foreground: #ffffff;
+  --secondary: #ebefed;
+  --secondary-foreground: #22282c;
+  --muted: #ebefed;
+  --muted-foreground: #667077;
+  --accent: #ebefed;
+  --accent-foreground: #22282c;
+  --destructive: #b0303a;
+  --destructive-foreground: #ffffff;
+  /* 바탕 대비 1.57:1. 카드(#fff) 위 1.7:1. */
+  --border: #c2c9c6;
+  --input: #c2c9c6;
+  --ring: var(--primary);
+  --radius: 0.5rem;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #14181b;
+  --foreground: #e6e9eb;
+  --card: #1c2125;
+  --card-foreground: #e6e9eb;
+  --popover: #1c2125;
+  --popover-foreground: #e6e9eb;
+  --primary: #f2b36b;
+  --primary-foreground: #14181b;
+  --secondary: #252b30;
+  --secondary-foreground: #e6e9eb;
+  --muted: #252b30;
+  --muted-foreground: #9aa3a9;
+  --accent: #252b30;
+  --accent-foreground: #e6e9eb;
+  --destructive: #e5737a;
+  --destructive-foreground: #14181b;
+  /* 바탕 대비 1.75:1. 카드 위 1.55:1. */
+  --border: #3a4249;
+  --input: #3a4249;
+  --ring: var(--primary);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans:
+    ui-sans-serif, system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR',
+    'Malgun Gothic', sans-serif;
+}
+
+/* 크기 13/15/17/20/24px, 굵기 400/600. 컴포넌트는 font-medium 대신 font-semibold. */
+@theme {
+  --text-xs: 13px;
+  --text-xs--line-height: 1.5;
+  --text-sm: 15px;
+  --text-sm--line-height: 1.5;
+  --text-base: 17px;
+  --text-base--line-height: 1.5;
+  --text-lg: 20px;
+  --text-lg--line-height: 1.4;
+  --text-xl: 24px;
+  --text-xl--line-height: 1.33;
+  --font-weight-medium: 600;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}
