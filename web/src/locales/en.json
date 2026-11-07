@@ -1,0 +1,90 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "retry": "Try again",
+    "delete": "Delete",
+    "close": "Close"
+  },
+  "errors": {
+    "unknown": "Something went wrong. Please try again in a moment.",
+    "network": {
+      "offline": "Can't reach the server. Check your network connection."
+    },
+    "asset": {
+      "babyInvalid": "The selected baby could not be found.",
+      "captionTooLong": "The caption is too long.",
+      "duplicate": "This file has already been uploaded.",
+      "fileNotFound": "The file could not be found.",
+      "invalidCursor": "The list position is invalid. Please refresh.",
+      "notFailed": "This item did not fail processing.",
+      "notFound": "The photo or video could not be found.",
+      "notInTrash": "This item is not in the trash."
+    },
+    "auth": {
+      "csrf": "The request was rejected. Please refresh and try again.",
+      "disabled": "This account is disabled. Please contact your administrator.",
+      "displayNameInvalid": "The display name is not valid.",
+      "forbidden": "You don't have permission to do this.",
+      "invalidCredentials": "The username or password is incorrect.",
+      "passwordTooShort": "The password is too short.",
+      "required": "Please sign in.",
+      "sessionNotFound": "The session could not be found.",
+      "signupClosed": "Sign-up is closed. You need an invite link.",
+      "usernameInvalid": "The username format is not valid.",
+      "usernameTaken": "This username is already taken."
+    },
+    "babies": {
+      "avatarInvalid": "This file can't be used as a profile photo.",
+      "nameInvalid": "The baby's name is not valid.",
+      "notFound": "The baby could not be found.",
+      "orderMismatch": "The order doesn't match the current list. Please refresh."
+    },
+    "invite": {
+      "expired": "This invite link has expired.",
+      "invalidExpiry": "The expiry time is not valid.",
+      "notFound": "The invite link could not be found.",
+      "revoked": "This invite link has been revoked.",
+      "roleNotAllowed": "You can't invite someone with this role.",
+      "used": "This invite link has already been used."
+    },
+    "request": {
+      "invalidBody": "The request content is not valid.",
+      "invalidPath": "The request path is not valid.",
+      "invalidQuery": "The request parameters are not valid."
+    },
+    "server": {
+      "internal": "A server error occurred. Please try again in a moment.",
+      "methodNotAllowed": "This request is not supported.",
+      "notFound": "The requested item could not be found."
+    },
+    "settings": {
+      "instanceNameInvalid": "The instance name is not valid.",
+      "invalidLocale": "This language is not supported.",
+      "invalidTimezone": "The time zone is not valid.",
+      "trashRetentionInvalid": "The trash retention period is not valid."
+    },
+    "upload": {
+      "contentType": "The upload request format is not valid.",
+      "deferNotSupported": "This upload method is not supported.",
+      "filenameRequired": "A file name is required.",
+      "incomplete": "The upload has not finished yet.",
+      "lengthInvalid": "The file size information is not valid.",
+      "locked": "The upload is still in progress. Please try again in a moment.",
+      "metadataInvalid": "The upload information is not valid.",
+      "notFound": "The upload could not be found. Please upload it again.",
+      "offsetInvalid": "The upload offset is not valid.",
+      "offsetMismatch": "The upload offset doesn't match the server. Please try again.",
+      "tooLarge": "The file is too large.",
+      "tusVersion": "This upload protocol version is not supported.",
+      "unsupportedType": "This file type is not supported."
+    },
+    "users": {
+      "cannotEditSelf": "You can't change your own account here.",
+      "invalidEmail": "The email format is not valid.",
+      "invalidLocale": "This language is not supported.",
+      "notFound": "The user could not be found.",
+      "roleNotAllowed": "You can't change to this role."
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "common": {
+    "save": "저장",
+    "cancel": "취소",
+    "retry": "다시 시도",
+    "delete": "삭제",
+    "close": "닫기"
+  },
+  "errors": {
+    "unknown": "문제가 생겼어요. 잠시 후 다시 시도해 주세요.",
+    "network": {
+      "offline": "서버에 연결할 수 없어요. 네트워크를 확인해 주세요."
+    },
+    "asset": {
+      "babyInvalid": "선택한 아기를 찾을 수 없어요.",
+      "captionTooLong": "설명이 너무 길어요.",
+      "duplicate": "이미 올린 파일이에요.",
+      "fileNotFound": "파일을 찾을 수 없어요.",
+      "invalidCursor": "목록 위치가 올바르지 않아요. 새로고침해 주세요.",
+      "notFailed": "처리에 실패한 항목이 아니에요.",
+      "notFound": "사진이나 영상을 찾을 수 없어요.",
+      "notInTrash": "휴지통에 있는 항목이 아니에요."
+    },
+    "auth": {
+      "csrf": "요청이 올바르지 않아요. 새로고침 후 다시 시도해 주세요.",
+      "disabled": "비활성화된 계정이에요. 관리자에게 문의해 주세요.",
+      "displayNameInvalid": "표시 이름이 올바르지 않아요.",
+      "forbidden": "이 작업을 할 권한이 없어요.",
+      "invalidCredentials": "아이디나 비밀번호가 맞지 않아요.",
+      "passwordTooShort": "비밀번호가 너무 짧아요.",
+      "required": "로그인이 필요해요.",
+      "sessionNotFound": "세션을 찾을 수 없어요.",
+      "signupClosed": "지금은 가입할 수 없어요. 초대 링크가 필요해요.",
+      "usernameInvalid": "아이디 형식이 올바르지 않아요.",
+      "usernameTaken": "이미 사용 중인 아이디예요."
+    },
+    "babies": {
+      "avatarInvalid": "프로필 사진으로 쓸 수 없는 파일이에요.",
+      "nameInvalid": "아기 이름이 올바르지 않아요.",
+      "notFound": "아기를 찾을 수 없어요.",
+      "orderMismatch": "순서 정보가 현재 목록과 달라요. 새로고침해 주세요."
+    },
+    "invite": {
+      "expired": "만료된 초대 링크예요.",
+      "invalidExpiry": "만료 시각이 올바르지 않아요.",
+      "notFound": "초대 링크를 찾을 수 없어요.",
+      "revoked": "취소된 초대 링크예요.",
+      "roleNotAllowed": "이 역할로는 초대할 수 없어요.",
+      "used": "이미 사용된 초대 링크예요."
+    },
+    "request": {
+      "invalidBody": "요청 내용이 올바르지 않아요.",
+      "invalidPath": "요청 경로가 올바르지 않아요.",
+      "invalidQuery": "요청 조건이 올바르지 않아요."
+    },
+    "server": {
+      "internal": "서버에 문제가 생겼어요. 잠시 후 다시 시도해 주세요.",
+      "methodNotAllowed": "지원하지 않는 요청이에요.",
+      "notFound": "요청한 항목을 찾을 수 없어요."
+    },
+    "settings": {
+      "instanceNameInvalid": "인스턴스 이름이 올바르지 않아요.",
+      "invalidLocale": "지원하지 않는 언어예요.",
+      "invalidTimezone": "시간대가 올바르지 않아요.",
+      "trashRetentionInvalid": "휴지통 보관 기간이 올바르지 않아요."
+    },
+    "upload": {
+      "contentType": "업로드 요청 형식이 올바르지 않아요.",
+      "deferNotSupported": "지원하지 않는 업로드 방식이에요.",
+      "filenameRequired": "파일 이름이 필요해요.",
+      "incomplete": "업로드가 아직 끝나지 않았어요.",
+      "lengthInvalid": "파일 크기 정보가 올바르지 않아요.",
+      "locked": "업로드가 아직 진행 중이에요. 잠시 후 다시 시도해 주세요.",
+      "metadataInvalid": "업로드 정보가 올바르지 않아요.",
+      "notFound": "업로드를 찾을 수 없어요. 다시 올려 주세요.",
+      "offsetInvalid": "업로드 위치가 올바르지 않아요.",
+      "offsetMismatch": "업로드 위치가 서버와 맞지 않아요. 다시 시도해 주세요.",
+      "tooLarge": "파일이 너무 커요.",
+      "tusVersion": "지원하지 않는 업로드 프로토콜 버전이에요.",
+      "unsupportedType": "지원하지 않는 파일 형식이에요."
+    },
+    "users": {
+      "cannotEditSelf": "자신의 계정은 여기서 바꿀 수 없어요.",
+      "invalidEmail": "이메일 형식이 올바르지 않아요.",
+      "invalidLocale": "지원하지 않는 언어예요.",
+      "notFound": "사용자를 찾을 수 없어요.",
+      "roleNotAllowed": "이 역할로는 바꿀 수 없어요."
+    }
+  }
+}
