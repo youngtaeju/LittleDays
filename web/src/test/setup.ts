@@ -17,3 +17,6 @@ window.matchMedia = (query: string): MediaQueryList =>
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }) as unknown as MediaQueryList
+
+// jsdom 은 scrollTo 미구현. 라우터 스크롤 복원이 호출.
+window.scrollTo = () => undefined

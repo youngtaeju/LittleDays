@@ -1,10 +1,74 @@
 {
+  "app": {
+    "name": "LittleDays"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
     "retry": "Try again",
     "delete": "Delete",
-    "close": "Close"
+    "close": "Close",
+    "loading": "Loading…"
+  },
+  "nav": {
+    "main": "Main menu",
+    "timeline": "Timeline",
+    "upload": "Upload",
+    "babies": "Babies",
+    "more": "More",
+    "trash": "Trash",
+    "members": "Members",
+    "settings": "Settings",
+    "logout": "Sign out"
+  },
+  "roles": {
+    "owner": "Owner",
+    "guardian": "Guardian",
+    "family": "Family"
+  },
+  "auth": {
+    "username": "Username",
+    "password": "Password",
+    "displayName": "Display name",
+    "toLogin": "Go to sign in",
+    "login": {
+      "title": "Sign in",
+      "submit": "Sign in",
+      "firstRun": "Just installed?",
+      "toSignup": "Create the first account"
+    },
+    "signup": {
+      "title": "Create the first account",
+      "description": "This account becomes the owner.",
+      "instanceName": "Instance name",
+      "instanceNameHint": "Shown at the top of every page.",
+      "submit": "Create account",
+      "babyTitle": "Add your first baby",
+      "babyDescription": "You can also do this later.",
+      "later": "Later"
+    },
+    "invite": {
+      "title": "You're invited to {{instance}}",
+      "role": "Role: {{role}}",
+      "description": "Create an account to join.",
+      "submit": "Create account"
+    }
+  },
+  "babies": {
+    "name": "Name",
+    "birthDate": "Date of birth",
+    "sex": "Sex",
+    "sexUnset": "Not set",
+    "sexFemale": "Female",
+    "sexMale": "Male",
+    "add": "Add baby"
+  },
+  "photo": {
+    "title": "Photo"
+  },
+  "notFound": {
+    "title": "Page not found.",
+    "home": "Go to timeline"
   },
   "errors": {
     "unknown": "Something went wrong. Please try again in a moment.",

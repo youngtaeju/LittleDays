@@ -1,24 +1,28 @@
-import { QueryClientProvider } from '@tanstack/react-query'
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import { RouterProvider } from '@tanstack/react-router'
 import { useState } from 'react'
-import { I18nextProvider } from 'react-i18next'
-import i18next from 'i18next'
 import { Toaster } from '@/components/ui/sonner'
 import { createQueryClient } from '@/auth/session'
-import { initI18n, pickLocale } from '@/i18n'
+import { createApp, type AppRouter } from '@/router'
 import { useTheme } from '@/theme/theme'
 
-initI18n(pickLocale(null, navigator.language))
-
-export default function App() {
+export function AppView({
+  queryClient,
+  router,
+}: {
+  queryClient: QueryClient
+  router: AppRouter
+}) {
   const [theme] = useTheme()
-  // 로그아웃 후 이동은 라우터 도입 시 연결.
-  const [queryClient] = useState(() => createQueryClient(() => undefined))
   return (
     <QueryClientProvider client={queryClient}>
-      <I18nextProvider i18n={i18next}>
-        <div data-testid="app-root" />
-        <Toaster theme={theme} />
-      </I18nextProvider>
+      <RouterProvider router={router} />
+      <Toaster theme={theme} />
     </QueryClientProvider>
   )
+}
+
+export default function App() {
+  const [app] = useState(() => createApp(createQueryClient))
+  return <AppView {...app} />
 }
