@@ -1,10 +1,74 @@
 {
+  "app": {
+    "name": "LittleDays"
+  },
   "common": {
     "save": "저장",
     "cancel": "취소",
     "retry": "다시 시도",
     "delete": "삭제",
-    "close": "닫기"
+    "close": "닫기",
+    "loading": "불러오는 중…"
+  },
+  "nav": {
+    "main": "주 메뉴",
+    "timeline": "타임라인",
+    "upload": "업로드",
+    "babies": "아기",
+    "more": "더보기",
+    "trash": "휴지통",
+    "members": "멤버",
+    "settings": "설정",
+    "logout": "로그아웃"
+  },
+  "roles": {
+    "owner": "관리자",
+    "guardian": "보호자",
+    "family": "가족"
+  },
+  "auth": {
+    "username": "아이디",
+    "password": "비밀번호",
+    "displayName": "표시 이름",
+    "toLogin": "로그인 화면으로 가기",
+    "login": {
+      "title": "로그인",
+      "submit": "로그인",
+      "firstRun": "처음 설치했나요?",
+      "toSignup": "첫 계정 만들기"
+    },
+    "signup": {
+      "title": "첫 계정 만들기",
+      "description": "이 계정이 관리자가 돼요.",
+      "instanceName": "인스턴스 이름",
+      "instanceNameHint": "모든 화면 위쪽에 보이는 이름이에요.",
+      "submit": "계정 만들기",
+      "babyTitle": "첫 아기 추가",
+      "babyDescription": "나중에 추가해도 돼요.",
+      "later": "나중에"
+    },
+    "invite": {
+      "title": "{{instance}}에 초대받았어요",
+      "role": "역할: {{role}}",
+      "description": "계정을 만들고 참여해 주세요.",
+      "submit": "계정 만들기"
+    }
+  },
+  "babies": {
+    "name": "이름",
+    "birthDate": "생년월일",
+    "sex": "성별",
+    "sexUnset": "선택 안 함",
+    "sexFemale": "여자",
+    "sexMale": "남자",
+    "add": "아기 추가"
+  },
+  "photo": {
+    "title": "사진"
+  },
+  "notFound": {
+    "title": "페이지를 찾을 수 없어요.",
+    "home": "타임라인으로 가기"
   },
   "errors": {
     "unknown": "문제가 생겼어요. 잠시 후 다시 시도해 주세요.",

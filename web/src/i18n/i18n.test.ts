@@ -75,6 +75,13 @@ describe('i18n', () => {
     }
   })
 
+  it('html_lang_follows_language', async () => {
+    await i18next.changeLanguage('en')
+    expect(document.documentElement.lang).toBe('en')
+    await i18next.changeLanguage('ko')
+    expect(document.documentElement.lang).toBe('ko')
+  })
+
   it('ko_en_have_same_keys', () => {
     expect(flatten(en).sort()).toEqual(flatten(ko).sort())
   })

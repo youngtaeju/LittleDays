@@ -1,10 +1,10 @@
-import { QueryClientProvider, useQuery } from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { api, call } from '@/api/client'
 import { json, mockFetch } from '@/test/fetch'
-import { createQueryClient, meQueryKey, useMe } from './session'
+import { createQueryClient, loadMe, meQueryKey, useMe } from './session'
 
 function setup() {
   const onLogout = vi.fn()
@@ -35,35 +35,34 @@ describe('session', () => {
     mockFetch({
       'GET /api/babies': () => json(401, { error: key, params: {} }),
     })
-    const { onLogout, qc, wrapper } = setup()
+    const { onLogout, qc } = setup()
     qc.setQueryData(meQueryKey, { id: 'u' })
+    qc.setQueryData(['other'], 1)
+    const fail = () => call(api.GET('/api/babies'))
 
-    const first = renderHook(
-      () =>
-        useQuery({
-          queryKey: ['a'],
-          queryFn: () => call(api.GET('/api/babies')),
-        }),
-      { wrapper },
-    )
-    await waitFor(() => {
-      expect(first.result.current.isError).toBe(true)
-    })
+    // 마운트된 관찰자는 캐시 비움 후 쿼리를 다시 만들므로 qc.query 로 검사.
+    await expect(qc.query({ queryKey: ['a'], queryFn: fail })).rejects.toThrow()
     expect(onLogout).toHaveBeenCalledTimes(1)
     expect(qc.getQueryData(meQueryKey)).toBeNull()
+    // 이전 사용자 데이터 제거.
+    expect(qc.getQueryData(['other'])).toBeUndefined()
 
     key = 'auth.invalidCredentials'
-    const second = renderHook(
-      () =>
-        useQuery({
-          queryKey: ['b'],
-          queryFn: () => call(api.GET('/api/babies')),
-        }),
-      { wrapper },
-    )
-    await waitFor(() => {
-      expect(second.result.current.isError).toBe(true)
-    })
+    await expect(qc.query({ queryKey: ['b'], queryFn: fail })).rejects.toThrow()
     expect(onLogout).toHaveBeenCalledTimes(1)
+  })
+
+  // 가드 경로는 재시도 없이 즉시 '모름'. 오프라인 이동 지연 방지.
+  it('load_me_does_not_retry', async () => {
+    let calls = 0
+    mockFetch({
+      'GET /api/auth/me': () => {
+        calls += 1
+        throw new TypeError('Failed to fetch')
+      },
+    })
+    const { qc } = setup()
+    expect(await loadMe(qc)).toBeUndefined()
+    expect(calls).toBe(1)
   })
 })
