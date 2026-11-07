@@ -7,7 +7,12 @@ import { initI18n } from '@/i18n'
 import en from '@/locales/en.json'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
-import { apiError, settingsFixture, userFixture } from '@/test/fixtures'
+import {
+  apiError,
+  emptyTimelineRoutes,
+  settingsFixture,
+  userFixture,
+} from '@/test/fixtures'
 import { renderApp } from '@/test/router'
 
 beforeEach(() => {
@@ -25,6 +30,7 @@ function browserLanguage(lang: string) {
 // 로그인 화면 공통 요청. me 는 상태 변수로 로그인 전후 응답 전환.
 function authRoutes(state: { me: User | null }, signupOpen = false) {
   return {
+    ...emptyTimelineRoutes,
     'GET /api/auth/me': () =>
       state.me ? json(200, { user: state.me }) : apiError(401, 'auth.required'),
     'GET /api/auth/status': () => json(200, { signup_open: signupOpen }),
@@ -212,6 +218,7 @@ describe('signup', () => {
       browserLanguage('ko-KR')
       let body: unknown
       mockFetch({
+        ...emptyTimelineRoutes,
         'GET /api/auth/status': () => json(200, { signup_open: true }),
         'GET /api/settings': () => json(200, settingsFixture),
         'POST /api/auth/signup': async (req) => {

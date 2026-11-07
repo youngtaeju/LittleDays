@@ -70,6 +70,22 @@
     "title": "Page not found.",
     "home": "Go to timeline"
   },
+  "timeline": {
+    "all": "All",
+    "filter": "Baby filter",
+    "photo": "Photo",
+    "video": "Video",
+    "processing": "Processing",
+    "failed": "Processing failed",
+    "empty": "Upload your first photo",
+    "emptyFiltered": "No photos of this baby yet.",
+    "upload": "Upload photos"
+  },
+  "age": {
+    "days": "Day {{days}}",
+    "monthsDays": "{{months}} mo {{days}} d",
+    "yearsMonths": "{{years}} y {{months}} mo"
+  },
   "errors": {
     "unknown": "Something went wrong. Please try again in a moment.",
     "network": {

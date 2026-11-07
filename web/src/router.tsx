@@ -15,6 +15,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { AppShell } from '@/shell/AppShell'
+import { TimelinePage } from '@/timeline/TimelinePage'
 
 interface RouterContext {
   queryClient: QueryClient
@@ -122,7 +123,7 @@ const timelineRoute = createRoute({
   validateSearch: (s: Record<string, unknown>): { baby?: string } => ({
     baby: typeof s.baby === 'string' ? s.baby : undefined,
   }),
-  component: () => <Placeholder title="nav.timeline" />,
+  component: TimelinePage,
 })
 
 const uploadRoute = createRoute({

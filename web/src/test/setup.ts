@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach } from 'vitest'
 import { takeUnmatchedRequests } from './fetch'
+import { installIntersectionObserver } from './intersection'
 
 afterEach(() => {
   const unmatched = takeUnmatchedRequests()
@@ -20,3 +21,5 @@ window.matchMedia = (query: string): MediaQueryList =>
 
 // jsdom 은 scrollTo 미구현. 라우터 스크롤 복원이 호출.
 window.scrollTo = () => undefined
+
+installIntersectionObserver()

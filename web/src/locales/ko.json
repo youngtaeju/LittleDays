@@ -70,6 +70,22 @@
     "title": "페이지를 찾을 수 없어요.",
     "home": "타임라인으로 가기"
   },
+  "timeline": {
+    "all": "전체",
+    "filter": "아기 필터",
+    "photo": "사진",
+    "video": "영상",
+    "processing": "처리 중",
+    "failed": "처리 실패",
+    "empty": "첫 사진을 올려 보세요",
+    "emptyFiltered": "이 아기의 사진이 아직 없어요.",
+    "upload": "사진 올리기"
+  },
+  "age": {
+    "days": "생후 {{days}}일",
+    "monthsDays": "{{months}}개월 {{days}}일",
+    "yearsMonths": "{{years}}살 {{months}}개월"
+  },
   "errors": {
     "unknown": "문제가 생겼어요. 잠시 후 다시 시도해 주세요.",
     "network": {
