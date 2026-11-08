@@ -234,5 +234,23 @@
       "notFound": "The user could not be found.",
       "roleNotAllowed": "You can't change to this role."
     }
+  },
+  "trash": {
+    "retention": "Items are permanently deleted {{days}} days after they are moved to the trash.",
+    "retentionNever": "The trash is not emptied automatically.",
+    "empty": "Empty trash",
+    "emptyState": "The trash is empty.",
+    "itemTitle": "Trash item",
+    "deletedAt": "Deleted {{time}}",
+    "restore": "Restore",
+    "restored": "Restored",
+    "permanent": "Delete permanently",
+    "permanentTitle": "Delete permanently?",
+    "permanentConfirm": "This cannot be undone.",
+    "emptyTitle": "Empty the trash?",
+    "emptyConfirm": "{{count}} will be permanently deleted. This cannot be undone.",
+    "count": "{{n}} items",
+    "countMore": "{{n}}+ items",
+    "emptied": "{{n}} items permanently deleted"
   }
 }

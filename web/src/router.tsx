@@ -17,6 +17,7 @@ import { SignupPage } from '@/pages/SignupPage'
 import { AppShell } from '@/shell/AppShell'
 import { BabiesPage } from '@/babies/BabiesPage'
 import { TimelinePage } from '@/timeline/TimelinePage'
+import { TrashPage } from '@/trash/TrashPage'
 import { UploadPage } from '@/upload/UploadPage'
 import { ViewerPage } from '@/viewer/ViewerPage'
 
@@ -146,7 +147,7 @@ const trashRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/trash',
   beforeLoad: requireRole('guardian'),
-  component: () => <Placeholder title="nav.trash" />,
+  component: TrashPage,
 })
 
 const membersRoute = createRoute({
