@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/youngtaeju/littledays
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # GitHub Release 생성
+      packages: write # GHCR push
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: 태그와 server/Cargo.toml 버전 일치 검사
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "태그 형식이 vX.Y.Z 가 아닙니다: $TAG" >&2
+            exit 1
+          fi
+          crate="$(sed -n 's/^version = "\(.*\)"$/\1/p' server/Cargo.toml | head -n1)"
+          if [ "${TAG#v}" != "$crate" ]; then
+            echo "태그($TAG)와 server/Cargo.toml 버전($crate)이 다릅니다." >&2
+            exit 1
+          fi
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: 태그와 라벨 계산
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.licenses=AGPL-3.0-only
+      # push 전 같은 Dockerfile 로 빌드한 이미지 스모크. 깨진 이미지 배포 방지.
+      - name: 이미지 빌드(스모크용)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          tags: littledays:release
+          load: true
+          cache-from: type=gha
+      - name: 스모크
+        run: bash docker/smoke.sh littledays:release
+      # 스모크한 이미지와 같은 이미지라는 보장은 캐시 적중에 의존. 미적중 시 재빌드.
+      - name: 이미지 빌드와 push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+      - name: GitHub Release 생성
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" --verify-tag --generate-notes --title "$TAG"
