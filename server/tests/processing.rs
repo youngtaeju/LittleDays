@@ -294,6 +294,32 @@ async fn missing_original_fails(pool: PgPool) {
     assert_eq!(job_rows(&pool).await[0].status, "failed");
 }
 
+#[cfg(unix)]
+#[sqlx::test(migrations = "./migrations")]
+async fn processing_error_has_no_absolute_path(pool: PgPool) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = ingest(&app, &fixture("plain.png"), "a.png", json!({})).await;
+    let rel = sqlx::query_scalar!("SELECT original_path FROM assets WHERE id = $1", id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    // 읽기 불가 원본: 디코드 open 에러 문구에 절대 경로 포함.
+    let original = app.data.path().join(rel);
+    std::fs::set_permissions(&original, std::fs::Permissions::from_mode(0o000)).unwrap();
+    if std::fs::File::open(&original).is_ok() {
+        // root 는 권한 무시.
+        return;
+    }
+    run_one(&app).await;
+
+    let err = asset(&app, id).await.processing_error.unwrap();
+    assert!(err.contains("DATA_DIR"), "{err}");
+    let data_dir = app.data.path().to_string_lossy().into_owned();
+    assert!(!err.contains(&data_dir), "{err}");
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn vanished_asset_finishes_quietly(pool: PgPool) {
     let app = media_app(&pool, Role::Guardian).await;

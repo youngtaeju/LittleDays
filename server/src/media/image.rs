@@ -8,7 +8,7 @@ use std::{
 };
 
 use ::image::{
-    DynamicImage, ImageDecoder, ImageFormat, ImageReader, RgbImage, RgbaImage,
+    DynamicImage, ImageDecoder, ImageFormat, ImageReader, Limits, RgbImage, RgbaImage,
     metadata::Orientation,
 };
 use anyhow::{Context, anyhow, bail};
@@ -24,6 +24,11 @@ use moxcms::{ColorProfile, Layout, TransformOptions};
 use serde::{Deserialize, Serialize};
 
 use super::sniff::MediaType;
+
+/// 디코드 허용 최대 픽셀 수(200 MP 급 + 여유). 초과는 디코드 전 실패.
+pub const MAX_IMAGE_PIXELS: u64 = 210_000_000;
+/// 디코더 할당 상한. 픽셀 상한 크기의 RGBA8 버퍼 1개 + 여유.
+const DECODE_MAX_ALLOC: u64 = MAX_IMAGE_PIXELS * 4 + 64 * 1024 * 1024;
 
 const THUMB_LONG: u32 = 400;
 const PREVIEW_LONG: u32 = 1600;
@@ -78,6 +83,12 @@ pub fn decode(path: &Path, ty: MediaType, orientation: u32) -> anyhow::Result<Rg
 fn decode_raster(path: &Path, format: ImageFormat, orientation: u32) -> anyhow::Result<RgbImage> {
     let file = File::open(path).with_context(|| format!("open {}", path.display()))?;
     let mut decoder = ImageReader::with_format(BufReader::new(file), format).into_decoder()?;
+    let (w, h) = decoder.dimensions();
+    check_pixels(w, h)?;
+    // 픽셀 상한에 맞춘 명시적 할당 상한.
+    let mut limits = Limits::default();
+    limits.max_alloc = Some(DECODE_MAX_ALLOC);
+    decoder.set_limits(limits)?;
     // 프로파일 읽기 실패는 색 변환 생략.
     let icc = decoder.icc_profile().ok().flatten();
     let img = DynamicImage::from_decoder(decoder)?;
@@ -99,6 +110,7 @@ fn decode_heif(path: &Path) -> anyhow::Result<RgbImage> {
     let lib = LibHeif::new();
     let ctx = HeifContext::read_from_file(name)?;
     let handle = ctx.primary_image_handle()?;
+    check_pixels(handle.width(), handle.height())?;
     let alpha = handle.has_alpha_channel();
     let chroma = if alpha {
         RgbChroma::Rgba
@@ -121,12 +133,15 @@ fn decode_heif(path: &Path) -> anyhow::Result<RgbImage> {
         let start = y * plane.stride;
         px.extend_from_slice(&plane.data[start..start + row]);
     }
+    let (width, height) = (plane.width, plane.height);
+    // 복사본 확보 후 libheif 버퍼 즉시 해제.
+    drop(decoded);
     let mut rgb = if alpha {
-        let rgba = RgbaImage::from_raw(plane.width, plane.height, px)
+        let rgba = RgbaImage::from_raw(width, height, px)
             .ok_or_else(|| anyhow!("heif: buffer size mismatch"))?;
         flatten(&rgba)
     } else {
-        RgbImage::from_raw(plane.width, plane.height, px)
+        RgbImage::from_raw(width, height, px)
             .ok_or_else(|| anyhow!("heif: buffer size mismatch"))?
     };
     // nclx 전용 색 정보는 미처리.
@@ -134,6 +149,13 @@ fn decode_heif(path: &Path) -> anyhow::Result<RgbImage> {
         to_srgb(&mut rgb, &icc.data);
     }
     Ok(rgb)
+}
+
+fn check_pixels(w: u32, h: u32) -> anyhow::Result<()> {
+    if u64::from(w) * u64::from(h) > MAX_IMAGE_PIXELS {
+        bail!("image too large: {w}x{h}");
+    }
+    Ok(())
 }
 
 /// 흰 배경 위 알파 합성.
@@ -146,7 +168,9 @@ fn flatten(rgba: &RgbaImage) -> RgbImage {
     })
 }
 
-/// 임베디드 ICC → sRGB. 프로파일 해석·변환 실패(손상, CMYK 등)는 경고 후 원래 값 유지.
+/// 임베디드 ICC → sRGB. 행 단위 변환(행 크기 버퍼 1개, 전체 사본 없음).
+/// 프로파일 해석 실패(손상, CMYK 등)는 경고 후 원래 값 유지.
+/// 중간 행 변환 실패는 경고 후 중단, 앞선 행은 이미 변환된 상태.
 fn to_srgb(img: &mut RgbImage, icc: &[u8]) {
     let transform = ColorProfile::new_from_slice(icc).and_then(|src| {
         src.create_transform_8bit(
@@ -156,10 +180,24 @@ fn to_srgb(img: &mut RgbImage, icc: &[u8]) {
             TransformOptions::default(),
         )
     });
-    let mut out = vec![0u8; img.as_raw().len()];
-    match transform.and_then(|t| t.transform(img.as_raw(), &mut out)) {
-        Ok(()) => img.copy_from_slice(&out),
-        Err(e) => tracing::warn!(error = ?e, "ICC 변환 생략"),
+    let transform = match transform {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::warn!(error = ?e, "ICC 변환 생략");
+            return;
+        }
+    };
+    let row_len = img.width() as usize * 3;
+    if row_len == 0 {
+        return;
+    }
+    let mut scratch = vec![0u8; row_len];
+    for row in img.as_mut().chunks_exact_mut(row_len) {
+        if let Err(e) = transform.transform(row, &mut scratch) {
+            tracing::warn!(error = ?e, "ICC 변환 중단");
+            return;
+        }
+        row.copy_from_slice(&scratch);
     }
 }
 

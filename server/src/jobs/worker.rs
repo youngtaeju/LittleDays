@@ -1,6 +1,6 @@
 //! 작업 큐 워커 루프.
 
-use std::{panic::AssertUnwindSafe, time::Duration};
+use std::{panic::AssertUnwindSafe, path::Path, time::Duration};
 
 use anyhow::anyhow;
 use futures_util::FutureExt;
@@ -69,7 +69,7 @@ async fn record_failure(
     attempts: i32,
     err: &anyhow::Error,
 ) -> AppResult<()> {
-    let message = error_message(err);
+    let message = error_message(err, &state.config.data_dir);
     let mut tx = state.pool.begin().await?;
     if assets::queries::mark_failed(&mut *tx, asset_id, &message).await? {
         super::fail(&mut *tx, job_id, &message).await?;
@@ -84,9 +84,9 @@ async fn record_failure(
     Ok(())
 }
 
-/// 에러 체인을 한 줄로, `ERROR_MAX_CHARS` 이내.
-fn error_message(err: &anyhow::Error) -> String {
-    let full = format!("{err:#}");
+/// 에러 체인을 한 줄로, `ERROR_MAX_CHARS` 이내. `data_dir` 절대 경로는 `DATA_DIR` 로 치환.
+fn error_message(err: &anyhow::Error, data_dir: &Path) -> String {
+    let full = format!("{err:#}").replace(&*data_dir.to_string_lossy(), "DATA_DIR");
     let line = full.lines().next().unwrap_or_default();
     line.chars().take(ERROR_MAX_CHARS).collect()
 }
@@ -129,9 +129,19 @@ mod tests {
     #[test]
     fn error_message_is_single_bounded_line() {
         let err = anyhow::anyhow!("inner\nsecond line").context("decode");
-        assert_eq!(error_message(&err), "decode: inner");
+        let dir = Path::new("/srv/data");
+        assert_eq!(error_message(&err, dir), "decode: inner");
         let long = anyhow::anyhow!("{}", "가".repeat(600));
-        assert_eq!(error_message(&long).chars().count(), ERROR_MAX_CHARS);
+        assert_eq!(error_message(&long, dir).chars().count(), ERROR_MAX_CHARS);
+    }
+
+    #[test]
+    fn error_message_masks_data_dir() {
+        let err = anyhow::anyhow!("No such file").context("open /srv/data/originals/a.jpg");
+        assert_eq!(
+            error_message(&err, Path::new("/srv/data")),
+            "open DATA_DIR/originals/a.jpg: No such file"
+        );
     }
 
     #[tokio::test]
