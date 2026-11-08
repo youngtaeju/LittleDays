@@ -1,0 +1,10 @@
+# 이미지 빌드에 필요한 것만 포함.
+*
+!docker/entrypoint.sh
+!server/
+!web/
+server/target
+server/.env
+web/node_modules
+web/dist
+web/.env*

@@ -7,3 +7,4 @@ node_modules/
 data/
 /compose/data/
 web/dist
+/compose/postgres/

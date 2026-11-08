@@ -91,3 +91,24 @@ jobs:
         run: pnpm build
       - name: 생성 타입 신선도 검사
         run: pnpm gen:api:check
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - name: 이미지 빌드
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          tags: littledays:ci
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: 이미지 크기 기록
+        run: |
+          { echo '```'; docker image ls littledays:ci; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: 스모크
+        run: bash docker/smoke.sh littledays:ci
