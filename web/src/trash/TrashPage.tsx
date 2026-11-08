@@ -163,7 +163,7 @@ export function TrashPage() {
       <ul className="-mx-4 grid grid-cols-3 gap-[2px] sm:mx-0 sm:grid-cols-4 lg:grid-cols-6">
         {items.map((item) => (
           <li key={item.id}>
-            <Tile item={item} onSelect={select} />
+            <Tile item={item} timezone={settings?.timezone} onSelect={select} />
           </li>
         ))}
       </ul>

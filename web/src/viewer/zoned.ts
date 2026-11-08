@@ -69,6 +69,16 @@ export function formatInZone(iso: string, tz: string, locale: string): string {
   }).format(new Date(iso))
 }
 
+// 24시간제 `HH:mm`.
+export function formatClock(iso: string, tz: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(iso))
+}
+
 // tz 기준 오늘 `YYYY-MM-DD`.
 export function todayInZone(tz: string, now: Date = new Date()): string {
   return ymd(wall(now.getTime(), tz))

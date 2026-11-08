@@ -3,6 +3,9 @@ import { useSyncExternalStore } from 'react'
 export type ThemePref = 'system' | 'light' | 'dark'
 
 const STORAGE_KEY = 'ld.theme'
+// index.html 정적 메타와 동일 값.
+const THEME_COLOR_LIGHT = '#F5F7F6'
+const THEME_COLOR_DARK = '#14181B'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 export function getThemePref(): ThemePref {
@@ -17,6 +20,21 @@ export function getThemePref(): ThemePref {
 export function applyTheme(p: ThemePref, systemDark: boolean): void {
   const dark = p === 'dark' || (p === 'system' && systemDark)
   document.documentElement.classList.toggle('dark', dark)
+  setThemeColor(dark)
+}
+
+// 정적 메타(media 한정)는 OS 설정만 따름. 앱 선택 반영용 media 없는 메타를 head 맨 앞에 둠.
+function setThemeColor(dark: boolean): void {
+  let meta = document.querySelector<HTMLMetaElement>(
+    'meta[name="theme-color"][data-app-theme]',
+  )
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.name = 'theme-color'
+    meta.dataset.appTheme = ''
+    document.head.prepend(meta)
+  }
+  meta.content = dark ? THEME_COLOR_DARK : THEME_COLOR_LIGHT
 }
 
 // 모듈 단위 단일 상태. 훅 인스턴스 간 공유, 적용 지점 하나.

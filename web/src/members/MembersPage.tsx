@@ -295,43 +295,53 @@ function InviteList() {
         </p>
       )}
       <ul className="grid gap-2">
-        {list.map((invite) => (
-          <li
-            key={invite.id}
-            className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3"
-          >
-            <span className="font-semibold">{t(`roles.${invite.role}`)}</span>
-            <span className="text-sm text-muted-foreground">
-              {t(`members.inviteStatus.${invite.status}`)}
-            </span>
-            {settings && (
-              <span className="min-w-0 flex-1 text-sm text-muted-foreground">
-                {t('members.expiresAt', {
-                  time: formatInZone(
-                    invite.expires_at,
-                    settings.timezone,
-                    i18n.language,
-                  ),
-                })}
+        {list.map((invite) => {
+          const expires = settings
+            ? t('members.expiresAt', {
+                time: formatInZone(
+                  invite.expires_at,
+                  settings.timezone,
+                  i18n.language,
+                ),
+              })
+            : null
+          return (
+            <li
+              key={invite.id}
+              className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3"
+            >
+              <span className="font-semibold">{t(`roles.${invite.role}`)}</span>
+              <span className="text-sm text-muted-foreground">
+                {t(`members.inviteStatus.${invite.status}`)}
               </span>
-            )}
-            {invite.status === 'active' && (
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label={t('members.revokeLabel', {
-                  role: t(`roles.${invite.role}`),
-                })}
-                disabled={revoke.isPending}
-                onClick={() => {
-                  revoke.mutate(invite.id)
-                }}
-              >
-                {t('members.revoke')}
-              </Button>
-            )}
-          </li>
-        ))}
+              {expires && (
+                <span className="min-w-0 flex-1 text-sm text-muted-foreground">
+                  {expires}
+                </span>
+              )}
+              {invite.status === 'active' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label={[
+                    t('members.revokeLabel', {
+                      role: t(`roles.${invite.role}`),
+                    }),
+                    expires,
+                  ]
+                    .filter((v) => v != null)
+                    .join(', ')}
+                  disabled={revoke.isPending}
+                  onClick={() => {
+                    revoke.mutate(invite.id)
+                  }}
+                >
+                  {t('members.revoke')}
+                </Button>
+              )}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

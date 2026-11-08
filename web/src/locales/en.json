@@ -136,6 +136,8 @@
     "choose": "Choose files",
     "drop": "You can also drop photos and videos here.",
     "queue": "Upload queue",
+    "summary": "{{done}} of {{total}} finished",
+    "summaryFailed": ", {{failed}} failed",
     "inProgress": "{{count}} in progress",
     "status": {
       "queued": "Waiting",

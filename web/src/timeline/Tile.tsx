@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import type { AssetSummary } from '@/api/types'
 import { Blurhash } from './Blurhash'
 import { formatDay } from './group'
+import { formatClock } from '@/viewer/zoned'
 import { thumbUrl } from './media'
 
 // m:ss. 1시간 이상도 분으로.
@@ -16,15 +17,18 @@ function formatDuration(ms: number): string {
 
 // 정사각 썸네일. 바탕은 dominant_color → blurhash → 썸네일 순으로 덮음.
 // baby: 뷰어 이전/다음이 같은 필터 목록을 따르도록 전달.
+// timezone: 인스턴스 시간대. 지정 시 라벨에 촬영 시각(HH:mm) 추가.
 // onSelect: 지정 시 뷰어 링크 대신 버튼(휴지통 등). 안정된 콜백 필요(memo).
 // memo: 목록 캐시 교체 시 바뀐 항목만 다시 그림(나머지 항목은 같은 객체).
 export const Tile = memo(function Tile({
   item,
   baby,
+  timezone,
   onSelect,
 }: {
   item: AssetSummary
   baby?: string | undefined
+  timezone?: string | undefined
   onSelect?: (id: string) => void
 }) {
   const { t, i18n } = useTranslation()
@@ -41,6 +45,7 @@ export const Tile = memo(function Tile({
     video ? t('timeline.video') : t('timeline.photo'),
     duration,
     formatDay(item.local_date, i18n.language),
+    timezone ? formatClock(item.taken_at, timezone, i18n.language) : null,
     state,
   ]
     .filter((v) => v != null)

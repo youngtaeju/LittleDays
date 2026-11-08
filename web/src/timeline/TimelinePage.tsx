@@ -5,6 +5,7 @@ import type { AssetSummary, Baby } from '@/api/types'
 import { hasRole, useMe } from '@/auth/session'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
+import { useSettings } from '@/settings/useSettings'
 import { ageAt, formatAge } from './age'
 import { BabyFilter } from './BabyFilter'
 import {
@@ -94,14 +95,16 @@ function ProcessingPoll({
 function TileItem({
   item,
   baby,
+  timezone,
 }: {
   item: AssetSummary
   baby: string | undefined
+  timezone: string | undefined
 }) {
   const ref = useRef<HTMLLIElement>(null)
   return (
     <li ref={ref}>
-      <Tile item={item} baby={baby} />
+      <Tile item={item} baby={baby} timezone={timezone} />
       {item.status === 'processing' && (
         <ProcessingPoll item={item} target={ref} />
       )}
@@ -112,6 +115,7 @@ function TileItem({
 export function TimelinePage() {
   const { t, i18n } = useTranslation()
   const { baby } = route.useSearch()
+  const timezone = useSettings()?.timezone
   const { user } = useMe()
   const babies = useBabies().data ?? []
   const {
@@ -195,7 +199,12 @@ export function TimelinePage() {
               <DayHeader day={day} babies={babies} filter={baby} />
               <ul className="-mx-4 grid grid-cols-3 gap-[2px] sm:mx-0 sm:grid-cols-4 lg:grid-cols-6">
                 {day.items.map((item) => (
-                  <TileItem key={item.id} item={item} baby={baby} />
+                  <TileItem
+                    key={item.id}
+                    item={item}
+                    baby={baby}
+                    timezone={timezone}
+                  />
                 ))}
               </ul>
             </div>

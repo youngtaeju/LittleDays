@@ -137,6 +137,8 @@
     "drop": "사진과 영상을 여기에 끌어 놓아도 돼요.",
     "queue": "업로드 목록",
     "inProgress": "진행 중 {{count}}개",
+    "summary": "{{total}}개 중 {{done}}개 완료",
+    "summaryFailed": ", 실패 {{failed}}개",
     "status": {
       "queued": "대기 중",
       "uploading": "올리는 중",

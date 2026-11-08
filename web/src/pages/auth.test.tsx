@@ -97,6 +97,24 @@ describe('login', () => {
     await screen.findByText(settingsFixture.instance_name)
   })
 
+  it('login_disabled_shows_error', async () => {
+    mockFetch({
+      ...authRoutes({ me: null }),
+      'POST /api/auth/login': () => apiError(401, 'auth.disabled'),
+    })
+    const { user } = renderApp('/login')
+
+    await user.type(await screen.findByLabelText(ko.auth.username), 'mom')
+    await user.type(screen.getByLabelText(ko.auth.password), 'pw123456')
+    await user.click(screen.getByRole('button', { name: ko.auth.login.submit }))
+
+    // 전역 로그아웃이 로케일을 브라우저 언어로 바꿀 수 있음.
+    const texts = [ko.errors.auth.disabled, en.errors.auth.disabled]
+    expect(
+      await screen.findByText((c) => texts.includes(c)),
+    ).toBeInTheDocument()
+  })
+
   it('login_invalid_credentials_shows_error', async () => {
     mockFetch({
       ...authRoutes({ me: null }),
