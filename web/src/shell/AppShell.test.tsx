@@ -26,6 +26,7 @@ async function renderShell(role: Role, path = '/') {
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/auth/status': () => json(200, { signup_open: false }),
+    'GET /api/auth/sessions': () => json(200, { sessions: [] }),
     'POST /api/auth/logout': () => json(204, null),
   })
   const app = renderApp(path)

@@ -350,3 +350,50 @@ async fn user_endpoints_require_auth(pool: PgPool) {
         "auth.required",
     );
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn email_hidden_from_non_owner(pool: PgPool) {
+    let (owner, mom) = server_as(&pool, "mom", Role::Owner).await;
+    let (guardian, dad) = server_as(&pool, "dad", Role::Guardian).await;
+    let (_family, kid) = server_as(&pool, "kid", Role::Family).await;
+    for (user, email) in [
+        (&mom, "mom@x.test"),
+        (&dad, "dad@x.test"),
+        (&kid, "kid@x.test"),
+    ] {
+        sqlx::query("UPDATE users SET email = $1 WHERE id = $2")
+            .bind(email)
+            .bind(user.id)
+            .execute(&pool)
+            .await
+            .expect("set email");
+    }
+
+    let emails = |res: TestResponse| -> Vec<(String, Value)> {
+        res.json::<Value>()["users"]
+            .as_array()
+            .expect("users")
+            .iter()
+            .map(|u| {
+                (
+                    u["username"].as_str().expect("name").to_string(),
+                    u["email"].clone(),
+                )
+            })
+            .collect()
+    };
+
+    let seen = emails(guardian.get("/api/users").await);
+    assert_eq!(seen.len(), 3);
+    for (name, email) in seen {
+        if name == "dad" {
+            assert_eq!(email, "dad@x.test");
+        } else {
+            assert!(email.is_null(), "{name} email leaked");
+        }
+    }
+
+    for (_, email) in emails(owner.get("/api/users").await) {
+        assert!(email.is_string());
+    }
+}

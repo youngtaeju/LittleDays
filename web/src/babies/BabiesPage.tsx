@@ -113,7 +113,7 @@ export function BabiesPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-xl gap-4 p-4">
+    <div className="mx-auto grid max-w-xl gap-4">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-lg font-semibold">{t('nav.babies')}</h1>
         {canManage && (
@@ -128,7 +128,20 @@ export function BabiesPage() {
       </div>
       <FormError error={babies.error ?? reorder.error} />
       {babies.isSuccess && list.length === 0 && (
-        <p className="text-sm text-muted-foreground">{t('babies.empty')}</p>
+        <div className="grid justify-items-start gap-3">
+          <p className="text-sm text-muted-foreground">
+            {t(canManage ? 'babies.emptyManage' : 'babies.empty')}
+          </p>
+          {canManage && (
+            <Button
+              onClick={() => {
+                setDialog({ kind: 'add' })
+              }}
+            >
+              {t('babies.add')}
+            </Button>
+          )}
+        </div>
       )}
       <ul className="grid gap-2">
         {list.map((baby, i) => {
@@ -136,10 +149,10 @@ export function BabiesPage() {
           return (
             <li
               key={baby.id}
-              className="flex items-center gap-3 rounded-md border border-border bg-card p-3"
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-card p-3"
             >
               <Avatar baby={baby} />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-40">
                 <p className="truncate font-semibold">{baby.name}</p>
                 <p className="text-sm text-muted-foreground">
                   {baby.birth_date}
@@ -151,7 +164,7 @@ export function BabiesPage() {
                 )}
               </div>
               {canManage && (
-                <div className="flex shrink-0">
+                <div className="ml-auto flex shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"

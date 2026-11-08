@@ -83,6 +83,9 @@ describe('i18n', () => {
   })
 
   it('ko_en_have_same_keys', () => {
-    expect(flatten(en).sort()).toEqual(flatten(ko).sort())
+    // 복수형 접미사(_one/_other)는 언어별 카테고리가 달라 기본 키로 합쳐 비교.
+    const base = (keys: string[]) =>
+      [...new Set(keys.map((k) => k.replace(/_(one|other)$/, '')))].sort()
+    expect(base(flatten(en))).toEqual(base(flatten(ko)))
   })
 })

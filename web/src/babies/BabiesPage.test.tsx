@@ -148,6 +148,24 @@ describe('BabiesPage', () => {
     })
   })
 
+  it('empty_state_by_role', async () => {
+    const { user } = renderBabies([], {
+      'POST /api/babies': () => apiError(400, 'babies.nameInvalid'),
+    })
+    expect(await screen.findByText('아기를 추가해 보세요')).toBeInTheDocument()
+    const buttons = screen.getAllByRole('button', { name: '아기 추가' })
+    expect(buttons).toHaveLength(2)
+    await user.click(buttons[1] as HTMLElement)
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    cleanup()
+
+    renderBabies([], {}, 'family')
+    expect(
+      await screen.findByText('아직 등록한 아기가 없어요.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '아기 추가' })).toBeNull()
+  })
+
   it('family_read_only', async () => {
     renderBabies([babyFixture()], {}, 'family')
     expect(await screen.findByText('하늘')).toBeInTheDocument()

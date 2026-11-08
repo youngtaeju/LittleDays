@@ -3138,7 +3138,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 사용자 목록 (가입 순) */
+            /** @description 사용자 목록 (가입 순). owner 가 아니면 본인 외 이메일은 null */
             200: {
                 headers: {
                     [name: string]: unknown;

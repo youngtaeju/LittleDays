@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, call } from '@/api/client'
 import type { Baby } from '@/api/types'
 import { Field, FormError, formText } from '@/components/Field'
+import { SelectField } from '@/components/NativeSelect'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -25,7 +26,6 @@ export function BabyForm({
 }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const sexId = useId()
   const [clearAvatar, setClearAvatar] = useState(false)
   const save = useMutation({
     mutationFn: (f: FormData) => {
@@ -78,19 +78,15 @@ export function BabyForm({
         defaultValue={baby?.birth_date}
         required
       />
-      <div className="grid gap-2">
-        <Label htmlFor={sexId}>{t('babies.sex')}</Label>
-        <select
-          id={sexId}
-          name="sex"
-          defaultValue={baby?.sex ?? ''}
-          className="h-9 rounded-md border border-border bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          <option value="">{t('babies.sexUnset')}</option>
-          <option value="female">{t('babies.sexFemale')}</option>
-          <option value="male">{t('babies.sexMale')}</option>
-        </select>
-      </div>
+      <SelectField
+        label={t('babies.sex')}
+        name="sex"
+        defaultValue={baby?.sex ?? ''}
+      >
+        <option value="">{t('babies.sexUnset')}</option>
+        <option value="female">{t('babies.sexFemale')}</option>
+        <option value="male">{t('babies.sexMale')}</option>
+      </SelectField>
       {baby?.avatar_asset_id && (
         <div className="flex items-center gap-2">
           <Checkbox

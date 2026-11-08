@@ -109,6 +109,7 @@ describe('TrashPage', () => {
     await waitFor(() => {
       expect(deletes).toEqual([ID])
     })
+    expect(await screen.findByText('영구 삭제함')).toBeInTheDocument()
   })
 
   it('empty_trash_reports_count', async () => {
@@ -120,7 +121,9 @@ describe('TrashPage', () => {
       await screen.findByRole('button', { name: '휴지통 비우기' }),
     )
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText(/1개/)).toBeInTheDocument()
+    expect(
+      within(dialog).getByText('1개를 영구 삭제해요. 복구할 수 없어요.'),
+    ).toBeInTheDocument()
     await user.click(
       within(dialog).getByRole('button', { name: '휴지통 비우기' }),
     )

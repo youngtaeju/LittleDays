@@ -75,7 +75,7 @@ export function TrashPage() {
   function invalidate(withBabies: boolean) {
     void qc.invalidateQueries({ queryKey: trashKey })
     void qc.invalidateQueries({ queryKey: ['assets'] })
-    // 영구 삭제 시 서버가 대표사진 지정 해제.
+    // 휴지통 이동 시 서버가 이미 대표사진 지정 해제. 영구 삭제 후 아기 캐시 재확인용.
     if (withBabies) void qc.invalidateQueries({ queryKey: babiesKey })
   }
 
@@ -103,6 +103,7 @@ export function TrashPage() {
       invalidate(true)
       setConfirm(null)
       setSelectedId(null)
+      toast(t('trash.permanentDone'))
     },
   })
 
@@ -112,7 +113,7 @@ export function TrashPage() {
       invalidate(true)
       setConfirm(null)
       setSelectedId(null)
-      toast(t('trash.emptied', { n: deleted }))
+      toast(t('trash.emptied', { count: deleted }))
     },
   })
 
@@ -123,9 +124,6 @@ export function TrashPage() {
   }
 
   const days = settings?.trash_retention_days
-  const count = hasNextPage
-    ? t('trash.countMore', { n: items.length })
-    : t('trash.count', { n: items.length })
 
   return (
     <div className="grid gap-4">
@@ -145,7 +143,7 @@ export function TrashPage() {
         <p className="text-sm text-muted-foreground">
           {days === 0
             ? t('trash.retentionNever')
-            : t('trash.retention', { days })}
+            : t('trash.retention', { count: days })}
         </p>
       )}
       {status === 'pending' && (
@@ -236,7 +234,9 @@ export function TrashPage() {
       </Sheet>
 
       <Dialog
-        open={confirm !== null}
+        open={
+          confirm === 'empty' || (confirm === 'permanent' && selected !== null)
+        }
         onOpenChange={(open) => {
           if (!open) closeConfirm()
         }}
@@ -250,7 +250,9 @@ export function TrashPage() {
             </DialogTitle>
             <DialogDescription>
               {confirm === 'empty'
-                ? t('trash.emptyConfirm', { count })
+                ? hasNextPage
+                  ? t('trash.emptyConfirmMore', { count: items.length })
+                  : t('trash.emptyConfirm', { count: items.length })
                 : t('trash.permanentConfirm')}
             </DialogDescription>
           </DialogHeader>
