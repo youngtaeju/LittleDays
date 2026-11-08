@@ -76,6 +76,7 @@ $ vips getpoint out.png 32 32
 |---|---|
 | `clip-h264.mp4` | 2초 160x120 15fps, H.264 yuv420p + AAC mono, `creation_time=2024-06-01T03:00:00Z` |
 | `clip-hevc.mov` | 2초 160x120 15fps, HEVC yuv420p + AAC mono, displaymatrix 회전 90(표시 120x160), 같은 `creation_time` |
+| `clip-hlg.mov` | 2초 160x120 15fps, HEVC yuv420p10le 영상만(오디오 없음), bt2020/arib-std-b67(HLG)/bt2020nc 태그. HDR 톤매핑 테스트용 |
 | `probe/h264.json`, `probe/hevc-rotated.json` | 위 두 클립의 실제 `ffprobe` 출력 |
 | `probe/apple-creationdate.json` | 아이폰 형태 출력을 필요한 필드만 남겨 손으로 축약한 것. `com.apple.quicktime.creationdate`(`2024-05-01T10:20:30+0900`)와 `side_data_list` rotation -90 포함. 실제 클립 없음 |
 
@@ -89,6 +90,10 @@ ffmpeg -v error -y -f lavfi -i testsrc2=size=160x120:rate=15:duration=2 -f lavfi
   -metadata creation_time=2024-06-01T03:00:00Z -f mp4 /tmp/hevc-src.mp4
 ffmpeg -v error -y -display_rotation:v 90 -i /tmp/hevc-src.mp4 -c copy \
   -metadata creation_time=2024-06-01T03:00:00Z -f mov clip-hevc.mov
+
+ffmpeg -v error -y -f lavfi -i testsrc2=size=160x120:rate=15:duration=2 \
+  -pix_fmt yuv420p10le -c:v libx265 -tag:v hvc1 -x265-params log-level=error -crf 30 \
+  -color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc -f mov clip-hlg.mov
 
 ffprobe -v error -print_format json -show_format -show_streams clip-h264.mp4 > probe/h264.json
 ffprobe -v error -print_format json -show_format -show_streams clip-hevc.mov > probe/hevc-rotated.json

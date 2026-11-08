@@ -122,7 +122,7 @@ async fn photo(
 
 async fn video(path: &Path, ty: MediaType, dir: &Path, avif: bool) -> anyhow::Result<Processed> {
     let probe = video::probe(path).await.context("probe")?;
-    let poster = video::extract_poster(path, probe.duration_ms)
+    let poster = video::extract_poster(path, &probe)
         .await
         .context("poster")?;
     let mut rendered = tokio::task::spawn_blocking({
@@ -138,7 +138,7 @@ async fn video(path: &Path, ty: MediaType, dir: &Path, avif: bool) -> anyhow::Re
         let dst = dir.join("playback.mp4");
         // 실패 시 부분 파일이 재생본으로 보이지 않게 임시 이름 경유.
         let tmp = dir.join("playback.mp4.tmp");
-        if let Err(err) = video::make_playback(path, &tmp, plan).await {
+        if let Err(err) = video::make_playback(path, &tmp, plan, &probe).await {
             if let Err(rm) = remove_file(&tmp).await {
                 tracing::warn!(%rm, path = %tmp.display(), "partial playback removal failed");
             }

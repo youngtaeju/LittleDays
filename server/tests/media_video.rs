@@ -25,14 +25,14 @@ async fn probe_real_files() {
 
 #[tokio::test]
 async fn poster_respects_rotation() {
-    let p = extract_poster(&fixture("clip-h264.mp4"), Some(2000))
-        .await
-        .unwrap();
+    let src = fixture("clip-h264.mp4");
+    let info = probe(&src).await.unwrap();
+    let p = extract_poster(&src, &info).await.unwrap();
     assert_eq!((p.width(), p.height()), (160, 120));
 
-    let p = extract_poster(&fixture("clip-hevc.mov"), Some(2000))
-        .await
-        .unwrap();
+    let src = fixture("clip-hevc.mov");
+    let info = probe(&src).await.unwrap();
+    let p = extract_poster(&src, &info).await.unwrap();
     assert_eq!((p.width(), p.height()), (120, 160));
 }
 
@@ -40,7 +40,9 @@ async fn poster_respects_rotation() {
 async fn transcode_produces_browser_mp4() {
     let dir = TempDir::new().unwrap();
     let dst = dir.path().join("playback.mp4");
-    make_playback(&fixture("clip-hevc.mov"), &dst, Playback::Transcode)
+    let src = fixture("clip-hevc.mov");
+    let info = probe(&src).await.unwrap();
+    make_playback(&src, &dst, Playback::Transcode, &info)
         .await
         .unwrap();
 
@@ -66,10 +68,33 @@ async fn remux_copies_streams() {
     assert!(status.success());
 
     let dst = dir.path().join("playback.mp4");
-    make_playback(&mov, &dst, Playback::Remux).await.unwrap();
+    let info = probe(&mov).await.unwrap();
+    make_playback(&mov, &dst, Playback::Remux, &info)
+        .await
+        .unwrap();
 
     let p = probe(&dst).await.unwrap();
     assert_eq!(p.video_codec, "h264");
     let d = p.duration_ms.unwrap();
     assert!((1900..=2100).contains(&d), "duration {d}");
+}
+
+#[tokio::test]
+async fn hlg_is_tonemapped_to_bt709() {
+    let src = fixture("clip-hlg.mov");
+    let info = probe(&src).await.unwrap();
+    assert_eq!(info.color_transfer.as_deref(), Some("arib-std-b67"));
+    assert_eq!(playback_plan(MediaType::Mov, &info), Playback::Transcode);
+
+    let dir = TempDir::new().unwrap();
+    let dst = dir.path().join("playback.mp4");
+    make_playback(&src, &dst, Playback::Transcode, &info)
+        .await
+        .unwrap();
+
+    let out = probe(&dst).await.unwrap();
+    assert_eq!(out.video_codec, "h264");
+    assert_eq!(out.pix_fmt.as_deref(), Some("yuv420p"));
+    assert_eq!(out.color_transfer.as_deref(), Some("bt709"));
+    extract_poster(&src, &info).await.unwrap();
 }
