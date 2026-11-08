@@ -344,6 +344,11 @@
     "screen": "No connection",
     "hint": "Try again once you are connected to the network."
   },
+  "routeError": {
+    "title": "Could not load this screen",
+    "hint": "A new version may have been deployed, or the connection is unstable. Please reload.",
+    "reload": "Reload"
+  },
   "pwa": {
     "updateAvailable": "A new version is available",
     "reload": "Reload"

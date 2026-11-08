@@ -3,6 +3,7 @@ import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   Outlet,
   redirect,
   useRouter,
@@ -16,19 +17,46 @@ import {
   loadMe,
 } from '@/auth/session'
 import { applyUserLocale } from '@/i18n'
-import { InvitePage } from '@/pages/InvitePage'
-import { MembersPage } from '@/members/MembersPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { OfflineScreen } from '@/pwa/OfflineBanner'
-import { SignupPage } from '@/pages/SignupPage'
-import { SettingsPage } from '@/settings/SettingsPage'
+import { RouteError, RoutePending } from '@/pages/RouteError'
 import { AppShell } from '@/shell/AppShell'
-import { BabiesPage } from '@/babies/BabiesPage'
 import { TimelinePage } from '@/timeline/TimelinePage'
-import { TrashPage } from '@/trash/TrashPage'
-import { UploadPage } from '@/upload/UploadPage'
-import { ViewerPage } from '@/viewer/ViewerPage'
+
+// 타임라인·로그인·셸만 메인 번들. 나머지 화면은 첫 진입 때 청크 로드.
+const InvitePage = lazyRouteComponent(
+  () => import('@/pages/InvitePage'),
+  'InvitePage',
+)
+const SignupPage = lazyRouteComponent(
+  () => import('@/pages/SignupPage'),
+  'SignupPage',
+)
+const MembersPage = lazyRouteComponent(
+  () => import('@/members/MembersPage'),
+  'MembersPage',
+)
+const SettingsPage = lazyRouteComponent(
+  () => import('@/settings/SettingsPage'),
+  'SettingsPage',
+)
+const BabiesPage = lazyRouteComponent(
+  () => import('@/babies/BabiesPage'),
+  'BabiesPage',
+)
+const TrashPage = lazyRouteComponent(
+  () => import('@/trash/TrashPage'),
+  'TrashPage',
+)
+const UploadPage = lazyRouteComponent(
+  () => import('@/upload/UploadPage'),
+  'UploadPage',
+)
+const ViewerPage = lazyRouteComponent(
+  () => import('@/viewer/ViewerPage'),
+  'ViewerPage',
+)
 
 interface RouterContext {
   queryClient: QueryClient
@@ -213,6 +241,9 @@ export function createAppRouter(
     routeTree,
     context: { queryClient },
     history,
+    // 청크 로드 실패 등 라우트 오류는 새로고침 안내.
+    defaultErrorComponent: RouteError,
+    defaultPendingComponent: RoutePending,
     // 뷰어를 닫고 돌아오면 타임라인 스크롤 위치 복원.
     scrollRestoration: true,
   })
