@@ -12,6 +12,7 @@ pub mod media;
 pub mod openapi;
 pub mod request;
 pub mod routes;
+pub mod security;
 pub mod settings;
 pub mod shutdown;
 pub mod state;

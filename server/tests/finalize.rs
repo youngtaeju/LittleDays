@@ -139,6 +139,28 @@ async fn finalize_creates_processing_asset(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn finalize_refreshes_original_mtime(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let upload = upload_bytes(&app, &fake_jpeg(), "a.jpg").await;
+    let old = std::time::SystemTime::now() - Duration::from_secs(48 * 3600);
+    std::fs::File::open(storage::upload_temp_path(app.data.path(), upload))
+        .unwrap()
+        .set_modified(old)
+        .unwrap();
+
+    let asset: Value = finalize(&app, upload, json!({})).await.json();
+
+    let modified = std::fs::metadata(original_path(&app, &asset))
+        .unwrap()
+        .modified()
+        .unwrap();
+    let age = std::time::SystemTime::now()
+        .duration_since(modified)
+        .unwrap_or_default();
+    assert!(age < Duration::from_secs(60), "{age:?}");
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn file_modified_at_sets_source(pool: PgPool) {
     let app = media_app(&pool, Role::Guardian).await;
     let upload = upload_bytes(&app, &fake_jpeg(), "a.jpg").await;

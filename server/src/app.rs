@@ -6,7 +6,7 @@ use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 
 use crate::{
-    assets, auth, babies, error::AppError, invites, openapi::ApiDoc, routes, settings,
+    assets, auth, babies, error::AppError, invites, openapi::ApiDoc, routes, security, settings,
     state::AppState, uploads, users, web,
 };
 
@@ -41,7 +41,7 @@ pub fn build_router(state: AppState) -> Router {
         None => api.fallback(not_found),
     };
 
-    app.layer(middleware::from_fn(auth::extract::csrf_layer))
+    security::apply(app.layer(middleware::from_fn(auth::extract::csrf_layer)))
         .layer(
             // 쿼리의 media token, path 의 초대 토큰이 로그에 남지 않게 라우트 템플릿만 기록.
             TraceLayer::new_for_http().make_span_with(|req: &Request<Body>| {

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use axum::{Json, extract::State, http::StatusCode};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -24,23 +26,36 @@ pub fn router() -> OpenApiRouter<AppState> {
     )
 )]
 async fn health(State(state): State<AppState>) -> (StatusCode, Json<HealthResponse>) {
-    match sqlx::query_scalar!("SELECT 1").fetch_one(&state.pool).await {
-        Ok(_) => (
+    let probe = tokio::time::timeout(
+        Duration::from_secs(2),
+        sqlx::query_scalar!("SELECT 1").fetch_one(&state.pool),
+    )
+    .await;
+    match probe {
+        Ok(Ok(_)) => (
             StatusCode::OK,
             Json(HealthResponse {
                 status: "ok",
                 db: true,
             }),
         ),
-        Err(e) => {
+        Ok(Err(e)) => {
             tracing::warn!(error = %e, "health check: db query failed");
-            (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(HealthResponse {
-                    status: "degraded",
-                    db: false,
-                }),
-            )
+            degraded()
+        }
+        Err(_) => {
+            tracing::warn!("health check: db query timed out");
+            degraded()
         }
     }
+}
+
+fn degraded() -> (StatusCode, Json<HealthResponse>) {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(HealthResponse {
+            status: "degraded",
+            db: false,
+        }),
+    )
 }

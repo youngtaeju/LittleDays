@@ -9,7 +9,7 @@ async fn health_reports_db_ok(pool: sqlx::PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn health_reports_degraded_when_db_down(pool: sqlx::PgPool) {
+async fn health_degraded_when_pool_closed(pool: sqlx::PgPool) {
     let server = common::test_server(pool.clone()).await;
     pool.close().await;
     let res = server.get("/api/health").await;
