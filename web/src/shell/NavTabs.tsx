@@ -67,7 +67,7 @@ function useNavItems(): { main: NavItem[]; more: NavItem[] } {
   return { main, more }
 }
 
-function useSignOut(): () => Promise<void> {
+export function useSignOut(): () => Promise<void> {
   const { t } = useTranslation()
   const logout = useLogout()
   const navigate = useNavigate()

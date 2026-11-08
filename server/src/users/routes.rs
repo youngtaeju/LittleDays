@@ -77,15 +77,21 @@ fn normalize_email(raw: &str) -> AppResult<Option<String>> {
     get,
     path = "/api/users",
     responses(
-        (status = 200, description = "사용자 목록 (가입 순)", body = UsersResponse),
+        (status = 200, description = "사용자 목록 (가입 순). owner 가 아니면 본인 외 이메일은 null", body = UsersResponse),
         (status = 401, description = "인증 필요", body = ErrorBody),
     )
 )]
 async fn list_users(
     State(state): State<AppState>,
-    _current: CurrentUser,
+    current: CurrentUser,
 ) -> AppResult<AxumJson<UsersResponse>> {
-    let users = queries::list(&state.pool).await?;
+    let mut users = queries::list(&state.pool).await?;
+    // 비 owner 에게는 본인 외 이메일 숨김.
+    if current.user.role != Role::Owner {
+        for user in users.iter_mut().filter(|u| u.id != current.user.id) {
+            user.email = None;
+        }
+    }
     Ok(AxumJson(UsersResponse { users }))
 }
 

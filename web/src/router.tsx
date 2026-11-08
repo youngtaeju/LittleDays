@@ -6,27 +6,24 @@ import {
   redirect,
   type RouterHistory,
 } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
 import type { Role, User } from '@/api/types'
 import { authStatusQuery, hasRole, loadMe } from '@/auth/session'
 import { applyUserLocale } from '@/i18n'
 import { InvitePage } from '@/pages/InvitePage'
+import { MembersPage } from '@/members/MembersPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SignupPage } from '@/pages/SignupPage'
+import { SettingsPage } from '@/settings/SettingsPage'
 import { AppShell } from '@/shell/AppShell'
+import { BabiesPage } from '@/babies/BabiesPage'
 import { TimelinePage } from '@/timeline/TimelinePage'
+import { TrashPage } from '@/trash/TrashPage'
 import { UploadPage } from '@/upload/UploadPage'
 import { ViewerPage } from '@/viewer/ViewerPage'
 
 interface RouterContext {
   queryClient: QueryClient
-}
-
-// 제목만 있는 자리 화면.
-function Placeholder({ title }: { title: string }) {
-  const { t } = useTranslation()
-  return <h1 className="text-lg font-semibold">{t(title)}</h1>
 }
 
 // 같은 앱 경로만 허용. 브라우저가 제어문자·역슬래시를 지우거나 / 로 바꿔
@@ -138,27 +135,27 @@ const uploadRoute = createRoute({
 const babiesRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/babies',
-  component: () => <Placeholder title="nav.babies" />,
+  component: BabiesPage,
 })
 
 const trashRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/trash',
   beforeLoad: requireRole('guardian'),
-  component: () => <Placeholder title="nav.trash" />,
+  component: TrashPage,
 })
 
 const membersRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/members',
   beforeLoad: requireRole('owner'),
-  component: () => <Placeholder title="nav.members" />,
+  component: MembersPage,
 })
 
 const settingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/settings',
-  component: () => <Placeholder title="nav.settings" />,
+  component: SettingsPage,
 })
 
 // 뷰어는 셸 없이 전체 화면. baby 는 이전/다음 목록의 필터.

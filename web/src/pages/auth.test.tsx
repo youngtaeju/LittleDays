@@ -159,7 +159,11 @@ describe('guards', () => {
     const offline = () => {
       throw new TypeError('Failed to fetch')
     }
-    mockFetch({ 'GET /api/auth/me': offline, 'GET /api/settings': offline })
+    mockFetch({
+      'GET /api/auth/me': offline,
+      'GET /api/settings': offline,
+      'GET /api/auth/sessions': offline,
+    })
     const { router } = renderApp('/settings')
     await screen.findByRole('heading', { name: ko.nav.settings })
     expect(router.state.location.href).toBe('/settings')
@@ -171,6 +175,7 @@ describe('guards', () => {
     mockFetch({
       ...authRoutes({ me: userFixture('guardian') }),
       'GET /api/babies': () => apiError(401, 'auth.required'),
+      'GET /api/auth/sessions': () => json(200, { sessions: [] }),
     })
     const { router, queryClient } = renderApp('/settings')
     await screen.findByText(settingsFixture.instance_name)

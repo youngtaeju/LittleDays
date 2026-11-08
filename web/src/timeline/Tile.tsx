@@ -16,13 +16,16 @@ function formatDuration(ms: number): string {
 
 // 정사각 썸네일. 바탕은 dominant_color → blurhash → 썸네일 순으로 덮음.
 // baby: 뷰어 이전/다음이 같은 필터 목록을 따르도록 전달.
+// onSelect: 지정 시 뷰어 링크 대신 버튼(휴지통 등). 안정된 콜백 필요(memo).
 // memo: 목록 캐시 교체 시 바뀐 항목만 다시 그림(나머지 항목은 같은 객체).
 export const Tile = memo(function Tile({
   item,
   baby,
+  onSelect,
 }: {
   item: AssetSummary
-  baby: string | undefined
+  baby?: string | undefined
+  onSelect?: (id: string) => void
 }) {
   const { t, i18n } = useTranslation()
   const video = item.kind === 'video'
@@ -43,17 +46,11 @@ export const Tile = memo(function Tile({
     .filter((v) => v != null)
     .join(', ')
 
-  return (
-    <Link
-      to="/photo/$id"
-      params={{ id: item.id }}
-      search={{ baby }}
-      aria-label={label}
-      className="relative block aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2"
-      style={
-        item.dominant_color ? { backgroundColor: item.dominant_color } : {}
-      }
-    >
+  const style = item.dominant_color
+    ? { backgroundColor: item.dominant_color }
+    : {}
+  const content = (
+    <>
       {item.blurhash && (
         <Blurhash hash={item.blurhash} className="absolute inset-0 size-full" />
       )}
@@ -87,6 +84,34 @@ export const Tile = memo(function Tile({
           {duration ?? <Play aria-hidden className="my-0.5 size-3.5" />}
         </span>
       )}
+    </>
+  )
+
+  if (onSelect) {
+    return (
+      <button
+        type="button"
+        aria-label={label}
+        onClick={() => {
+          onSelect(item.id)
+        }}
+        className="relative block w-full aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2"
+        style={style}
+      >
+        {content}
+      </button>
+    )
+  }
+  return (
+    <Link
+      to="/photo/$id"
+      params={{ id: item.id }}
+      search={{ baby }}
+      aria-label={label}
+      className="relative block aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2"
+      style={style}
+    >
+      {content}
     </Link>
   )
 })
