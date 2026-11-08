@@ -199,6 +199,8 @@ async fn store_asset(
     tokio::fs::create_dir_all(original_dir)
         .await
         .context("create original dir")?;
+    // rename 은 mtime 보존. 이동 전 `.part` 갱신으로 원본이 처음부터 최신 상태로 노출(커밋 전 고아 정리 방지). 실패해도 진행.
+    touch(&temp).await;
     tokio::fs::rename(&temp, &original)
         .await
         .context("move upload to original path")?;
@@ -212,11 +214,28 @@ async fn store_asset(
     }
     .await;
     if let Err(err) = committed {
-        if let Err(restore) = tokio::fs::rename(&original, &temp).await {
-            tracing::error!(
-                %restore, upload_id = %id, path = %original.display(),
-                "original restore after failed finalize failed"
-            );
+        // 응답 유실로 커밋이 실제 반영됐을 수 있음. 행이 없다고 확인될 때만 원위치(원본 보존 우선).
+        let row_exists = sqlx::query_scalar!(
+            r#"SELECT EXISTS(SELECT 1 FROM assets WHERE id = $1) AS "exists!""#,
+            asset_id
+        )
+        .fetch_one(&state.pool)
+        .await;
+        match row_exists {
+            Ok(false) => {
+                if let Err(restore) = tokio::fs::rename(&original, &temp).await {
+                    tracing::error!(
+                        %restore, upload_id = %id, path = %original.display(),
+                        "original restore after failed finalize failed"
+                    );
+                }
+            }
+            Ok(true) => tracing::warn!(
+                upload_id = %id, %asset_id, "finalize commit reported failure but asset exists, original kept"
+            ),
+            Err(check) => tracing::warn!(
+                %check, upload_id = %id, %asset_id, "asset existence check failed, original kept in place"
+            ),
         }
         return Err(err);
     }
@@ -226,6 +245,20 @@ async fn store_asset(
     }
     state.upload_locks.remove(id);
     Ok(asset)
+}
+
+/// mtime 을 현재로. 파일 소유자면 읽기 전용 fd 로 충분.
+async fn touch(path: &FsPath) {
+    let path = path.to_path_buf();
+    let result = tokio::task::spawn_blocking(move || {
+        std::fs::File::open(&path)?.set_modified(std::time::SystemTime::now())
+    })
+    .await;
+    match result {
+        Ok(Ok(())) => {}
+        Ok(Err(err)) => tracing::warn!(%err, "upload mtime refresh failed"),
+        Err(err) => tracing::warn!(%err, "upload mtime refresh task failed"),
+    }
 }
 
 fn duplicate(existing: &ShaMatch) -> AppError {
