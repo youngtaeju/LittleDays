@@ -20,6 +20,8 @@
   "dependencies": {
     "@tanstack/react-query": "^5.106.1",
     "@tanstack/react-router": "^1.170.46",
+    "@uppy/core": "^6.3.1",
+    "@uppy/tus": "^6.0.1",
     "blurhash": "^2.0.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

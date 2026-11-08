@@ -117,6 +117,28 @@
     "emptyFiltered": "No photos of this baby yet.",
     "upload": "Upload photos"
   },
+  "upload": {
+    "babies": "Tag babies",
+    "babiesHint": "Selected babies are tagged on the photos and videos you upload now.",
+    "choose": "Choose files",
+    "drop": "You can also drop photos and videos here.",
+    "queue": "Upload queue",
+    "inProgress": "{{count}} in progress",
+    "status": {
+      "queued": "Waiting",
+      "uploading": "Uploading",
+      "finalizing": "Finishing",
+      "done": "Done",
+      "duplicate": "Already uploaded",
+      "inTrash": "In trash",
+      "unsupported": "This file type isn't supported.",
+      "lost": "Couldn't confirm the upload. Please upload it again."
+    },
+    "view": "View",
+    "restore": "Restore",
+    "restored": "Restored",
+    "reupload": "Upload again"
+  },
   "age": {
     "days": "Day {{days}}",
     "monthsDays": "{{months}} mo {{days}} d",
