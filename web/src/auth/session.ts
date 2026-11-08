@@ -46,11 +46,27 @@ export async function loadMe(
   qc: QueryClient,
 ): Promise<User | null | undefined> {
   try {
-    // 오프라인에서 이동마다 재시도 대기 방지.
-    return await qc.query({ ...meQuery, retry: false })
+    // 화면의 관찰자(networkMode online)가 오프라인에서 일시정지한 조회는
+    // qc.query 가 그대로 이어받아 온라인 복귀까지 대기. 먼저 취소.
+    if (qc.getQueryState(meQueryKey)?.fetchStatus === 'paused') {
+      await qc.cancelQueries({ queryKey: meQueryKey })
+    }
+    // 오프라인에서 이동마다 재시도 대기 방지. 브라우저 오프라인 상태여도
+    // 일시정지 없이 바로 실패(networkMode 기본값 online 은 온라인 복귀까지 대기).
+    return await qc.query({ ...meQuery, retry: false, networkMode: 'always' })
   } catch {
     return undefined
   }
+}
+
+// me 를 모르고(네트워크 실패) 캐시도 없음. 오프라인 전체 화면 조건.
+export function isMeUnreachable(qc: QueryClient): boolean {
+  const state = qc.getQueryState(meQueryKey)
+  return (
+    state?.data === undefined &&
+    state?.error instanceof ApiError &&
+    state.error.key === 'network.offline'
+  )
 }
 
 const roleRank: Record<Role, number> = { family: 0, guardian: 1, owner: 2 }
@@ -68,6 +84,8 @@ export function setSignedIn(qc: QueryClient, user: User): void {
 // 강제·직접 로그아웃 공용. 이전 사용자 데이터·업로드 큐 제거 후 비로그인 확정.
 function setSignedOut(qc: QueryClient): void {
   clearUploads()
+  // 서비스 워커 파생물 캐시. 남기면 세션 없이도 CacheFirst 가 응답.
+  if ('caches' in window) void caches.delete('ld-derivatives')
   qc.clear()
   qc.setQueryData(meQueryKey, null)
   applyUserLocale(null)

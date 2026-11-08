@@ -336,5 +336,14 @@
     "trashRetention": "휴지통 보관 일수",
     "trashRetentionHint": "0 은 자동으로 비우지 않아요. 최대 3650일.",
     "instanceSaved": "인스턴스 설정 저장함"
+  },
+  "offline": {
+    "banner": "연결이 없어 저장된 사진만 보여요",
+    "screen": "연결이 없어요",
+    "hint": "네트워크에 연결되면 다시 시도해 주세요."
+  },
+  "pwa": {
+    "updateAvailable": "새 버전이 있어요",
+    "reload": "새로고침"
   }
 }

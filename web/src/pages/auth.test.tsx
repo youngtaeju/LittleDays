@@ -154,18 +154,15 @@ describe('guards', () => {
     await screen.findByText(settingsFixture.instance_name)
   })
 
-  // 오프라인은 로그아웃이 아님. 로그인 화면으로 보내지 않음.
+  // 오프라인은 로그아웃이 아님. 로그인 화면 대신 오프라인 화면, 경로 유지.
   it('network_error_keeps_protected_route', async () => {
-    const offline = () => {
-      throw new TypeError('Failed to fetch')
-    }
     mockFetch({
-      'GET /api/auth/me': offline,
-      'GET /api/settings': offline,
-      'GET /api/auth/sessions': offline,
+      'GET /api/auth/me': () => {
+        throw new TypeError('Failed to fetch')
+      },
     })
     const { router } = renderApp('/settings')
-    await screen.findByRole('heading', { name: ko.nav.settings })
+    await screen.findByText(ko.offline.screen)
     expect(router.state.location.href).toBe('/settings')
   })
 

@@ -336,5 +336,14 @@
     "trashRetention": "Trash retention (days)",
     "trashRetentionHint": "0 never empties the trash automatically. Up to 3650 days.",
     "instanceSaved": "Instance settings saved"
+  },
+  "offline": {
+    "banner": "You are offline. Only saved photos are shown.",
+    "screen": "No connection",
+    "hint": "Try again once you are connected to the network."
+  },
+  "pwa": {
+    "updateAvailable": "A new version is available",
+    "reload": "Reload"
   }
 }

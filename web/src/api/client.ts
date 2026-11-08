@@ -40,6 +40,30 @@ export function errorBody(error: unknown): {
   return { key: 'unknown', params: {} }
 }
 
+// 마지막 API 호출의 네트워크 실패 여부. 오프라인 배너용.
+let networkDown = false
+const networkListeners = new Set<() => void>()
+
+// call() 과 테스트 간 초기화(test/setup.ts) 공용.
+export function setNetworkDown(v: boolean): void {
+  if (networkDown === v) return
+  networkDown = v
+  networkListeners.forEach((l) => {
+    l()
+  })
+}
+
+export function subscribeNetworkDown(l: () => void): () => void {
+  networkListeners.add(l)
+  return () => {
+    networkListeners.delete(l)
+  }
+}
+
+export function isNetworkDown(): boolean {
+  return networkDown
+}
+
 export async function call<T>(
   p: Promise<{ data?: T; error?: unknown; response: Response }>,
 ): Promise<T> {
@@ -47,9 +71,14 @@ export async function call<T>(
   try {
     result = await p
   } catch (e) {
-    if (e instanceof TypeError) throw new ApiError(0, 'network.offline', {})
+    if (e instanceof TypeError) {
+      setNetworkDown(true)
+      throw new ApiError(0, 'network.offline', {})
+    }
     throw e
   }
+  // 응답 수신. 상태 코드와 무관하게 연결은 살아 있음.
+  setNetworkDown(false)
   const { data, error, response } = result
   if (!response.ok) {
     const b = errorBody(error)
