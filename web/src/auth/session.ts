@@ -11,6 +11,8 @@ import { api, call } from '@/api/client'
 import { ApiError, isLogoutError } from '@/api/errors'
 import type { Role, User } from '@/api/types'
 import { applyUserLocale } from '@/i18n'
+// Uppy 없는 store 모듈만. 업로더 지연 청크 경계 유지.
+import { clearUploads } from '@/upload/useUploadStore'
 
 export const meQueryKey = ['me'] as const
 
@@ -63,8 +65,9 @@ export function setSignedIn(qc: QueryClient, user: User): void {
   applyUserLocale(user.locale)
 }
 
-// 강제·직접 로그아웃 공용. 이전 사용자 데이터 제거 후 비로그인 확정.
+// 강제·직접 로그아웃 공용. 이전 사용자 데이터·업로드 큐 제거 후 비로그인 확정.
 function setSignedOut(qc: QueryClient): void {
+  clearUploads()
   qc.clear()
   qc.setQueryData(meQueryKey, null)
   applyUserLocale(null)

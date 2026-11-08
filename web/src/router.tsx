@@ -16,6 +16,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { AppShell } from '@/shell/AppShell'
 import { TimelinePage } from '@/timeline/TimelinePage'
+import { UploadPage } from '@/upload/UploadPage'
 import { ViewerPage } from '@/viewer/ViewerPage'
 
 interface RouterContext {
@@ -131,7 +132,7 @@ const uploadRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/upload',
   beforeLoad: requireRole('guardian'),
-  component: () => <Placeholder title="nav.upload" />,
+  component: UploadPage,
 })
 
 const babiesRoute = createRoute({

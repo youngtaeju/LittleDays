@@ -24,11 +24,15 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 import { errorMessage } from '@/i18n'
+import { cn } from '@/lib/utils'
+import { useActiveUploadCount } from '@/upload/useUploadStore'
 
 interface NavItem {
   to: '/' | '/upload' | '/babies' | '/trash' | '/members' | '/settings'
   label: string
   icon: LucideIcon
+  // 진행 중 업로드 개수. Uppy 로딩 없이 store 만 구독.
+  badge?: number
 }
 
 // main = 하단 탭, more = 더보기 시트. 레일은 둘 다 펼침.
@@ -36,10 +40,18 @@ function useNavItems(): { main: NavItem[]; more: NavItem[] } {
   const { t } = useTranslation()
   const { user } = useMe()
   const guardian = hasRole(user, 'guardian')
+  const uploads = useActiveUploadCount()
   const main: NavItem[] = [
     { to: '/', label: t('nav.timeline'), icon: Images },
     ...(guardian
-      ? [{ to: '/upload' as const, label: t('nav.upload'), icon: Upload }]
+      ? [
+          {
+            to: '/upload' as const,
+            label: t('nav.upload'),
+            icon: Upload,
+            badge: uploads,
+          },
+        ]
       : []),
     { to: '/babies', label: t('nav.babies'), icon: Baby },
   ]
@@ -70,6 +82,31 @@ function useSignOut(): () => Promise<void> {
   }
 }
 
+// 숫자는 시각용. 낭독은 useBadgeLabel 의 링크 이름.
+function Badge({ count, className }: { count?: number; className?: string }) {
+  if (!count) return null
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'min-w-4 rounded-full bg-primary px-1 text-center text-xs leading-4 font-semibold text-primary-foreground tabular-nums',
+        className,
+      )}
+    >
+      {count}
+    </span>
+  )
+}
+
+function useBadgeLabel(): (
+  label: string,
+  count?: number,
+) => string | undefined {
+  const { t } = useTranslation()
+  return (label, count) =>
+    count ? `${label}, ${t('upload.inProgress', { count })}` : undefined
+}
+
 // 타임라인은 아기 필터 search 와 무관하게 활성.
 const linkActiveOptions = { exact: true, includeSearch: false }
 
@@ -79,6 +116,7 @@ const tabClass =
 export function NavTabs() {
   const { t } = useTranslation()
   const { main, more } = useNavItems()
+  const badgeLabel = useBadgeLabel()
   const signOut = useSignOut()
   const [open, setOpen] = useState(false)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
@@ -90,14 +128,18 @@ export function NavTabs() {
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] lg:hidden"
     >
       <ul className="flex">
-        {main.map(({ to, label, icon: Icon }) => (
+        {main.map(({ to, label, icon: Icon, badge }) => (
           <li key={to} className="min-w-0 flex-1">
             <Link
               to={to}
               activeOptions={linkActiveOptions}
               className={tabClass}
+              aria-label={badgeLabel(label, badge)}
             >
-              <Icon aria-hidden className="size-6" />
+              <span className="relative">
+                <Icon aria-hidden className="size-6" />
+                <Badge count={badge} className="absolute -top-1.5 left-4" />
+              </span>
               {label}
             </Link>
           </li>
@@ -159,21 +201,24 @@ const railItemClass =
 export function NavRail() {
   const { t } = useTranslation()
   const { main, more } = useNavItems()
+  const badgeLabel = useBadgeLabel()
   const signOut = useSignOut()
   return (
     <nav
       aria-label={t('nav.main')}
       className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-border px-3 py-4 lg:flex"
     >
-      {[...main, ...more].map(({ to, label, icon: Icon }) => (
+      {[...main, ...more].map(({ to, label, icon: Icon, badge }) => (
         <Link
           key={to}
           to={to}
           activeOptions={linkActiveOptions}
           className={railItemClass}
+          aria-label={badgeLabel(label, badge)}
         >
           <Icon aria-hidden className="size-5" />
           {label}
+          <Badge count={badge} className="ml-auto" />
         </Link>
       ))}
       <button

@@ -22,7 +22,8 @@ export const api = createClient<paths>({
 })
 api.use(csrf)
 
-function errorBody(error: unknown): {
+// 에러 응답 본문 해석. tus 응답(XHR) 공용.
+export function errorBody(error: unknown): {
   key: string
   params: Record<string, unknown>
 } {
