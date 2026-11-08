@@ -145,6 +145,8 @@ Remove-Item Env:SQLX_OFFLINE
 
 SQL 쿼리를 바꾼 뒤에는 `cargo sqlx prepare -- --all-targets` 를 실행하고 `server/.sqlx/` 를 함께 커밋합니다.
 
+릴리스 절차는 [docs/release.md](docs/release.md) 를 참고하십시오.
+
 ## 라이선스
 
 AGPL-3.0-only. [LICENSE](LICENSE) 참조.
