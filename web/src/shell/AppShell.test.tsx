@@ -5,7 +5,11 @@ import { meQueryKey } from '@/auth/session'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
-import { settingsFixture, userFixture } from '@/test/fixtures'
+import {
+  emptyTimelineRoutes,
+  settingsFixture,
+  userFixture,
+} from '@/test/fixtures'
 import { renderApp } from '@/test/router'
 
 beforeEach(() => {
@@ -18,6 +22,7 @@ afterEach(() => {
 
 async function renderShell(role: Role, path = '/') {
   mockFetch({
+    ...emptyTimelineRoutes,
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/auth/status': () => json(200, { signup_open: false }),
