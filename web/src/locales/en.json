@@ -61,7 +61,17 @@
     "sexUnset": "Not set",
     "sexFemale": "Female",
     "sexMale": "Male",
-    "add": "Add baby"
+    "add": "Add baby",
+    "editTitle": "Edit baby",
+    "formDescription": "Enter the baby's name, date of birth and sex.",
+    "clearAvatar": "Remove profile photo",
+    "edit": "Edit {{name}}",
+    "delete": "Delete {{name}}",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "deleteTitle": "Delete {{name}}",
+    "deleteConfirm": "Deleting a baby also removes their tag from photos and videos. The photos and videos themselves stay.",
+    "empty": "No babies yet."
   },
   "viewer": {
     "info": "Info",

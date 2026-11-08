@@ -15,6 +15,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { AppShell } from '@/shell/AppShell'
+import { BabiesPage } from '@/babies/BabiesPage'
 import { TimelinePage } from '@/timeline/TimelinePage'
 import { UploadPage } from '@/upload/UploadPage'
 import { ViewerPage } from '@/viewer/ViewerPage'
@@ -138,7 +139,7 @@ const uploadRoute = createRoute({
 const babiesRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/babies',
-  component: () => <Placeholder title="nav.babies" />,
+  component: BabiesPage,
 })
 
 const trashRoute = createRoute({

@@ -61,7 +61,17 @@
     "sexUnset": "선택 안 함",
     "sexFemale": "여자",
     "sexMale": "남자",
-    "add": "아기 추가"
+    "add": "아기 추가",
+    "editTitle": "아기 정보 수정",
+    "formDescription": "아기 이름, 생년월일, 성별을 입력해요.",
+    "clearAvatar": "대표사진 지우기",
+    "edit": "{{name}} 수정",
+    "delete": "{{name}} 삭제",
+    "moveUp": "{{name}} 위로",
+    "moveDown": "{{name}} 아래로",
+    "deleteTitle": "{{name}} 삭제",
+    "deleteConfirm": "아기를 삭제하면 사진과 영상에 붙은 이 아기의 태그도 함께 지워져요. 사진과 영상은 그대로 남아요.",
+    "empty": "아직 등록한 아기가 없어요."
   },
   "viewer": {
     "info": "정보",
@@ -173,7 +183,7 @@
       "usernameTaken": "이미 사용 중인 아이디예요."
     },
     "babies": {
-      "avatarInvalid": "프로필 사진으로 쓸 수 없는 파일이에요.",
+      "avatarInvalid": "대표사진으로 쓸 수 없는 파일이에요.",
       "nameInvalid": "아기 이름이 올바르지 않아요.",
       "notFound": "아기를 찾을 수 없어요.",
       "orderMismatch": "순서 정보가 현재 목록과 달라요. 새로고침해 주세요."
