@@ -34,10 +34,31 @@ enum Cmd {
     Openapi,
 }
 
-fn init_tracing() {
+#[derive(Debug, PartialEq)]
+enum LogFormat {
+    Text,
+    Json,
+}
+
+fn parse_log_format(value: Option<&str>) -> anyhow::Result<LogFormat> {
+    match value {
+        None | Some("text") => Ok(LogFormat::Text),
+        Some("json") => Ok(LogFormat::Json),
+        Some(_) => anyhow::bail!("LOG_FORMAT must be json or text"),
+    }
+}
+
+// 로그는 전부 stderr. 서브커맨드 표준 출력(reset-password 등) 오염 방지.
+fn init_tracing() -> anyhow::Result<()> {
     use tracing_subscriber::{EnvFilter, fmt};
+    let format = parse_log_format(std::env::var("LOG_FORMAT").ok().as_deref())?;
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    fmt().with_env_filter(filter).init();
+    let builder = fmt().with_env_filter(filter).with_writer(std::io::stderr);
+    match format {
+        LogFormat::Json => builder.json().init(),
+        LogFormat::Text => builder.init(),
+    }
+    Ok(())
 }
 
 #[tokio::main]
@@ -48,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     // openapi 는 표준 출력 JSON 오염 방지를 위해 로그 초기화 제외.
     if !matches!(cli.cmd, Cmd::Openapi) {
-        init_tracing();
+        init_tracing()?;
     }
     match cli.cmd {
         Cmd::Serve => {
@@ -114,4 +135,18 @@ async fn main() -> anyhow::Result<()> {
         Cmd::Openapi => println!("{}", serde_json::to_string_pretty(&openapi())?),
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_format_parsing() {
+        assert_eq!(parse_log_format(None).unwrap(), LogFormat::Text);
+        assert_eq!(parse_log_format(Some("text")).unwrap(), LogFormat::Text);
+        assert_eq!(parse_log_format(Some("json")).unwrap(), LogFormat::Json);
+        let err = parse_log_format(Some("xml")).unwrap_err();
+        assert_eq!(err.to_string(), "LOG_FORMAT must be json or text");
+    }
 }
