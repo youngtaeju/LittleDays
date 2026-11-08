@@ -4,11 +4,12 @@ use anyhow::Context;
 use clap::{Parser, Subcommand};
 use littledays::{
     app::{build_router, openapi},
-    config::Config,
+    config::{self, Config},
     db, jobs, maintenance,
     media::{storage, video},
     shutdown::{forced, shutdown_signal},
     state::AppState,
+    users::reset,
 };
 
 #[derive(Parser)]
@@ -24,6 +25,11 @@ enum Cmd {
     Serve,
     /// DB 마이그레이션 적용
     Migrate,
+    /// 사용자 비밀번호를 새 무작위 값으로 재설정하고 표준 출력에 출력. 세션 전부 삭제
+    ResetPassword {
+        /// 대상 사용자명
+        username: String,
+    },
     /// OpenAPI 문서를 표준 출력으로 출력 (설정, DB 불필요)
     Openapi,
 }
@@ -91,10 +97,19 @@ async fn main() -> anyhow::Result<()> {
             tracing::info!("shutdown complete");
         }
         Cmd::Migrate => {
-            let config = Config::from_env()?;
-            let pool = db::connect(&config.database_url).await?;
+            let pool = db::connect(&config::database_url()?).await?;
             db::migrate(&pool).await?;
             println!("migrations applied");
+        }
+        Cmd::ResetPassword { username } => {
+            let pool = db::connect(&config::database_url()?).await?;
+            match reset::reset_password(&pool, &username).await? {
+                Some(password) => println!("{password}"),
+                None => {
+                    eprintln!("user not found: {username}");
+                    std::process::exit(1);
+                }
+            }
         }
         Cmd::Openapi => println!("{}", serde_json::to_string_pretty(&openapi())?),
     }

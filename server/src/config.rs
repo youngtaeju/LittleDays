@@ -16,14 +16,12 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> anyhow::Result<Config> {
-        let database_url = required("DATABASE_URL")?;
+        let database_url = database_url()?;
 
         let public_url = parse_public_url(required("PUBLIC_URL")?)?;
         let secret_key = parse_secret_key(&required("SECRET_KEY")?)?;
 
-        let data_dir = std::env::var("DATA_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("./data"));
+        let data_dir = data_dir();
 
         let port = match std::env::var("PORT") {
             Ok(v) => v.parse().context("PORT must be a valid port number")?,
@@ -51,6 +49,17 @@ impl Config {
             web_dir,
         })
     }
+}
+
+/// DB 만 쓰는 서브커맨드(migrate, reset-password)용. 다른 설정 불필요.
+pub fn database_url() -> anyhow::Result<String> {
+    required("DATABASE_URL")
+}
+
+pub fn data_dir() -> PathBuf {
+    std::env::var("DATA_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("./data"))
 }
 
 fn required(key: &str) -> anyhow::Result<String> {
