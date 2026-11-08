@@ -480,7 +480,7 @@ describe('ViewerPage', () => {
     const scrollTo = vi.spyOn(window, 'scrollTo')
     const { router, user } = renderViewer({ path: '/' })
     const tiles = await screen.findAllByRole('link', {
-      name: '사진, 5월 10일 금요일',
+      name: '사진, 5월 10일 금요일, 12:00',
     })
 
     // 타임라인을 800px 스크롤한 상태. 라우터는 scroll 이벤트가 난 대상만 저장.

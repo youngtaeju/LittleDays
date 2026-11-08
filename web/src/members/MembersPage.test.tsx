@@ -156,6 +156,26 @@ describe('MembersPage', () => {
     })
   })
 
+  it('revoke_buttons_have_distinct_labels', async () => {
+    renderMembers({
+      'GET /api/invites': () =>
+        json(200, {
+          invites: [
+            invite(),
+            invite({
+              id: '00000000-0000-4000-8000-0000000000c2',
+              expires_at: '2026-01-05T00:00:00Z',
+            }),
+          ],
+        }),
+    })
+    const buttons = await screen.findAllByRole('button', { name: /초대 회수/ })
+    const names = buttons.map((b) => b.getAttribute('aria-label'))
+    expect(names).toHaveLength(2)
+    expect(new Set(names).size).toBe(2)
+    expect(names[0]).toContain('1월 4일')
+  })
+
   it('non_owner_redirected', async () => {
     const { router } = renderMembers({}, { role: 'guardian' })
     await waitFor(() => {

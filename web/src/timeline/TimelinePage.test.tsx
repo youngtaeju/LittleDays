@@ -87,7 +87,7 @@ describe('TimelinePage', () => {
     expect(text).toBe('3개월 10일')
     expect(await screen.findByText(text)).toBeInTheDocument()
     expect(
-      screen.getAllByRole('link', { name: '사진, 5월 10일 금요일' }),
+      screen.getAllByRole('link', { name: '사진, 5월 10일 금요일, 12:00' }),
     ).toHaveLength(2)
   })
 
@@ -275,7 +275,7 @@ describe('TimelinePage', () => {
     ).toBeInTheDocument()
     expect(document.querySelector('img[src$="thumb.webp"]')).toBeNull()
     const link = screen.getByRole('link', {
-      name: `사진, 5월 10일 금요일, ${ko.timeline.processing}`,
+      name: `사진, 5월 10일 금요일, 12:00, ${ko.timeline.processing}`,
     })
 
     // 화면에 들어오면 즉시 1회, 이후 5초 간격.
@@ -299,9 +299,9 @@ describe('TimelinePage', () => {
     ).not.toBeInTheDocument()
     expect(polls).toBe(2)
     // 처리 완료 후에도 같은 링크 노드(다시 마운트 안 됨, 포커스 유지).
-    expect(screen.getByRole('link', { name: '사진, 5월 10일 금요일' })).toBe(
-      link,
-    )
+    expect(
+      screen.getByRole('link', { name: '사진, 5월 10일 금요일, 12:00' }),
+    ).toBe(link)
 
     // 준비 완료 후 폴링 종료.
     await act(async () => {
@@ -337,7 +337,7 @@ describe('TimelinePage', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('link', {
-        name: `사진, 5월 10일 금요일, ${ko.timeline.failed}`,
+        name: `사진, 5월 10일 금요일, 12:00, ${ko.timeline.failed}`,
       }),
     ).toBeInTheDocument()
   })

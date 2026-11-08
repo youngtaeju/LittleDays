@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { applyAsset } from '@/viewer/useAsset'
-import { uploadStore, type UploadItem } from './useUploadStore'
+import { isActive, uploadStore, type UploadItem } from './useUploadStore'
 
 function statusText(
   t: ReturnType<typeof useTranslation>['t'],
@@ -27,12 +28,13 @@ function statusText(
   }
 }
 
-function ViewLink({ assetId }: { assetId: string }) {
+function ViewLink({ assetId, nameId }: { assetId: string; nameId: string }) {
   const { t } = useTranslation()
   return (
     <Link
       to="/photo/$id"
       params={{ id: assetId }}
+      aria-describedby={nameId}
       className={buttonVariants({ variant: 'outline', size: 'sm' })}
     >
       {t('upload.view')}
@@ -43,9 +45,11 @@ function ViewLink({ assetId }: { assetId: string }) {
 function RestoreButton({
   item,
   assetId,
+  nameId,
 }: {
   item: UploadItem
   assetId: string
+  nameId: string
 }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
@@ -69,6 +73,7 @@ function RestoreButton({
     <Button
       variant="outline"
       size="sm"
+      aria-describedby={nameId}
       disabled={restore.isPending}
       onClick={() => {
         restore.mutate()
@@ -82,17 +87,19 @@ function RestoreButton({
 function Actions({
   item,
   retry,
+  nameId,
 }: {
   item: UploadItem
   retry: ((id: string) => void) | undefined
+  nameId: string
 }) {
   const { t } = useTranslation()
   const { assetId } = item
   if (item.status === 'duplicate' && assetId) {
     return item.inTrash && !item.restored ? (
-      <RestoreButton item={item} assetId={assetId} />
+      <RestoreButton item={item} assetId={assetId} nameId={nameId} />
     ) : (
-      <ViewLink assetId={assetId} />
+      <ViewLink assetId={assetId} nameId={nameId} />
     )
   }
   if (item.status === 'error' || item.status === 'lost') {
@@ -100,6 +107,7 @@ function Actions({
       <Button
         variant="outline"
         size="sm"
+        aria-describedby={nameId}
         disabled={!retry}
         onClick={() => retry?.(item.id)}
       >
@@ -118,6 +126,7 @@ function Row({
   retry: ((id: string) => void) | undefined
 }) {
   const { t } = useTranslation()
+  const nameId = useId()
   const percent = Math.round(item.progress * 100)
   const failed =
     item.status === 'error' ||
@@ -127,19 +136,17 @@ function Row({
     <li className="grid gap-2 border-b border-border py-3">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm">{item.name}</p>
+          <p id={nameId} className="truncate text-sm">
+            {item.name}
+          </p>
           <p className="text-sm text-muted-foreground tabular-nums">
-            {/* 상태 전환만 낭독. 진행률은 진행 막대가 전달. */}
-            <span
-              aria-live="polite"
-              className={cn(failed && 'text-destructive')}
-            >
+            <span className={cn(failed && 'text-destructive')}>
               {statusText(t, item)}
             </span>
             {item.status === 'uploading' && ` ${String(percent)}%`}
           </p>
         </div>
-        <Actions item={item} retry={retry} />
+        <Actions item={item} retry={retry} nameId={nameId} />
       </div>
       {item.status === 'uploading' && (
         <div
@@ -169,11 +176,23 @@ export function UploadQueue({
   retry: ((id: string) => void) | undefined
 }) {
   const { t } = useTranslation()
+  const settled = items.filter((i) => !isActive(i.status)).length
+  const failed = items.filter(
+    (i) =>
+      i.status === 'error' || i.status === 'lost' || i.status === 'unsupported',
+  ).length
   return (
-    <ul aria-label={t('upload.queue')}>
-      {items.map((item) => (
-        <Row key={item.id} item={item} retry={retry} />
-      ))}
-    </ul>
+    <div>
+      {/* 큐 전체 낭독 하나. 행별 상태·진행률은 낭독하지 않음. */}
+      <p role="status" className="text-sm text-muted-foreground">
+        {t('upload.summary', { total: items.length, done: settled })}
+        {failed > 0 && t('upload.summaryFailed', { failed })}
+      </p>
+      <ul aria-label={t('upload.queue')}>
+        {items.map((item) => (
+          <Row key={item.id} item={item} retry={retry} />
+        ))}
+      </ul>
+    </div>
   )
 }

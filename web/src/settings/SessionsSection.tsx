@@ -32,6 +32,15 @@ export function SessionsSection() {
       <ul className="grid gap-2">
         {sessions.data?.sessions.map((s) => {
           const device = s.user_agent ?? t('settings.unknownDevice')
+          const lastSeen = settings
+            ? t('settings.lastSeen', {
+                time: formatInZone(
+                  s.last_seen_at,
+                  settings.timezone,
+                  i18n.language,
+                ),
+              })
+            : null
           return (
             <li
               key={s.id}
@@ -39,16 +48,8 @@ export function SessionsSection() {
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{device}</p>
-                {settings && (
-                  <p className="text-sm text-muted-foreground">
-                    {t('settings.lastSeen', {
-                      time: formatInZone(
-                        s.last_seen_at,
-                        settings.timezone,
-                        i18n.language,
-                      ),
-                    })}
-                  </p>
+                {lastSeen && (
+                  <p className="text-sm text-muted-foreground">{lastSeen}</p>
                 )}
               </div>
               {s.current ? (
@@ -59,7 +60,12 @@ export function SessionsSection() {
                 <Button
                   variant="outline"
                   size="sm"
-                  aria-label={t('settings.revokeSession', { device })}
+                  aria-label={[
+                    t('settings.revokeSession', { device }),
+                    lastSeen,
+                  ]
+                    .filter((v) => v != null)
+                    .join(', ')}
                   disabled={revoke.isPending}
                   onClick={() => {
                     revoke.mutate(s.id)

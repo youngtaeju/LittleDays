@@ -5,6 +5,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { defineConfig } from 'vitest/config'
 import {
   isDerivative,
+  isOfflineApi,
   onlyCacheable,
   stripMediaToken,
 } from './src/pwa/cachePlugins.ts'
@@ -42,16 +43,27 @@ export default defineConfig({
         // 앱 셸: 기본 globPatterns(js·css·html) + includeAssets + 매니페스트 아이콘.
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /^\/s\//],
-        // /api 는 파생물 외 캐시 안 함. 규칙 없는 요청은 네트워크 그대로.
+        // 규칙 없는 요청은 네트워크 그대로. 두 캐시 모두 로그아웃 시 삭제(auth/session.ts).
         runtimeCaching: [
+          {
+            // 네트워크 우선. 응답이 있으면 상태 그대로(401 포함), 실패·지연 시에만 캐시.
+            urlPattern: isOfflineApi,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'ld-api',
+              expiration: { maxEntries: 1000, purgeOnQuotaError: true },
+              plugins: [{ cacheWillUpdate: onlyCacheable }],
+            },
+          },
           {
             urlPattern: isDerivative,
             handler: 'CacheFirst',
             options: {
               cacheName: 'ld-derivatives',
               expiration: {
-                maxEntries: 3000,
+                maxEntries: 2000,
                 maxAgeSeconds: 30 * 24 * 60 * 60,
+                purgeOnQuotaError: true,
               },
               plugins: [
                 { cacheKeyWillBeUsed: stripMediaToken },

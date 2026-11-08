@@ -136,6 +136,8 @@
     "choose": "Choose files",
     "drop": "You can also drop photos and videos here.",
     "queue": "Upload queue",
+    "summary": "{{done}} of {{total}} finished",
+    "summaryFailed": ", {{failed}} failed",
     "inProgress": "{{count}} in progress",
     "status": {
       "queued": "Waiting",
@@ -341,6 +343,11 @@
     "banner": "You are offline. Only saved photos are shown.",
     "screen": "No connection",
     "hint": "Try again once you are connected to the network."
+  },
+  "routeError": {
+    "title": "Could not load this screen",
+    "hint": "A new version may have been deployed, or the connection is unstable. Please reload.",
+    "reload": "Reload"
   },
   "pwa": {
     "updateAvailable": "A new version is available",

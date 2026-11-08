@@ -83,6 +83,58 @@ describe('UploadPage', () => {
     ).toBeNull()
   })
 
+  it('queue_single_live_region', async () => {
+    uploadStore.put({ id: 'f1', name: 'a.jpg', status: 'done', progress: 1 })
+    uploadStore.put({
+      id: 'f2',
+      name: 'b.jpg',
+      status: 'uploading',
+      progress: 0.5,
+    })
+    uploadStore.put({
+      id: 'f3',
+      name: 'c.jpg',
+      status: 'duplicate',
+      assetId: 'a3',
+      inTrash: false,
+      progress: 1,
+    })
+    renderUpload()
+    await waitReady()
+    const queue = screen.getByRole('list', { name: ko.upload.queue })
+    const summary = screen.getByText('3개 중 2개 완료')
+    expect(summary).toHaveAttribute('role', 'status')
+    expect(queue.querySelector('[aria-live]')).toBeNull()
+    // 행 버튼은 파일 이름으로 보충 설명.
+    const link = screen.getByRole('link', { name: ko.upload.view })
+    expect(link).toHaveAccessibleDescription('c.jpg')
+  })
+
+  it('queue_summary_reports_failures', async () => {
+    uploadStore.put({ id: 'f1', name: 'a.jpg', status: 'done', progress: 1 })
+    uploadStore.put({ id: 'f2', name: 'b.jpg', status: 'error', progress: 0 })
+    uploadStore.put({
+      id: 'f3',
+      name: 'c.jpg',
+      status: 'unsupported',
+      progress: 0,
+    })
+    uploadStore.put({
+      id: 'f4',
+      name: 'd.jpg',
+      status: 'duplicate',
+      assetId: 'a4',
+      inTrash: false,
+      progress: 1,
+    })
+    renderUpload()
+    await waitReady()
+    expect(screen.getByText('4개 중 4개 완료, 실패 2개')).toHaveAttribute(
+      'role',
+      'status',
+    )
+  })
+
   it('duplicate_links_to_existing', async () => {
     uploadStore.put({
       id: 'f1',

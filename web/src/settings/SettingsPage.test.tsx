@@ -160,6 +160,24 @@ describe('SettingsPage', () => {
     })
   })
 
+  it('same_device_sessions_have_distinct_labels', async () => {
+    const A = session({ id: 'a', last_seen_at: '2026-01-02T00:00:00Z' })
+    const B = session({ id: 'b', last_seen_at: '2026-01-03T00:00:00Z' })
+    renderSettings({
+      'GET /api/auth/sessions': () => json(200, { sessions: [CURRENT, A, B] }),
+    })
+    const buttons = await screen.findAllByRole('button', {
+      name: /^Firefox 로그아웃/,
+    })
+    await waitFor(() => {
+      const names = screen
+        .getAllByRole('button', { name: /^Firefox 로그아웃/ })
+        .map((b) => b.getAttribute('aria-label'))
+      expect(new Set(names).size).toBe(2)
+    })
+    expect(buttons).toHaveLength(2)
+  })
+
   it('revoke_other_session', async () => {
     let deleted = ''
     const { user } = renderSettings({
@@ -170,9 +188,9 @@ describe('SettingsPage', () => {
     })
     await screen.findByText('Chrome')
     expect(
-      screen.queryByRole('button', { name: 'Chrome 로그아웃' }),
+      screen.queryByRole('button', { name: /^Chrome 로그아웃/ }),
     ).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Firefox 로그아웃' }))
+    await user.click(screen.getByRole('button', { name: /^Firefox 로그아웃/ }))
     await waitFor(() => {
       expect(deleted).toBe(OTHER.id)
     })
