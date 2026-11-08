@@ -6,6 +6,54 @@
 - 웹: React + TypeScript SPA, PWA
 - 앱: Capacitor (후속 단계)
 
+## 설치
+
+Docker 와 Docker Compose 가 있는 서버(홈서버, NAS 등)에서 실행합니다. 이미지는 `ghcr.io/youngtaeju/littledays` 이며 `linux/amd64` 를 지원합니다. 내려받는 크기는 약 211 MB 입니다. 외부 의존은 PostgreSQL 하나이고 compose 에 포함되어 있습니다.
+
+1. `compose/` 디렉터리의 `docker-compose.yml` 과 `.env.example` 을 서버의 작업 디렉터리에 복사하고, `.env.example` 을 `.env` 로 바꿔 값을 채웁니다.
+
+   - `SECRET_KEY`: `openssl rand -hex 32` 로 만든 64자 16진수입니다.
+   - `POSTGRES_PASSWORD`: DB 비밀번호입니다. `DATABASE_URL` 안의 비밀번호와 같은 값이어야 합니다. 영숫자를 권장하며, 특수문자는 `DATABASE_URL` 에서 URL 인코딩이 필요합니다.
+   - `PUBLIC_URL`: 브라우저로 접속하는 주소입니다. 리버스 프록시 뒤라면 그 https 주소입니다.
+   - `PUID`, `PGID`: `./data` 디렉터리를 소유할 호스트 사용자입니다. 호스트에서 `id -u`, `id -g` 로 확인합니다.
+
+2. 실행합니다.
+
+   ```bash
+   docker compose up -d
+   ```
+
+   데이터베이스 마이그레이션은 기동할 때 자동으로 적용됩니다. 원본과 파생물은 `./data`, 데이터베이스는 `./postgres` 에 저장됩니다.
+
+3. 브라우저에서 `PUBLIC_URL` 주소(기본 `http://localhost:8080`)를 열고 첫 가입을 합니다. 첫 번째로 가입한 계정이 소유자(owner)가 되며, 이후 가족은 소유자가 만든 초대 링크로 가입합니다.
+
+compose 의 `ports` 는 호스트의 모든 인터페이스에 포트를 엽니다. 같은 호스트에서 리버스 프록시를 운영한다면 `127.0.0.1` 에만 바인딩합니다.
+
+```yaml
+    ports:
+      - "127.0.0.1:${PORT:-8080}:8080"
+```
+
+리버스 프록시, https, 백업, 메모리 등 운영 안내는 [docs/operations.md](docs/operations.md) 를 참고하십시오.
+
+### 업그레이드
+
+`.env` 의 `LITTLEDAYS_VERSION` 을 새 버전으로 바꾼 뒤 다음을 실행합니다. 기본값 `latest` 를 쓰는 경우 값 변경 없이 실행합니다.
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+새 버전의 마이그레이션은 기동할 때 자동으로 적용됩니다. 업그레이드 전에 백업을 권장합니다([백업](docs/operations.md#백업)).
+
+### 지원 브라우저
+
+- 최근 2년 이내 버전의 Chrome, Edge, Firefox, Safari
+- iOS 16.4 이상의 Safari (홈 화면에 추가한 PWA 포함)
+- Android 의 Chrome
+
+`Intl.supportedValuesOf` 를 지원하지 않는 브라우저에서는 시간대 선택에 현재 값만 표시됩니다. PWA 설치와 서비스 워커는 https(또는 localhost)에서만 동작합니다.
+
 ## 개발 환경
 
 필요한 도구는 다음과 같습니다.
@@ -100,3 +148,5 @@ SQL 쿼리를 바꾼 뒤에는 `cargo sqlx prepare -- --all-targets` 를 실행�
 ## 라이선스
 
 AGPL-3.0-only. [LICENSE](LICENSE) 참조.
+
+Docker 이미지에는 서드파티 패키지가 함께 들어 있으며 각각의 라이선스를 따릅니다. 예를 들어 Debian 의 ffmpeg 는 GPL 구성요소(x264, x265 등)를 링크하고, 이미지에는 libheif 등도 포함됩니다. 해당 패키지의 소스는 Debian 에서 받을 수 있습니다.
