@@ -166,3 +166,43 @@ fn blurhash_and_dominant() {
     assert_eq!(r.dominant_color, "#c82828");
     assert!(!r.blurhash.is_empty());
 }
+
+fn png_chunk(kind: &[u8; 4], data: &[u8]) -> Vec<u8> {
+    let mut crc = u32::MAX;
+    for &b in kind.iter().chain(data) {
+        crc ^= u32::from(b);
+        for _ in 0..8 {
+            crc = if crc & 1 == 1 {
+                (crc >> 1) ^ 0xEDB8_8320
+            } else {
+                crc >> 1
+            };
+        }
+    }
+    let mut out = (data.len() as u32).to_be_bytes().to_vec();
+    out.extend_from_slice(kind);
+    out.extend_from_slice(data);
+    out.extend_from_slice(&(!crc).to_be_bytes());
+    out
+}
+
+#[test]
+fn too_many_pixels_fails_before_decode() {
+    let mut ihdr = Vec::new();
+    ihdr.extend_from_slice(&15000u32.to_be_bytes());
+    ihdr.extend_from_slice(&15000u32.to_be_bytes());
+    ihdr.extend_from_slice(&[8, 2, 0, 0, 0]);
+    let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
+    png.extend(png_chunk(b"IHDR", &ihdr));
+    png.extend(png_chunk(
+        b"IDAT",
+        &[0x78, 0x9c, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01],
+    ));
+    png.extend(png_chunk(b"IEND", &[]));
+    let dir = TempDir::new().unwrap();
+    let path = dir.path().join("big.png");
+    std::fs::write(&path, png).unwrap();
+
+    let err = decode(&path, MediaType::Png, 1).unwrap_err();
+    assert_eq!(err.to_string(), "image too large: 15000x15000");
+}

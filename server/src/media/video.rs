@@ -59,13 +59,13 @@ fn rotation(stream: &Value) -> i64 {
 }
 
 pub fn parse_probe(json: &str) -> Result<Probe> {
-    let v: Value = serde_json::from_str(json).context("ffprobe 출력 파싱 실패")?;
+    let v: Value = serde_json::from_str(json).context("ffprobe output parse failed")?;
     let streams = v["streams"].as_array().map(Vec::as_slice).unwrap_or(&[]);
     let codec_type = |s: &&Value, t: &str| s["codec_type"].as_str() == Some(t);
     let video = streams
         .iter()
         .find(|s| codec_type(s, "video"))
-        .ok_or_else(|| anyhow!("영상 스트림 없음"))?;
+        .ok_or_else(|| anyhow!("no video stream"))?;
     let audio = streams.iter().find(|s| codec_type(s, "audio"));
 
     let (mut width, mut height) = (
@@ -73,7 +73,7 @@ pub fn parse_probe(json: &str) -> Result<Probe> {
         video["height"].as_u64().unwrap_or(0) as u32,
     );
     if width == 0 || height == 0 {
-        bail!("영상 크기 없음");
+        bail!("no video dimensions");
     }
     if rotation(video).rem_euclid(180) == 90 {
         std::mem::swap(&mut width, &mut height);
@@ -106,7 +106,7 @@ async fn run(program: &str, args: Vec<OsString>) -> Result<Vec<u8>> {
         .kill_on_drop(true)
         .output()
         .await
-        .with_context(|| format!("{program} 실행 실패"))?;
+        .with_context(|| format!("{program} spawn failed"))?;
     if !out.status.success() {
         let stderr = String::from_utf8_lossy(&out.stderr);
         let last = stderr
@@ -114,7 +114,7 @@ async fn run(program: &str, args: Vec<OsString>) -> Result<Vec<u8>> {
             .rev()
             .find(|l| !l.trim().is_empty())
             .unwrap_or("");
-        bail!("{program} 실패 ({}): {last}", out.status);
+        bail!("{program} failed ({}): {last}", out.status);
     }
     Ok(out.stdout)
 }
@@ -173,13 +173,13 @@ pub async fn extract_poster(path: &Path, duration_ms: Option<i64>) -> Result<Rgb
     ]));
     let png = run("ffmpeg", args).await?;
     if png.is_empty() {
-        bail!("포스터 프레임 없음");
+        bail!("no poster frame");
     }
     // PNG 디코드는 CPU 작업. 런타임 밖에서.
     tokio::task::spawn_blocking(move || image::load_from_memory(&png).map(|img| img.into_rgb8()))
         .await
-        .context("포스터 디코드 작업 실패")?
-        .context("포스터 디코드 실패")
+        .context("poster decode task failed")?
+        .context("poster decode failed")
 }
 
 pub async fn make_playback(src: &Path, dst: &Path, plan: Playback) -> Result<()> {
