@@ -1,4 +1,5 @@
 import { Outlet } from '@tanstack/react-router'
+import { OfflineBanner } from '@/pwa/OfflineBanner'
 import { useSettings } from '@/settings/useSettings'
 import { NavRail, NavTabs } from './NavTabs'
 
@@ -10,8 +11,9 @@ export function AppShell() {
     <div className="min-h-dvh lg:flex">
       <NavRail />
       <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-10 border-b border-border bg-background px-4">
-          <div className="flex h-14 items-center">
+        <header className="sticky top-0 z-10 border-b border-border bg-background">
+          <OfflineBanner />
+          <div className="flex h-14 items-center px-4">
             <p className="truncate text-lg font-semibold">
               {settings?.instance_name}
             </p>

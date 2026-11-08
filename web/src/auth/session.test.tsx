@@ -1,9 +1,10 @@
-import { QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { api, call } from '@/api/client'
 import { json, mockFetch } from '@/test/fetch'
+import { userFixture } from '@/test/fixtures'
 import { createQueryClient, loadMe, meQueryKey, useMe } from './session'
 
 function setup() {
@@ -64,5 +65,70 @@ describe('session', () => {
     const { qc } = setup()
     expect(await loadMe(qc)).toBeUndefined()
     expect(calls).toBe(1)
+  })
+
+  // 브라우저 오프라인 상태에서도 대기 없이 실패. 화면 이동 멈춤 방지.
+  it('load_me_fails_fast_when_offline', async () => {
+    mockFetch({
+      'GET /api/auth/me': () => {
+        throw new TypeError('Failed to fetch')
+      },
+    })
+    const { qc } = setup()
+    onlineManager.setOnline(false)
+    try {
+      expect(await loadMe(qc)).toBeUndefined()
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  // 화면의 useMe 가 오프라인에서 일시정지한 조회를 가드가 이어받아 기다리지 않음.
+  it('load_me_skips_paused_refetch', async () => {
+    mockFetch({
+      'GET /api/auth/me': () => {
+        throw new TypeError('Failed to fetch')
+      },
+    })
+    const { qc, wrapper } = setup()
+    qc.setQueryData(meQueryKey, userFixture('guardian'), { updatedAt: 0 })
+    onlineManager.setOnline(false)
+    try {
+      renderHook(() => useMe(), { wrapper })
+      await waitFor(() => {
+        expect(qc.getQueryState(meQueryKey)?.fetchStatus).toBe('paused')
+      })
+      const pending = Symbol('pending')
+      const result = await Promise.race([
+        loadMe(qc),
+        new Promise<symbol>((r) => {
+          setTimeout(() => {
+            r(pending)
+          }, 1000)
+        }),
+      ])
+      expect(result).toBeUndefined()
+    } finally {
+      onlineManager.setOnline(true)
+    }
+  })
+
+  // 로그아웃(직접·강제) 시 파생물 캐시 삭제. 세션 없이 캐시 응답 방지.
+  it('sign_out_clears_derivative_cache', async () => {
+    const del = vi.fn<(name: string) => Promise<boolean>>()
+    del.mockResolvedValue(true)
+    vi.stubGlobal('caches', { delete: del })
+    mockFetch({
+      'GET /api/babies': () =>
+        json(401, { error: 'auth.required', params: {} }),
+    })
+    const { qc } = setup()
+    await expect(
+      qc.query({
+        queryKey: ['a'],
+        queryFn: () => call(api.GET('/api/babies')),
+      }),
+    ).rejects.toThrow()
+    expect(del).toHaveBeenCalledWith('ld-derivatives')
   })
 })

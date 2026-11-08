@@ -1,18 +1,26 @@
-import type { QueryClient } from '@tanstack/react-query'
+import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import {
   createRootRouteWithContext,
   createRoute,
   createRouter,
+  Outlet,
   redirect,
+  useRouter,
   type RouterHistory,
 } from '@tanstack/react-router'
 import type { Role, User } from '@/api/types'
-import { authStatusQuery, hasRole, loadMe } from '@/auth/session'
+import {
+  authStatusQuery,
+  hasRole,
+  isMeUnreachable,
+  loadMe,
+} from '@/auth/session'
 import { applyUserLocale } from '@/i18n'
 import { InvitePage } from '@/pages/InvitePage'
 import { MembersPage } from '@/members/MembersPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { OfflineScreen } from '@/pwa/OfflineBanner'
 import { SignupPage } from '@/pages/SignupPage'
 import { SettingsPage } from '@/settings/SettingsPage'
 import { AppShell } from '@/shell/AppShell'
@@ -102,7 +110,19 @@ const authedRoute = createRoute({
     if (me) applyUserLocale(me.locale)
     return { me }
   },
+  component: AuthedGate,
 })
+
+// me 확인 불가이고 캐시도 없으면 오프라인 화면. 하위 화면의 요청 방지.
+function AuthedGate() {
+  const { me } = authedRoute.useRouteContext()
+  const qc = useQueryClient()
+  const router = useRouter()
+  if (me === undefined && isMeUnreachable(qc)) {
+    return <OfflineScreen onRetry={() => router.invalidate()} />
+  }
+  return <Outlet />
+}
 
 function requireRole(min: Role) {
   return ({ context }: { context: { me?: User } }) => {

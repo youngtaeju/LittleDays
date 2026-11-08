@@ -3,6 +3,7 @@ import { RouterProvider } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Toaster } from '@/components/ui/sonner'
 import { createQueryClient } from '@/auth/session'
+import { UpdatePrompt } from '@/pwa/UpdatePrompt'
 import { createApp, type AppRouter } from '@/router'
 import { useTheme } from '@/theme/theme'
 
@@ -18,6 +19,7 @@ export function AppView({
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
       <Toaster theme={theme} />
+      <UpdatePrompt />
     </QueryClientProvider>
   )
 }

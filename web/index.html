@@ -3,7 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="theme-color"
+      content="#F5F7F6"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#14181B"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>LittleDays</title>
+    <script>
+      // 첫 페인트 전 다크 적용. 규칙은 src/theme/theme.ts 와 동일.
+      try {
+        const p = localStorage.getItem('ld.theme')
+        if (
+          p === 'dark' ||
+          (p !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        ) {
+          document.documentElement.classList.add('dark')
+        }
+      } catch {
+        // 저장소 접근 불가. 앱 시작 시 initTheme 이 다시 적용.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
