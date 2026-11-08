@@ -7,4 +7,5 @@ node_modules/
 data/
 /compose/data/
 web/dist
+web/test-results/
 /compose/postgres/

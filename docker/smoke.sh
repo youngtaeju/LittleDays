@@ -7,13 +7,10 @@ IMAGE="${1:-littledays:dev}"
 PORT="${SMOKE_PORT:-18090}"
 PROJECT=littledays-smoke
 PUID=1234
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 WORK="$(mktemp -d)"
 BASE="http://localhost:$PORT"
-
-compose() {
-    docker compose -p "$PROJECT" -f "$WORK/docker-compose.yml" -f "$WORK/smoke.override.yml" "$@"
-}
+# shellcheck source=docker/stack.sh
+. "$(dirname "$0")/stack.sh"
 
 in_image() {
     local entry=$1
@@ -23,34 +20,17 @@ in_image() {
 
 cleanup() {
     local status=$?
-    if [ "$status" -ne 0 ] && [ -f "$WORK/smoke.override.yml" ]; then
+    if [ "$status" -ne 0 ] && [ -f "$WORK/stack.override.yml" ]; then
         compose logs --no-color app >&2 || true
     fi
-    if [ -f "$WORK/smoke.override.yml" ]; then
-        compose down -v --remove-orphans >/dev/null 2>&1 || true
-    fi
-    # bind mount 디렉터리는 root·postgres 소유. 컨테이너 안에서 삭제.
-    docker run --rm --entrypoint rm -v "$WORK:/w" "$IMAGE" -rf /w/data /w/postgres >/dev/null 2>&1 || true
+    stack_down
     rm -rf "$WORK"
     if [ "$status" -eq 0 ]; then echo "SMOKE PASS"; else echo "SMOKE FAIL" >&2; fi
     exit "$status"
 }
 trap cleanup EXIT
 
-fail() {
-    echo "FAIL: $*" >&2
-    exit 1
-}
 pass() { echo "PASS: $*"; }
-
-wait_healthy() {
-    local deadline=$((SECONDS + 90))
-    until curl -fsS -o /dev/null "$BASE/api/health" 2>/dev/null; do
-        if [ "$SECONDS" -ge "$deadline" ]; then fail "/api/health 90초 안에 200 아님"; fi
-        if [ -z "$(compose ps -q --status running app)" ]; then fail "app 컨테이너 실행 중 아님"; fi
-        sleep 2
-    done
-}
 
 # --- 이미지 단독 검사 ---
 
@@ -80,22 +60,7 @@ pass "libheif plugins, binary deps"
 
 # --- compose 기동 ---
 
-cp "$ROOT/compose/docker-compose.yml" "$WORK/"
-cat >"$WORK/smoke.override.yml" <<EOF
-services:
-  app:
-    image: $IMAGE
-EOF
-secret="$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-cat >"$WORK/.env" <<EOF
-PORT=$PORT
-POSTGRES_PASSWORD=smoke
-DATABASE_URL=postgres://littledays:smoke@postgres:5432/littledays
-PUBLIC_URL=$BASE
-SECRET_KEY=$secret
-PUID=$PUID
-PGID=$PUID
-EOF
+stack_write
 
 # root 소유 기존 파일. 재귀 chown 확인용.
 docker run --rm --entrypoint sh -v "$WORK/data:/data" "$IMAGE" \

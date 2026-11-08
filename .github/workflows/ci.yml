@@ -112,3 +112,53 @@ jobs:
           { echo '```'; docker image ls littledays:ci; echo '```'; } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: 스모크
         run: bash docker/smoke.sh littledays:ci
+
+  e2e:
+    # docker job 이 채운 GHA 빌드 캐시 재사용. 같은 이미지 이중 빌드 방지.
+    needs: docker
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      # docker job 과 같은 빌드. 캐시 기록은 docker job 만.
+      - name: 이미지 빌드
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          tags: littledays:ci
+          load: true
+          cache-from: type=gha
+      - name: 스택 기동(빈 DB)
+        run: bash docker/stack.sh up littledays:ci
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - name: 의존성 설치
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+      - name: Chromium 설치
+        working-directory: web
+        run: pnpm exec playwright install --with-deps chromium
+      - name: e2e
+        working-directory: web
+        run: pnpm e2e
+      - name: trace 업로드
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-traces
+          path: web/test-results/
+          retention-days: 7
+      - name: 서버 로그
+        if: failure()
+        run: bash docker/stack.sh logs littledays:ci
+      - name: 스택 정리
+        if: always()
+        run: bash docker/stack.sh down littledays:ci
