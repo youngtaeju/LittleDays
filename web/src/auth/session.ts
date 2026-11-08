@@ -22,8 +22,11 @@ const meQuery = queryOptions({
     try {
       return (await call(api.GET('/api/auth/me'))).user
     } catch (e) {
-      // 비로그인 상태는 에러가 아님.
-      if (e instanceof ApiError && e.status === 401) return null
+      // 비로그인 상태는 에러가 아님. 세션 만료 포함이라 이전 사용자 오프라인 캐시 삭제.
+      if (e instanceof ApiError && e.status === 401) {
+        clearOfflineCaches()
+        return null
+      }
       throw e
     }
   },
@@ -81,11 +84,18 @@ export function setSignedIn(qc: QueryClient, user: User): void {
   applyUserLocale(user.locale)
 }
 
+// 서비스 워커 런타임 캐시(vite.config.ts). 남기면 세션 없이도 이전 사용자 응답 제공.
+function clearOfflineCaches(): void {
+  if (!('caches' in window)) return
+  for (const name of ['ld-api', 'ld-derivatives']) {
+    caches.delete(name).catch(() => undefined)
+  }
+}
+
 // 강제·직접 로그아웃 공용. 이전 사용자 데이터·업로드 큐 제거 후 비로그인 확정.
 function setSignedOut(qc: QueryClient): void {
   clearUploads()
-  // 서비스 워커 파생물 캐시. 남기면 세션 없이도 CacheFirst 가 응답.
-  if ('caches' in window) void caches.delete('ld-derivatives')
+  clearOfflineCaches()
   qc.clear()
   qc.setQueryData(meQueryKey, null)
   applyUserLocale(null)
