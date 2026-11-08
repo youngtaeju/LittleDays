@@ -149,7 +149,7 @@ export function BabiesPage() {
           return (
             <li
               key={baby.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-card p-3"
+              className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-card p-3"
             >
               <Avatar baby={baby} />
               <div className="min-w-0 flex-1 basis-40">

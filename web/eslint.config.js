@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   // 생성물과 빌드 산출물은 검사 제외.
-  { ignores: ['dist', 'src/api/schema.d.ts'] },
+  { ignores: ['dist', 'src/api/schema.d.ts', 'test-results'] },
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   reactHooks.configs.flat.recommended,

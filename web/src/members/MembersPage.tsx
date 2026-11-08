@@ -59,7 +59,7 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
 
   return (
     <li className="grid gap-2 rounded-md border border-border bg-card p-3">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <p className="min-w-0 flex-1 basis-40 truncate font-semibold">
           {user.display_name}
           <span className="ml-2 text-sm font-normal text-muted-foreground">

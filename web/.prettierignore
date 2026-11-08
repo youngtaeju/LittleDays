@@ -2,3 +2,4 @@ dist
 pnpm-lock.yaml
 openapi.json
 src/api/schema.d.ts
+test-results
