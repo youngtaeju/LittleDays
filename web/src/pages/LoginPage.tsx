@@ -5,7 +5,9 @@ import { api, call } from '@/api/client'
 import { authStatusQuery, setSignedIn } from '@/auth/session'
 import { Field, FormError, formText } from '@/components/Field'
 import { Button } from '@/components/ui/button'
-import { PlainLayout } from './PlainLayout'
+import { rememberedInstanceName } from '@/settings/useSettings'
+import { ForgotPasswordSheet } from './ForgotPasswordSheet'
+import { AuthLayout } from './AuthLayout'
 
 export function LoginPage() {
   const { t } = useTranslation()
@@ -30,7 +32,10 @@ export function LoginPage() {
   })
 
   return (
-    <PlainLayout title={t('auth.login.title')}>
+    <AuthLayout
+      title={rememberedInstanceName() ?? t('app.name')}
+      description={t('auth.login.subtitle')}
+    >
       <form
         className="grid gap-4"
         onSubmit={(e) => {
@@ -57,6 +62,7 @@ export function LoginPage() {
           {t('auth.login.submit')}
         </Button>
       </form>
+      <ForgotPasswordSheet />
       {status.data?.signup_open && (
         <p className="text-sm text-muted-foreground">
           {t('auth.login.firstRun')}{' '}
@@ -68,6 +74,6 @@ export function LoginPage() {
           </Link>
         </p>
       )}
-    </PlainLayout>
+    </AuthLayout>
   )
 }

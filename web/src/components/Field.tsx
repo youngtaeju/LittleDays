@@ -8,17 +8,37 @@ import { errorMessage } from '@/i18n'
 export function Field({
   label,
   hint,
+  error,
   ...props
-}: { label: string; hint?: string } & ComponentProps<typeof Input>) {
+}: {
+  label: string
+  hint?: string
+  // 입력칸 아래 인라인 오류 문구.
+  error?: string | null
+} & ComponentProps<typeof Input>) {
   const id = useId()
   const hintId = useId()
+  const errorId = useId()
+  const describedBy =
+    [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(' ') ||
+    undefined
   return (
     <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
-      <Input id={id} aria-describedby={hint ? hintId : undefined} {...props} />
+      <Input
+        id={id}
+        aria-describedby={describedBy}
+        aria-invalid={error ? true : undefined}
+        {...props}
+      />
       {hint && (
         <p id={hintId} className="text-xs text-muted-foreground">
           {hint}
+        </p>
+      )}
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-destructive">
+          {error}
         </p>
       )}
     </div>

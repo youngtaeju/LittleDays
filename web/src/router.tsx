@@ -34,9 +34,9 @@ const InvitePage = lazyRouteComponent(
   () => import('@/pages/InvitePage'),
   'InvitePage',
 )
-const SignupPage = lazyRouteComponent(
-  () => import('@/pages/SignupPage'),
-  'SignupPage',
+const SignupWizard = lazyRouteComponent(
+  () => import('@/pages/SignupWizard'),
+  'SignupWizard',
 )
 const FamilyPage = lazyRouteComponent(
   () => import('@/family/FamilyPage'),
@@ -142,7 +142,7 @@ const signupRoute = createRoute({
       .catch(() => undefined)
     if (status && !status.signup_open) throw redirect({ to: '/login' })
   },
-  component: SignupPage,
+  component: SignupWizard,
 })
 
 const inviteRoute = createRoute({

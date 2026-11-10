@@ -3,7 +3,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isNetworkDown, subscribeNetworkDown } from '@/api/client'
 import { Button } from '@/components/ui/button'
-import { PlainLayout } from '@/pages/PlainLayout'
+import { AuthLayout } from '@/pages/AuthLayout'
 
 // 브라우저 online/offline 이벤트 기준. 이벤트 시점의 값만 신뢰.
 function useBrowserOnline(): boolean {
@@ -48,7 +48,7 @@ export function OfflineScreen({ onRetry }: { onRetry: () => Promise<void> }) {
   const { t } = useTranslation()
   const [retrying, setRetrying] = useState(false)
   return (
-    <PlainLayout title={t('offline.screen')} description={t('offline.hint')}>
+    <AuthLayout title={t('offline.screen')} description={t('offline.hint')}>
       <Button
         disabled={retrying}
         onClick={() => {
@@ -60,6 +60,6 @@ export function OfflineScreen({ onRetry }: { onRetry: () => Promise<void> }) {
       >
         {t('common.retry')}
       </Button>
-    </PlainLayout>
+    </AuthLayout>
   )
 }

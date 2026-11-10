@@ -10,11 +10,35 @@ function isLocale(v: string | null | undefined): v is Locale {
   return v === 'ko' || v === 'en'
 }
 
+const LANG_KEY = 'ld.lang'
+
+// 로그인 전 선택 언어(기기 저장). 저장소 접근 불가 시 없음으로 취급.
+function storedLocale(): Locale | null {
+  try {
+    const v = localStorage.getItem(LANG_KEY)
+    return isLocale(v) ? v : null
+  } catch {
+    return null
+  }
+}
+
+// 로그인 전 화면에서 고른 언어 저장 후 적용.
+export function chooseLocale(lng: Locale): void {
+  try {
+    localStorage.setItem(LANG_KEY, lng)
+  } catch {
+    // 저장 실패 시 이번 방문에만 적용.
+  }
+  initI18n(lng)
+}
+
 export function pickLocale(
   userLocale: string | null | undefined,
   navigatorLanguage: string,
 ): Locale {
   if (isLocale(userLocale)) return userLocale
+  const stored = storedLocale()
+  if (stored) return stored
   return navigatorLanguage.toLowerCase().startsWith('ko') ? 'ko' : 'en'
 }
 
