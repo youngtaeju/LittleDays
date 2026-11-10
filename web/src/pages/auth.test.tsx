@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, call } from '@/api/client'
 import type { User } from '@/api/types'
 import { meQueryKey } from '@/auth/session'
-import { initI18n } from '@/i18n'
+import { initI18n, pickLocale } from '@/i18n'
 import en from '@/locales/en.json'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
@@ -428,6 +428,38 @@ describe('signup', () => {
       expect(screen.getByLabelText(w.instanceName)).toHaveFocus()
     })
 
+    it('wizard_moves_focus_and_announces_step', async () => {
+      browserLanguage('ko-KR')
+      mockFetch(wizardRoutes([]))
+      const app = renderApp('/signup')
+      await toStep2(app)
+      expect(
+        screen.getByRole('heading', { name: w.accountTitle }),
+      ).toHaveFocus()
+      expect(screen.getByText('2 / 4 단계')).toBeInTheDocument()
+    })
+
+    it('signup_closed_offers_login_link', async () => {
+      browserLanguage('ko-KR')
+      mockFetch({
+        ...wizardRoutes([]),
+        'POST /api/auth/signup': () => apiError(403, 'auth.signupClosed'),
+      })
+      const app = renderApp('/signup')
+      await toStep2(app)
+      await fillAccount(app)
+      await app.user.click(
+        screen.getByRole('button', { name: w.createAccount }),
+      )
+      expect(
+        await screen.findByText(ko.errors.auth.signupClosed),
+      ).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: w.toLogin })).toHaveAttribute(
+        'href',
+        '/login',
+      )
+    })
+
     it('password_rules_live', async () => {
       browserLanguage('ko-KR')
       mockFetch(wizardRoutes([]))
@@ -490,6 +522,52 @@ describe('forgot_password', () => {
     ).toBeInTheDocument()
   })
 
+  it('login_title_uses_remembered_instance_name', async () => {
+    localStorage.setItem('ld.instance.name', '하늘이네')
+    mockFetch(authRoutes({ me: null }))
+    renderApp('/login')
+    expect(
+      await screen.findByRole('heading', { name: '하늘이네' }),
+    ).toBeInTheDocument()
+    localStorage.clear()
+  })
+
+  it('settings_load_remembers_instance_name', async () => {
+    localStorage.clear()
+    const state: { me: User | null } = { me: userFixture('owner') }
+    mockFetch(authRoutes(state))
+    renderApp('/')
+    await waitFor(() => {
+      expect(localStorage.getItem('ld.instance.name')).toBe(
+        settingsFixture.instance_name,
+      )
+    })
+    localStorage.clear()
+  })
+
+  it('language_choice_persists_for_signed_out', async () => {
+    localStorage.clear()
+    browserLanguage('ko-KR')
+    mockFetch(authRoutes({ me: null }))
+    const { user } = renderApp('/login')
+    await user.click(await screen.findByRole('button', { name: 'English' }))
+    expect(localStorage.getItem('ld.lang')).toBe('en')
+    expect(pickLocale(null, 'ko-KR')).toBe('en')
+    localStorage.clear()
+  })
+
+  it('forgot_command_placeholder_is_localized', async () => {
+    mockFetch(authRoutes({ me: null }))
+    const { user } = renderApp('/login')
+    await user.click(await screen.findByRole('button', { name: 'English' }))
+    await user.click(
+      await screen.findByRole('button', { name: en.auth.login.forgot }),
+    )
+    expect(await screen.findByRole('dialog')).toHaveTextContent(
+      'reset-password <username>',
+    )
+  })
+
   it('login_shows_title_and_subtitle', async () => {
     mockFetch(authRoutes({ me: null }))
     renderApp('/login')
@@ -502,47 +580,56 @@ describe('forgot_password', () => {
 
 describe('invite', () => {
   const raw = 'Ab3_x-9QzT'
+  const preview = {
+    role: 'guardian',
+    instance_name: '우리 가족',
+    inviter_display_name: '엄마',
+    expires_at: '2026-11-10T00:00:00Z',
+  }
 
-  it('invite_expired_shows_message', async () => {
+  it('invite_shows_inviter', async () => {
     mockFetch({
       ...authRoutes({ me: null }),
-      [`GET /api/invites/${raw}/preview`]: () =>
-        apiError(410, 'invite.expired'),
+      [`GET /api/invites/${raw}/preview`]: () => json(200, preview),
     })
     renderApp(`/invite/${raw}`)
 
     expect(
-      await screen.findByText(ko.errors.invite.expired),
+      await screen.findByRole('heading', {
+        name: '엄마님이 우리 가족에 초대했어요',
+      }),
     ).toBeInTheDocument()
+    expect(screen.getByText(ko.roles.guardianDesc)).toBeInTheDocument()
+  })
+
+  it.each([
+    ['expired', 410, ko.auth.invite.error.expired],
+    ['used', 410, ko.auth.invite.error.used],
+    ['revoked', 410, ko.auth.invite.error.revoked],
+    ['notFound', 404, ko.auth.invite.error.notFound],
+  ] as const)('invite_error_variants %s', async (key, status, copy) => {
+    mockFetch({
+      ...authRoutes({ me: null }),
+      [`GET /api/invites/${raw}/preview`]: () =>
+        apiError(status, `invite.${key}`),
+    })
+    renderApp(`/invite/${raw}`)
+
+    expect(
+      await screen.findByRole('heading', { name: copy.title }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(copy.action)).toBeInTheDocument()
     expect(screen.queryByLabelText(ko.auth.username)).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: ko.auth.toLogin }),
     ).toBeInTheDocument()
   })
 
-  it('invite_not_found_shows_message', async () => {
-    mockFetch({
-      ...authRoutes({ me: null }),
-      [`GET /api/invites/${raw}/preview`]: () =>
-        apiError(404, 'invite.notFound'),
-    })
-    renderApp(`/invite/${raw}`)
-    expect(
-      await screen.findByText(ko.errors.invite.notFound),
-    ).toBeInTheDocument()
-    expect(screen.queryByLabelText(ko.auth.username)).not.toBeInTheDocument()
-  })
-
   it('invite_accept', async () => {
     let body: unknown
     mockFetch({
       ...authRoutes({ me: null }),
-      [`GET /api/invites/${raw}/preview`]: () =>
-        json(200, {
-          role: 'guardian',
-          instance_name: '우리 가족',
-          expires_at: '2026-11-10T00:00:00Z',
-        }),
+      [`GET /api/invites/${raw}/preview`]: () => json(200, preview),
       [`POST /api/invites/${raw}/accept`]: async (req) => {
         body = await req.json()
         return json(201, { user: userFixture('guardian') })
@@ -550,19 +637,15 @@ describe('invite', () => {
     })
     const { router, user, queryClient } = renderApp(`/invite/${raw}`)
 
+    await user.type(await screen.findByLabelText(ko.auth.displayName), '아빠')
+    await user.click(screen.getByRole('button', { name: ko.auth.invite.next }))
+    // 단계 전환 시 제목으로 포커스, 단계 안내 알림.
     expect(
-      await screen.findByRole('heading', {
-        name: ko.auth.invite.title.replace('{{instance}}', '우리 가족'),
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        ko.auth.invite.role.replace('{{role}}', ko.roles.guardian),
-      ),
-    ).toBeInTheDocument()
+      await screen.findByRole('heading', { name: ko.auth.invite.accountTitle }),
+    ).toHaveFocus()
+    expect(screen.getByText('2 / 2 단계')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText(ko.auth.username), 'dad')
-    await user.type(screen.getByLabelText(ko.auth.displayName), '아빠')
     await user.type(screen.getByLabelText(ko.auth.password), 'pw123456')
     await user.click(
       screen.getByRole('button', { name: ko.auth.invite.submit }),
@@ -580,5 +663,107 @@ describe('invite', () => {
       userFixture('guardian'),
     )
     await screen.findAllByText(settingsFixture.instance_name)
+  })
+
+  async function fillInvite(app: ReturnType<typeof renderApp>) {
+    await app.user.type(
+      await screen.findByLabelText(ko.auth.displayName),
+      '아빠',
+    )
+    await app.user.click(
+      screen.getByRole('button', { name: ko.auth.invite.next }),
+    )
+    await app.user.type(await screen.findByLabelText(ko.auth.username), 'dad')
+    await app.user.type(screen.getByLabelText(ko.auth.password), 'pw123456')
+    await app.user.click(
+      screen.getByRole('button', { name: ko.auth.invite.submit }),
+    )
+  }
+
+  it('invite_accept_applies_selected_language', async () => {
+    let patch: unknown
+    mockFetch({
+      ...authRoutes({ me: null }),
+      [`GET /api/invites/${raw}/preview`]: () => json(200, preview),
+      [`POST /api/invites/${raw}/accept`]: () =>
+        json(201, { user: userFixture('guardian') }),
+      'PATCH /api/users/me': async (req) => {
+        patch = await req.json()
+        return json(200, { user: { ...userFixture('guardian'), locale: 'en' } })
+      },
+    })
+    const app = renderApp(`/invite/${raw}`)
+    await app.user.click(await screen.findByRole('button', { name: 'English' }))
+    await app.user.type(
+      await screen.findByLabelText(en.auth.displayName),
+      'Dad',
+    )
+    await app.user.click(
+      screen.getByRole('button', { name: en.auth.invite.next }),
+    )
+    await app.user.type(screen.getByLabelText(en.auth.username), 'dad')
+    await app.user.type(screen.getByLabelText(en.auth.password), 'pw123456')
+    await app.user.click(
+      screen.getByRole('button', { name: en.auth.invite.submit }),
+    )
+    await waitFor(() => {
+      expect(patch).toEqual({ locale: 'en' })
+    })
+    expect(document.documentElement.lang).toBe('en')
+  })
+
+  it.each([
+    ['expired', 410],
+    ['revoked', 410],
+    ['used', 409],
+  ] as const)(
+    'invite_invalid_at_accept_shows_error_view %s',
+    async (key, status) => {
+      mockFetch({
+        ...authRoutes({ me: null }),
+        [`GET /api/invites/${raw}/preview`]: () => json(200, preview),
+        [`POST /api/invites/${raw}/accept`]: () =>
+          apiError(status, `invite.${key}`),
+      })
+      const app = renderApp(`/invite/${raw}`)
+      await fillInvite(app)
+      expect(
+        await screen.findByRole('heading', {
+          name: ko.auth.invite.error[key].title,
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(ko.auth.invite.error[key].action),
+      ).toBeInTheDocument()
+      expect(screen.queryByLabelText(ko.auth.password)).not.toBeInTheDocument()
+    },
+  )
+
+  it('invite_username_taken_returns_to_field', async () => {
+    mockFetch({
+      ...authRoutes({ me: null }),
+      [`GET /api/invites/${raw}/preview`]: () => json(200, preview),
+      [`POST /api/invites/${raw}/accept`]: () =>
+        apiError(409, 'auth.usernameTaken'),
+    })
+    const app = renderApp(`/invite/${raw}`)
+    await fillInvite(app)
+    expect(
+      await screen.findByText(ko.errors.auth.usernameTaken),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText(ko.auth.username)).toHaveFocus()
+  })
+
+  it('auth_layout_hides_language_switch_when_signed_in', async () => {
+    mockFetch({
+      ...authRoutes({ me: userFixture('owner') }),
+    })
+    const { router } = renderApp('/')
+    await screen.findAllByText(settingsFixture.instance_name)
+    await router.navigate({ href: '/no-such-page' })
+    await screen.findByRole('heading', { name: ko.notFound.title })
+    expect(
+      screen.queryByRole('button', { name: 'English' }),
+    ).not.toBeInTheDocument()
   })
 })

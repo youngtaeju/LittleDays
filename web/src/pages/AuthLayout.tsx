@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
+import { QueryClientContext } from '@tanstack/react-query'
+import { useContext } from 'react'
 import { useTranslation } from 'react-i18next'
-import { initI18n, type Locale } from '@/i18n'
+import { meQueryKey } from '@/auth/session'
+import { chooseLocale, type Locale } from '@/i18n'
 import { cn } from '@/lib/utils'
 
 const LANGUAGES: { lng: Locale; label: string }[] = [
@@ -19,6 +22,9 @@ export function AuthLayout({
   children?: ReactNode
 }) {
   const { t, i18n } = useTranslation()
+  // 조회 없이 캐시만 확인(프로바이더 밖 렌더 허용). 로그인 상태면 계정 언어가 우선이라 전환 숨김.
+  const signedIn =
+    useContext(QueryClientContext)?.getQueryData(meQueryKey) != null
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col px-4 py-6 lg:max-w-[400px]">
       <header className="flex items-center gap-2">
@@ -27,7 +33,7 @@ export function AuthLayout({
           {t('app.name')}
         </span>
       </header>
-      <div className="flex flex-1 flex-col justify-center gap-6 py-10">
+      <div className="flex flex-1 flex-col gap-6 pb-10 pt-12">
         {(title || description) && (
           <div className="grid gap-1">
             {title && <h1 className="text-xl font-bold">{title}</h1>}
@@ -38,31 +44,33 @@ export function AuthLayout({
         )}
         {children}
       </div>
-      <footer
-        role="group"
-        aria-label={t('auth.language')}
-        className="flex justify-center gap-1"
-      >
-        {LANGUAGES.map(({ lng, label }) => (
-          <button
-            key={lng}
-            type="button"
-            lang={lng}
-            aria-pressed={i18n.language === lng}
-            onClick={() => {
-              initI18n(lng)
-            }}
-            className={cn(
-              'min-h-11 rounded-lg px-3 text-sm',
-              i18n.language === lng
-                ? 'font-semibold text-foreground'
-                : 'text-muted-foreground',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </footer>
+      {!signedIn && (
+        <footer
+          role="group"
+          aria-label={t('auth.language')}
+          className="flex justify-center gap-1"
+        >
+          {LANGUAGES.map(({ lng, label }) => (
+            <button
+              key={lng}
+              type="button"
+              lang={lng}
+              aria-pressed={i18n.language === lng}
+              onClick={() => {
+                chooseLocale(lng)
+              }}
+              className={cn(
+                'min-h-11 rounded-lg px-3 text-sm',
+                i18n.language === lng
+                  ? 'font-semibold text-foreground'
+                  : 'text-muted-foreground',
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </footer>
+      )}
     </main>
   )
 }

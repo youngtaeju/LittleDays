@@ -5,6 +5,7 @@ import { api, call } from '@/api/client'
 import { authStatusQuery, setSignedIn } from '@/auth/session'
 import { Field, FormError, formText } from '@/components/Field'
 import { Button } from '@/components/ui/button'
+import { rememberedInstanceName } from '@/settings/useSettings'
 import { ForgotPasswordSheet } from './ForgotPasswordSheet'
 import { AuthLayout } from './AuthLayout'
 
@@ -31,7 +32,10 @@ export function LoginPage() {
   })
 
   return (
-    <AuthLayout title={t('app.name')} description={t('auth.login.subtitle')}>
+    <AuthLayout
+      title={rememberedInstanceName() ?? t('app.name')}
+      description={t('auth.login.subtitle')}
+    >
       <form
         className="grid gap-4"
         onSubmit={(e) => {

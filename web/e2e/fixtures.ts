@@ -1,5 +1,10 @@
 import path from 'node:path'
-import { test as base, expect, type Page } from '@playwright/test'
+import {
+  test as base,
+  expect,
+  type APIRequestContext,
+  type Page,
+} from '@playwright/test'
 import type { Asset, AssetPage, TrashItem } from '@/api/types'
 
 export { expect }
@@ -34,6 +39,25 @@ export async function login(
     headers: CSRF,
   })
   expect(res.status(), await res.text()).toBe(200)
+}
+
+// 별도 요청 컨텍스트(쿠키 분리)로 소유자 로그인 후 초대 링크 생성. 링크 경로 반환.
+export async function createInvitePath(
+  request: APIRequestContext,
+  role: 'guardian' | 'family' = 'family',
+): Promise<string> {
+  const res = await request.post('/api/auth/login', {
+    data: { username: OWNER.username, password: OWNER.password },
+    headers: CSRF,
+  })
+  expect(res.status(), await res.text()).toBe(200)
+  const created = await request.post('/api/invites', {
+    data: { role },
+    headers: CSRF,
+  })
+  expect(created.status(), await created.text()).toBeLessThan(300)
+  const { url } = (await created.json()) as { url: string }
+  return new URL(url).pathname
 }
 
 export async function listAssets(page: Page): Promise<AssetPage['items']> {
@@ -108,3 +132,11 @@ export const test = base.extend<{ ownerPage: Page }>({
     await provide(page)
   },
 })
+
+// 데스크톱 사이드바의 올리기 버튼. 빈 피드 안내 버튼과 이름이 같아 메뉴 영역 기준으로 한정.
+export function sidebarUpload(page: Page) {
+  return page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .locator('..')
+    .getByRole('button', { name: '사진 올리기' })
+}

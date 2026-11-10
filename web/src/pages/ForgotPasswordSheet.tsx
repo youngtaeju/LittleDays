@@ -11,17 +11,15 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 
-const RESET_COMMAND =
-  'docker compose exec app /app/littledays reset-password <아이디>'
-
 // 이메일 발송이 없으므로 관리자 요청 안내와 서버 명령 표시.
 export function ForgotPasswordSheet() {
   const { t } = useTranslation()
+  const resetCommand = `docker compose exec app /app/littledays reset-password ${t('auth.login.resetPlaceholder')}`
   const [open, setOpen] = useState(false)
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(RESET_COMMAND)
+      await navigator.clipboard.writeText(resetCommand)
       toast(t('common.copied'))
     } catch {
       // 클립보드 거부 시 사용자가 직접 선택해 복사.
@@ -45,7 +43,7 @@ export function ForgotPasswordSheet() {
             {t('auth.login.forgotAdmin')}
           </p>
           <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs">
-            <code>{RESET_COMMAND}</code>
+            <code>{resetCommand}</code>
           </pre>
           <Button type="button" variant="outline" onClick={() => void copy()}>
             {t('common.copy')}

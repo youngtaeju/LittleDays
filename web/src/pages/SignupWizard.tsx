@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import {
   useEffect,
   useRef,
@@ -14,27 +14,17 @@ import { setSignedIn } from '@/auth/session'
 import { Field, FormError } from '@/components/Field'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
-import IconArrowBack from '~icons/material-symbols/arrow-back-rounded'
-import IconCheck from '~icons/material-symbols/check-rounded'
-import IconClose from '~icons/material-symbols/close-rounded'
 import { AuthLayout } from './AuthLayout'
+import {
+  errorField,
+  PasswordRules,
+  StepBar,
+  StepHeading,
+  type FieldName,
+} from './authParts'
 
 const TOTAL_STEPS = 4
-// 서버 규칙(server/src/auth/validate.rs)과 같은 값.
-const PASSWORD_MIN = 8
-
 type Step = 1 | 2 | 3 | 4
-type FieldName = 'instance_name' | 'display_name' | 'username' | 'password'
-
-// 서버 에러 키가 가리키는 입력칸. 없으면 폼 전체 오류.
-function errorField(e: unknown): FieldName | null {
-  if (!(e instanceof ApiError)) return null
-  if (e.key === 'settings.instanceNameInvalid') return 'instance_name'
-  if (e.key.startsWith('auth.username')) return 'username'
-  if (e.key.startsWith('auth.password')) return 'password'
-  if (e.key.startsWith('auth.displayName')) return 'display_name'
-  return null
-}
 
 // 1~2단계 가입 API, 3단계 아기 추가 API. 2단계 성공 뒤에는 1~2단계로 되돌아가지 않음.
 export function SignupWizard() {
@@ -138,45 +128,22 @@ export function SignupWizard() {
     onValid()
   }
 
-  const passwordMet = Array.from(values.password).length >= PASSWORD_MIN
   const canGoBack = step === 2
 
   return (
     <AuthLayout>
       <div className="grid gap-6">
-        <div className="flex h-11 items-center justify-between">
-          {canGoBack ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t('auth.wizard.back')}
-              onClick={() => {
-                setStep((s) => (s - 1) as Step)
-              }}
-            >
-              <IconArrowBack className="size-5" />
-            </Button>
-          ) : (
-            <span className="size-11" />
-          )}
-          <div
-            role="img"
-            aria-label={t('auth.wizard.stepOf', {
-              step,
-              total: TOTAL_STEPS,
-            })}
-            className="flex gap-2"
-          >
-            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-              <span
-                key={i}
-                className={`size-2 rounded-full ${i < step ? 'bg-primary' : 'bg-muted'}`}
-              />
-            ))}
-          </div>
-          <span className="size-11" />
-        </div>
+        <StepBar
+          step={step}
+          total={TOTAL_STEPS}
+          onBack={
+            canGoBack
+              ? () => {
+                  setStep((x) => (x - 1) as Step)
+                }
+              : undefined
+          }
+        />
 
         <div ref={body}>
           {step === 1 && (
@@ -189,9 +156,9 @@ export function SignupWizard() {
                 })
               }}
             >
-              <h1 className="text-xl font-bold">
+              <StepHeading focusOnMount={false}>
                 {t('auth.wizard.instanceTitle')}
-              </h1>
+              </StepHeading>
               <Field
                 label={t('auth.wizard.instanceName')}
                 hint={t('auth.wizard.instanceHint')}
@@ -216,9 +183,7 @@ export function SignupWizard() {
               }}
             >
               <div className="grid gap-1">
-                <h1 className="text-xl font-bold">
-                  {t('auth.wizard.accountTitle')}
-                </h1>
+                <StepHeading>{t('auth.wizard.accountTitle')}</StepHeading>
                 <p className="text-sm text-muted-foreground">
                   {t('auth.wizard.accountHint')}
                 </p>
@@ -228,7 +193,6 @@ export function SignupWizard() {
                 autoComplete="nickname"
                 maxLength={64}
                 required
-                autoFocus
                 error={errorOf('display_name')}
                 {...set('display_name')}
               />
@@ -249,25 +213,17 @@ export function SignupWizard() {
                 error={errorOf('password')}
                 {...set('password')}
               />
-              <ul className="grid gap-1 text-sm">
-                <li
-                  data-met={passwordMet}
-                  className={`flex items-center gap-2 ${passwordMet ? 'text-foreground' : 'text-muted-foreground'}`}
-                >
-                  {passwordMet ? (
-                    <IconCheck className="size-4 text-primary" aria-hidden />
-                  ) : (
-                    <IconClose className="size-4" aria-hidden />
-                  )}
-                  <span>{t('auth.wizard.passwordRuleLength')}</span>
-                </li>
-              </ul>
-              <p role="status" className="sr-only">
-                {passwordMet
-                  ? t('auth.wizard.passwordRulesMet')
-                  : t('auth.wizard.passwordRulesUnmet')}
-              </p>
+              <PasswordRules password={values.password} />
               {fieldError === null && <FormError error={signup.error} />}
+              {signup.error instanceof ApiError &&
+                signup.error.key === 'auth.signupClosed' && (
+                  <Link
+                    to="/login"
+                    className="text-sm font-semibold text-accent-ink underline"
+                  >
+                    {t('auth.wizard.toLogin')}
+                  </Link>
+                )}
               <Button type="submit" disabled={signup.isPending}>
                 {t('auth.wizard.createAccount')}
               </Button>
@@ -283,15 +239,12 @@ export function SignupWizard() {
                 })
               }}
             >
-              <h1 className="text-xl font-bold">
-                {t('auth.wizard.babyTitle')}
-              </h1>
+              <StepHeading>{t('auth.wizard.babyTitle')}</StepHeading>
               <Field
                 label={t('auth.wizard.babyName')}
                 hint={t('auth.wizard.babyNameHint')}
                 maxLength={64}
                 required
-                autoFocus
                 {...set('babyName')}
               />
               <Field
@@ -318,9 +271,7 @@ export function SignupWizard() {
 
           {step === 4 && (
             <div className="grid gap-4">
-              <h1 className="text-xl font-bold">
-                {t('auth.wizard.doneTitle')}
-              </h1>
+              <StepHeading>{t('auth.wizard.doneTitle')}</StepHeading>
               <p className="text-sm text-muted-foreground">
                 {t('auth.wizard.doneBody', { instance: values.instance_name })}
               </p>
@@ -330,7 +281,6 @@ export function SignupWizard() {
                 </p>
               )}
               <Button
-                autoFocus
                 onClick={() => {
                   void navigate({ to: '/' })
                 }}

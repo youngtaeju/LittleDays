@@ -7,6 +7,7 @@ import {
   expectThumbnailsLoaded,
   getAsset,
   listAssets,
+  sidebarUpload,
   test,
   tiles,
   trashAsset,
@@ -49,7 +50,7 @@ test('upload_and_process', async ({ ownerPage: page }) => {
   await page.goto('/')
   // 사이드바 버튼 → 기기 선택창 → 확인 대화상자 → 올리기.
   const chooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: '사진 올리기' }).click()
+  await sidebarUpload(page).click()
   await (await chooser).setFiles([FILES.jpg, FILES.heic, FILES.mp4])
   const confirm = page.getByRole('dialog', {
     name: '사진 2장 · 영상 1개 올리기',
@@ -254,7 +255,7 @@ test('duplicate_in_trash_restore', async ({ ownerPage: page }) => {
 
   await page.goto('/')
   const chooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: '사진 올리기' }).click()
+  await sidebarUpload(page).click()
   await (await chooser).setFiles(FILES.jpg)
   await page
     .getByRole('dialog', { name: '사진 1장 올리기' })
@@ -296,11 +297,14 @@ test('invite_family_cannot_upload', async ({
     const guest = await context.newPage()
     await guest.goto(url)
     await expect(
-      guest.getByText(`${INSTANCE_NAME}에 초대받았어요`),
+      guest.getByRole('heading', {
+        name: `${OWNER.displayName}님이 ${INSTANCE_NAME}에 초대했어요`,
+      }),
     ).toBeVisible()
-    await expect(guest.getByText('역할: 가족')).toBeVisible()
-    await guest.getByLabel('아이디').fill(`family${String(test.info().retry)}`)
+    await expect(guest.getByText('사진을 보고 기록을 함께 봐요')).toBeVisible()
     await guest.getByLabel('표시 이름').fill('할머니')
+    await guest.getByRole('button', { name: '다음' }).click()
+    await guest.getByLabel('아이디').fill(`family${String(test.info().retry)}`)
     await guest.getByLabel('비밀번호').fill('e2e-family-password')
     await guest.getByRole('button', { name: '계정 만들기' }).click()
 

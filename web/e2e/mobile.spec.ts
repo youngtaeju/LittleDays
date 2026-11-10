@@ -1,5 +1,6 @@
 import {
   BABY_NAME,
+  createInvitePath,
   FILES,
   OWNER,
   expect,
@@ -99,6 +100,31 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
     page.getByRole('heading', { name: '우리 집 설정' }),
   ).toBeVisible()
   await expect(page.getByLabel('시간대')).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+})
+
+// 비로그인 화면. ownerPage 와 별개의 새 컨텍스트(쿠키 없음).
+test('auth_screens_fit_width', async ({ page, request }) => {
+  await page.goto('/login')
+  await expect(
+    page.getByRole('button', { name: '비밀번호를 잊었어요' }),
+  ).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
+  await page.goto(await createInvitePath(request))
+  await expect(page.getByRole('heading', { name: /초대했어요$/ })).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  await page.getByLabel('표시 이름').fill('이모')
+  await page.getByRole('button', { name: '다음' }).click()
+  await expect(
+    page.getByRole('heading', { name: '아이디와 비밀번호를 정해 주세요' }),
+  ).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
+  await page.goto('/invite/not-a-real-link')
+  await expect(
+    page.getByRole('heading', { name: '초대 링크가 올바르지 않아요' }),
+  ).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })
 

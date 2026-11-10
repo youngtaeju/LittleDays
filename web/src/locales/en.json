@@ -44,13 +44,34 @@
       "forgot": "I forgot my password",
       "forgotTitle": "I forgot my password",
       "forgotAskAdmin": "Ask an administrator to reset your password.",
-      "forgotAdmin": "If you are the administrator, run this command on the server."
+      "forgotAdmin": "If you are the administrator, run this command on the server.",
+      "resetPlaceholder": "<username>"
     },
     "invite": {
-      "title": "You're invited to {{instance}}",
-      "role": "Role: {{role}}",
-      "description": "Create an account to join.",
-      "submit": "Create account"
+      "title": "{{inviter}} invited you to {{instance}}",
+      "submit": "Create account",
+      "accountTitle": "Choose a username and password",
+      "accountHint": "You will use these to sign in from now on.",
+      "error": {
+        "expired": {
+          "title": "This invite link has expired",
+          "action": "Ask the person who invited you for a new link."
+        },
+        "used": {
+          "title": "This invite link was already used",
+          "action": "If you already created an account, sign in. Otherwise ask the person who invited you for a new link."
+        },
+        "revoked": {
+          "title": "This invite link was cancelled",
+          "action": "Ask the person who invited you for a new link."
+        },
+        "notFound": {
+          "title": "This invite link is not valid",
+          "action": "Check that the whole link was copied. If it still fails, ask the person who invited you for a new link."
+        }
+      },
+      "next": "Next",
+      "welcome": "Welcome to {{instance}}."
     },
     "wizard": {
       "stepOf": "Step {{step}} of {{total}}",
@@ -75,7 +96,8 @@
       "doneTitle": "You're all set",
       "doneBody": "Welcome to {{instance}}.",
       "babyLater": "You can add a baby later.",
-      "goHome": "Go home"
+      "goHome": "Go home",
+      "toLogin": "Go to sign in"
     },
     "language": "Language"
   },

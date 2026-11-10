@@ -44,13 +44,34 @@
       "forgot": "비밀번호를 잊었어요",
       "forgotTitle": "비밀번호를 잊었어요",
       "forgotAskAdmin": "관리자에게 비밀번호 재설정을 요청해 주세요.",
-      "forgotAdmin": "관리자 본인이라면 서버에서 아래 명령을 실행해 주세요."
+      "forgotAdmin": "관리자 본인이라면 서버에서 아래 명령을 실행해 주세요.",
+      "resetPlaceholder": "<아이디>"
     },
     "invite": {
-      "title": "{{instance}}에 초대받았어요",
-      "role": "역할: {{role}}",
-      "description": "계정을 만들고 참여해 주세요.",
-      "submit": "계정 만들기"
+      "title": "{{inviter}}님이 {{instance}}에 초대했어요",
+      "submit": "계정 만들기",
+      "accountTitle": "아이디와 비밀번호를 정해 주세요",
+      "accountHint": "이 아이디와 비밀번호로 다음부터 로그인해요.",
+      "error": {
+        "expired": {
+          "title": "이 초대 링크는 만료됐어요",
+          "action": "초대한 분께 새 링크를 부탁해 주세요."
+        },
+        "used": {
+          "title": "이 초대 링크는 이미 사용됐어요",
+          "action": "이미 계정을 만들었다면 로그인해 주세요. 아니라면 초대한 분께 새 링크를 부탁해 주세요."
+        },
+        "revoked": {
+          "title": "이 초대 링크는 취소됐어요",
+          "action": "초대한 분께 새 링크를 부탁해 주세요."
+        },
+        "notFound": {
+          "title": "초대 링크가 올바르지 않아요",
+          "action": "링크가 끝까지 복사됐는지 확인해 보세요. 그래도 안 되면 초대한 분께 새 링크를 부탁해 주세요."
+        }
+      },
+      "next": "다음",
+      "welcome": "{{instance}}에 오신 걸 환영해요."
     },
     "wizard": {
       "stepOf": "{{step}} / {{total}} 단계",
@@ -75,7 +96,8 @@
       "doneTitle": "준비됐어요",
       "doneBody": "{{instance}}에 오신 걸 환영해요.",
       "babyLater": "아기는 나중에 추가할 수 있어요.",
-      "goHome": "홈으로 가기"
+      "goHome": "홈으로 가기",
+      "toLogin": "로그인하러 가기"
     },
     "language": "언어"
   },
