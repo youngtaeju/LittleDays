@@ -1,14 +1,22 @@
 import { Outlet, useMatch } from '@tanstack/react-router'
-import { useSyncExternalStore } from 'react'
+import { Suspense, lazy, useSyncExternalStore } from 'react'
 import { DayHeader } from '@/feed/DayHeader'
 import { HomeHeader } from '@/feed/HomeHeader'
 import { cn } from '@/lib/utils'
 import { OfflineBanner } from '@/pwa/OfflineBanner'
 import { useSettings } from '@/settings/useSettings'
 import { UploadPickerProvider } from '@/upload/picker'
-import { UploadQueuePanel } from '@/upload/UploadQueue'
+import { UploadPill } from '@/upload/UploadPill'
+import { useQueueOpen } from '@/upload/useUploadStore'
 import { Sidebar } from './Sidebar'
 import { TabBar } from './TabBar'
+
+// 시트·대화상자 청크는 처음 열 때 로딩.
+const UploadQueueSheet = lazy(() =>
+  import('@/upload/UploadQueueSheet').then((m) => ({
+    default: m.UploadQueueSheet,
+  })),
+)
 
 function subscribeScroll(onChange: () => void): () => void {
   window.addEventListener('scroll', onChange, { passive: true })
@@ -31,6 +39,7 @@ export function AppShell() {
     shouldThrow: false,
   })
   const scrolled = useScrolled()
+  const queueOpen = useQueueOpen()
 
   return (
     <UploadPickerProvider>
@@ -61,11 +70,17 @@ export function AppShell() {
             <OfflineBanner />
           </header>
           <main className="px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-8">
-            <UploadQueuePanel />
             <Outlet />
           </main>
         </div>
         <TabBar />
+        {/* 모든 탭 공용. 탭 이동에도 유지. */}
+        <UploadPill />
+        {queueOpen && (
+          <Suspense>
+            <UploadQueueSheet />
+          </Suspense>
+        )}
       </div>
     </UploadPickerProvider>
   )

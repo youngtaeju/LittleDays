@@ -1,5 +1,6 @@
 import {
   BABY_NAME,
+  FILES,
   OWNER,
   expect,
   expectNoHorizontalOverflow,
@@ -80,4 +81,29 @@ test('viewer_nav_buttons_visible', async ({ ownerPage: page }) => {
   // 영상으로 돌아가도 버튼 유지.
   await expect(page.locator('main video')).toBeVisible()
   await expect(next).toBeInViewport()
+})
+
+test('upload_sheet_and_pill', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  await expect(tiles(page)).toHaveCount(3)
+  // 탭 바 (+) → 선택창 → 아래 확인 시트. 이미 올린 사진이라 "이미 있어요"로 끝남.
+  const chooser = page.waitForEvent('filechooser')
+  await page
+    .getByTestId('tab-bar')
+    .getByRole('button', { name: '사진 올리기' })
+    .click()
+  await (await chooser).setFiles(FILES.jpg)
+  const confirm = page.getByRole('dialog', { name: '사진 1장 올리기' })
+  await expect(confirm).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  await confirm.getByRole('button', { name: '올리기' }).click()
+
+  // 알약은 탭 바 위.
+  const pill = page.getByRole('button', { name: '1개 올렸어요' })
+  await expect(pill).toBeVisible({ timeout: 30_000 })
+  const pillBox = await pill.boundingBox()
+  const barBox = await page.getByTestId('tab-bar').boundingBox()
+  if (!pillBox || !barBox) throw new Error('알약·탭 바 위치 없음')
+  expect(pillBox.y + pillBox.height).toBeLessThanOrEqual(barBox.y)
+  await expect(pill).toBeHidden({ timeout: 10_000 })
 })

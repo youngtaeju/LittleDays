@@ -32,8 +32,9 @@ afterEach(() => {
 
 type Routes = Parameters<typeof mockFetch>[0]
 
-// 큐는 셸 위쪽 패널. 홈에서 확인.
+// 업로드 목록 시트를 연 홈.
 function renderUpload(opts: { extra?: Routes } = {}) {
+  uploadStore.openQueue()
   mockFetch({
     ...emptyFeedRoutes,
     'GET /api/auth/me': () => json(200, { user: userFixture('guardian') }),

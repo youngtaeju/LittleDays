@@ -3,6 +3,7 @@ import Uppy, { type UppyFile } from '@uppy/core'
 import Tus, { type TusBody, type TusOptions } from '@uppy/tus'
 import { errorBody } from '@/api/client'
 import { ApiError } from '@/api/errors'
+import { fileMime } from './fileKind'
 import { finalizeUpload } from './finalize'
 import {
   ACCEPTED_FILE_TYPES,
@@ -143,6 +144,14 @@ function createQueue(): Uploader {
       name: file.name,
       status: 'queued',
       progress: 0,
+      resume:
+        file.data instanceof File
+          ? {
+              size: file.data.size,
+              lastModified: file.data.lastModified,
+              babyIds: file.meta.babyIds,
+            }
+          : undefined,
     })
   })
   uppy.on('restriction-failed', (file) => {
@@ -199,10 +208,12 @@ function createQueue(): Uploader {
   })
 
   function add(files: File[], babyIds: string[]): void {
+    uploadStore.startRun()
     uppy.addFiles(
       files.map((data) => ({
         name: data.name,
-        type: data.type,
+        // MIME 없는 파일은 확장자로 보정(Uppy 제한·tus filetype).
+        type: fileMime(data),
         data,
         meta: { babyIds },
       })),

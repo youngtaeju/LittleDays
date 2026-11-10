@@ -59,6 +59,23 @@ describe('uploader', () => {
     uppy.destroy()
   })
 
+  // MIME 없는 파일(끌어다 놓기 등)은 확장자로 형식 보정. Uppy 기본 표에 없는 3gp·jpeg 포함.
+  it('empty_mime_uses_extension', () => {
+    const qc = createTestQueryClient()
+    const up = getUploader(qc)
+    up.uppy.setOptions({ autoProceed: false })
+    up.add([photo('clip.3gp', ''), photo('a.jpeg', '')], [])
+    expect(uploadStore.getSnapshot().map((i) => i.status)).toEqual([
+      'queued',
+      'queued',
+    ])
+    expect(up.uppy.getFiles().map((f) => f.meta.filetype)).toEqual([
+      'video/3gpp',
+      'image/jpeg',
+    ])
+    up.uppy.cancelAll()
+  })
+
   it('invalidates_lists_once_when_queue_drains', async () => {
     const qc = createTestQueryClient()
     const invalidate = vi.spyOn(qc, 'invalidateQueries')

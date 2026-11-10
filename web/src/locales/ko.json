@@ -158,7 +158,6 @@
   },
   "upload": {
     "queue": "업로드 목록",
-    "inProgress": "진행 중 {{count}}개",
     "summary": "{{total}}개 중 {{done}}개 완료",
     "summaryFailed": ", 실패 {{failed}}개",
     "status": {
@@ -166,15 +165,36 @@
       "uploading": "올리는 중",
       "finalizing": "마무리하는 중",
       "done": "완료",
-      "duplicate": "이미 있는 사진",
-      "inTrash": "휴지통에 있음",
+      "duplicate": "이미 있어요",
+      "inTrash": "휴지통에 있어요",
       "unsupported": "지원하지 않는 파일 형식이에요.",
-      "lost": "업로드 결과를 확인하지 못했어요. 다시 올려 주세요."
+      "lost": "업로드 결과를 확인하지 못했어요. 다시 올려 주세요.",
+      "resumable": "이어 올리기 대기"
     },
     "view": "보기",
     "restore": "복구",
     "restored": "복구했어요",
-    "reupload": "다시 올리기"
+    "reupload": "다시 올리기",
+    "confirmTitle": "{{items}} 올리기",
+    "submit": "올리기",
+    "babies": "아기",
+    "remove": "{{name}} 빼기",
+    "dropHere": "여기에 놓아 올리기",
+    "resumeHint": "같은 파일을 다시 골라 주세요",
+    "repick": "파일 다시 고르기",
+    "discard": "목록에서 지우기",
+    "pill": {
+      "uploading_one": "{{count}}개 올리는 중",
+      "uploading_other": "{{count}}개 올리는 중",
+      "done_one": "{{count}}개 올렸어요",
+      "done_other": "{{count}}개 올렸어요",
+      "failed_one": "{{count}}개를 못 올렸어요",
+      "failed_other": "{{count}}개를 못 올렸어요",
+      "resumable_one": "이어서 올릴 사진 {{count}}개",
+      "resumable_other": "이어서 올릴 사진 {{count}}개",
+      "trash_one": "휴지통에 있는 사진 {{count}}개",
+      "trash_other": "휴지통에 있는 사진 {{count}}개"
+    }
   },
   "age": {
     "days": "생후 {{days}}일",

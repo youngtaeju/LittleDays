@@ -11,8 +11,8 @@ import { cn } from '@/lib/utils'
 import { applyAsset } from '@/viewer/useAsset'
 import {
   isActive,
+  isFailed,
   uploadStore,
-  useUploadStore,
   type UploadItem,
 } from './useUploadStore'
 
@@ -133,10 +133,7 @@ function Row({
   const { t } = useTranslation()
   const nameId = useId()
   const percent = Math.round(item.progress * 100)
-  const failed =
-    item.status === 'error' ||
-    item.status === 'lost' ||
-    item.status === 'unsupported'
+  const failed = isFailed(item.status)
   return (
     <li className="grid gap-2 border-b border-border py-3">
       <div className="flex items-center gap-3">
@@ -181,11 +178,11 @@ export function UploadQueue({
   retry: ((id: string) => void) | undefined
 }) {
   const { t } = useTranslation()
-  const settled = items.filter((i) => !isActive(i.status)).length
-  const failed = items.filter(
-    (i) =>
-      i.status === 'error' || i.status === 'lost' || i.status === 'unsupported',
+  // 이어올리기 대기는 완료·실패 어느 쪽도 아님.
+  const settled = items.filter(
+    (i) => !isActive(i.status) && i.status !== 'resumable',
   ).length
+  const failed = items.filter((i) => isFailed(i.status)).length
   return (
     <div>
       {/* 큐 전체 낭독 하나. 행별 상태·진행률은 낭독하지 않음. */}
@@ -198,29 +195,6 @@ export function UploadQueue({
           <Row key={item.id} item={item} retry={retry} />
         ))}
       </ul>
-    </div>
-  )
-}
-
-// 셸 위쪽 임시 업로드 목록. 항목 있을 때만. 다시 시도는 업로더 지연 로딩 후 실행.
-export function UploadQueuePanel() {
-  const { t } = useTranslation()
-  const qc = useQueryClient()
-  const items = useUploadStore()
-  if (items.length === 0) return null
-  const retry = (id: string) => {
-    import('./uploader').then(
-      (m) => {
-        m.getUploader(qc).retry(id)
-      },
-      () => {
-        toast.error(t('errors.unknown'))
-      },
-    )
-  }
-  return (
-    <div className="mb-4 max-h-64 overflow-y-auto rounded-lg border border-border p-3">
-      <UploadQueue items={items} retry={retry} />
     </div>
   )
 }

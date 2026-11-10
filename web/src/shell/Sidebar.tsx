@@ -4,18 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { hasRole, useMe } from '@/auth/session'
 import { Button } from '@/components/ui/button'
 import { useUploadPicker } from '@/upload/picker'
-import { UploadCountBadge, useAddLabel } from './AddButton'
 import { useNavItems } from './navItems'
 
 function UploadButton() {
   const { t } = useTranslation()
   const { open } = useUploadPicker()
-  const { label, count } = useAddLabel()
   return (
-    <Button aria-label={label} onClick={open} className="w-full">
+    <Button onClick={open} className="w-full">
       <IconAdd aria-hidden className="size-5" />
       {t('nav.add')}
-      <UploadCountBadge count={count} />
     </Button>
   )
 }
