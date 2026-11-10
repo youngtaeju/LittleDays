@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::PgExecutor;
 use uuid::Uuid;
 
@@ -186,11 +186,13 @@ pub async fn mark_retry(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> 
 }
 
 /// 휴지통 제외 목록. `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
+/// `date` 는 인스턴스 시간대 기준 촬영 날짜.
 pub async fn list(
     exec: impl PgExecutor<'_>,
     timezone: &str,
     cursor: Option<(DateTime<Utc>, Uuid)>,
     baby_id: Option<Uuid>,
+    date: Option<NaiveDate>,
     limit: i64,
 ) -> AppResult<Vec<AssetSummary>> {
     let (cursor_ts, cursor_id) = cursor.unzip();
@@ -198,7 +200,7 @@ pub async fn list(
         AssetSummary,
         r#"SELECT a.id, a.kind AS "kind: AssetKind", a.status AS "status: AssetStatus",
                   a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS "local_date!",
-                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color,
+                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,
                   COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
                             FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
                             WHERE ab.asset_id = a.id), '{}') AS "baby_ids!",
@@ -208,12 +210,14 @@ pub async fn list(
              AND ($2::timestamptz IS NULL OR (a.taken_at, a.id) < ($2, $3::uuid))
              AND ($4::uuid IS NULL OR EXISTS (
                    SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $4))
+             AND ($5::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date = $5)
            ORDER BY a.taken_at DESC, a.id DESC
-           LIMIT $5"#,
+           LIMIT $6"#,
         timezone,
         cursor_ts,
         cursor_id,
         baby_id,
+        date,
         limit,
     )
     .fetch_all(exec)
@@ -325,7 +329,7 @@ pub async fn list_trash(
     let rows = sqlx::query!(
         r#"SELECT a.id, a.kind AS "kind: AssetKind", a.status AS "status: AssetStatus",
                   a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS "local_date!",
-                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color,
+                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,
                   COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
                             FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
                             WHERE ab.asset_id = a.id), '{}') AS "baby_ids!",
@@ -356,6 +360,7 @@ pub async fn list_trash(
                 duration_ms: r.duration_ms,
                 blurhash: r.blurhash,
                 dominant_color: r.dominant_color,
+                uploaded_by: r.uploaded_by,
                 baby_ids: r.baby_ids,
                 derivatives: r.derivatives,
             },

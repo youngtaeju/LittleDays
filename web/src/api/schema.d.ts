@@ -340,6 +340,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_days"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/days/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -661,6 +693,8 @@ export interface components {
             status: components["schemas"]["AssetStatus"];
             /** Format: date-time */
             taken_at: string;
+            /** Format: uuid */
+            uploaded_by: string;
             /** Format: int32 */
             width: number | null;
         };
@@ -707,6 +741,50 @@ export interface components {
             invite: components["schemas"]["Invite"];
             /** @description `{PUBLIC_URL}/invite/{원문 토큰}`. 원문 토큰은 이 응답에서만 노출. */
             url: string;
+        };
+        /** @description 그날 화면 머리글과 이전·다음 날. */
+        DayDetail: {
+            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            baby_ids: string[];
+            /**
+             * Format: date
+             * @description 인스턴스 시간대 기준 촬영 날짜.
+             */
+            date: string;
+            /**
+             * Format: date
+             * @description 더 최근의 사진 있는 날.
+             */
+            next_date: string | null;
+            /** Format: int64 */
+            photo_count: number;
+            /**
+             * Format: date
+             * @description 더 과거의 사진 있는 날.
+             */
+            prev_date: string | null;
+            /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
+            uploader_ids: string[];
+            /** Format: int64 */
+            video_count: number;
+        };
+        /** @description 홈 피드의 하루 묶음. */
+        DaySummary: {
+            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            baby_ids: string[];
+            /**
+             * Format: date
+             * @description 인스턴스 시간대 기준 촬영 날짜.
+             */
+            date: string;
+            /** Format: int64 */
+            photo_count: number;
+            /** @description 그날 최신 3장. 촬영 시각 최신순. */
+            preview: components["schemas"]["AssetSummary"][];
+            /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
+            uploader_ids: string[];
+            /** Format: int64 */
+            video_count: number;
         };
         Deleted: {
             /** Format: int64 */
@@ -810,8 +888,32 @@ export interface components {
                 status: components["schemas"]["AssetStatus"];
                 /** Format: date-time */
                 taken_at: string;
+                /** Format: uuid */
+                uploaded_by: string;
                 /** Format: int32 */
                 width: number | null;
+            }[];
+            /** @description 다음 페이지가 없으면 `null`. */
+            next_cursor: string | null;
+        };
+        /** @description 커서 페이지. */
+        Page_DaySummary: {
+            items: {
+                /** @description 그날 태그된 아기. 아기 표시 순서. */
+                baby_ids: string[];
+                /**
+                 * Format: date
+                 * @description 인스턴스 시간대 기준 촬영 날짜.
+                 */
+                date: string;
+                /** Format: int64 */
+                photo_count: number;
+                /** @description 그날 최신 3장. 촬영 시각 최신순. */
+                preview: components["schemas"]["AssetSummary"][];
+                /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
+                uploader_ids: string[];
+                /** Format: int64 */
+                video_count: number;
             }[];
             /** @description 다음 페이지가 없으면 `null`. */
             next_cursor: string | null;
@@ -985,6 +1087,8 @@ export interface operations {
                 limit?: number;
                 /** @description 해당 아기가 태그된 자산만. */
                 baby_id?: string;
+                /** @description 인스턴스 시간대 기준 그날 촬영한 자산만. */
+                date?: string;
             };
             header?: never;
             path?: never;
@@ -2238,6 +2342,108 @@ export interface operations {
                 };
             };
             /** @description 아기 없음 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_days: {
+        parameters: {
+            query?: {
+                /** @description 이전 응답의 `next_cursor`. 이 날짜보다 이전 날만. */
+                cursor?: string;
+                /** @description 1~100, 기본 20. */
+                limit?: number;
+                /** @description 해당 아기가 태그된 자산만. */
+                baby_id?: string;
+                /** @description 이 날짜부터 (포함). */
+                from?: string;
+                /** @description 이 날짜까지 (포함). */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DaySummary"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_day: {
+        parameters: {
+            query?: {
+                /** @description 해당 아기가 태그된 자산만. */
+                baby_id?: string;
+            };
+            header?: never;
+            path: {
+                /** @description 인스턴스 시간대 기준 촬영 날짜 */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 그날 개수와 이전·다음 날 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayDetail"];
+                };
+            };
+            /** @description 날짜·쿼리 형식 오류 (`request.invalidPath`, `request.invalidQuery`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 그날 휴지통 밖 자산 없음 (`day.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;

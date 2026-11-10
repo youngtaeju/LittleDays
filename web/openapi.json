@@ -42,6 +42,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "description": "인스턴스 시간대 기준 그날 촬영한 자산만.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
           }
         ],
         "responses": {
@@ -1444,6 +1454,164 @@
           },
           "404": {
             "description": "아기 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/days": {
+      "get": {
+        "operationId": "list_days",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "이전 응답의 `next_cursor`. 이 날짜보다 이전 날만.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1~100, 기본 20.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "baby_id",
+            "in": "query",
+            "description": "해당 아기가 태그된 자산만.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "이 날짜부터 (포함).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "이 날짜까지 (포함).",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_DaySummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "쿼리 오류 (`request.invalidQuery`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/days/{date}": {
+      "get": {
+        "operationId": "get_day",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "path",
+            "description": "인스턴스 시간대 기준 촬영 날짜",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "baby_id",
+            "in": "query",
+            "description": "해당 아기가 태그된 자산만.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "그날 개수와 이전·다음 날",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "날짜·쿼리 형식 오류 (`request.invalidPath`, `request.invalidQuery`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "그날 휴지통 밖 자산 없음 (`day.notFound`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2950,6 +3118,7 @@
           "duration_ms",
           "blurhash",
           "dominant_color",
+          "uploaded_by",
           "baby_ids",
           "derivatives"
         ],
@@ -3010,6 +3179,10 @@
           "taken_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "uploaded_by": {
+            "type": "string",
+            "format": "uuid"
           },
           "width": {
             "type": [
@@ -3163,6 +3336,116 @@
           "url": {
             "type": "string",
             "description": "`{PUBLIC_URL}/invite/{원문 토큰}`. 원문 토큰은 이 응답에서만 노출."
+          }
+        }
+      },
+      "DayDetail": {
+        "type": "object",
+        "description": "그날 화면 머리글과 이전·다음 날.",
+        "required": [
+          "date",
+          "photo_count",
+          "video_count",
+          "uploader_ids",
+          "baby_ids",
+          "prev_date",
+          "next_date"
+        ],
+        "properties": {
+          "baby_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "그날 태그된 아기. 아기 표시 순서."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "인스턴스 시간대 기준 촬영 날짜."
+          },
+          "next_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "더 최근의 사진 있는 날."
+          },
+          "photo_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "prev_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "더 과거의 사진 있는 날."
+          },
+          "uploader_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "그날 올린 사용자. 중복 없음, 순서 무의미."
+          },
+          "video_count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DaySummary": {
+        "type": "object",
+        "description": "홈 피드의 하루 묶음.",
+        "required": [
+          "date",
+          "photo_count",
+          "video_count",
+          "uploader_ids",
+          "baby_ids",
+          "preview"
+        ],
+        "properties": {
+          "baby_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "그날 태그된 아기. 아기 표시 순서."
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "인스턴스 시간대 기준 촬영 날짜."
+          },
+          "photo_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "preview": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetSummary"
+            },
+            "description": "그날 최신 3장. 촬영 시각 최신순."
+          },
+          "uploader_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "그날 올린 사용자. 중복 없음, 순서 무의미."
+          },
+          "video_count": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -3456,6 +3739,7 @@
                 "duration_ms",
                 "blurhash",
                 "dominant_color",
+                "uploaded_by",
                 "baby_ids",
                 "derivatives"
               ],
@@ -3517,12 +3801,86 @@
                   "type": "string",
                   "format": "date-time"
                 },
+                "uploaded_by": {
+                  "type": "string",
+                  "format": "uuid"
+                },
                 "width": {
                   "type": [
                     "integer",
                     "null"
                   ],
                   "format": "int32"
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "다음 페이지가 없으면 `null`."
+          }
+        }
+      },
+      "Page_DaySummary": {
+        "type": "object",
+        "description": "커서 페이지.",
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "홈 피드의 하루 묶음.",
+              "required": [
+                "date",
+                "photo_count",
+                "video_count",
+                "uploader_ids",
+                "baby_ids",
+                "preview"
+              ],
+              "properties": {
+                "baby_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "description": "그날 태그된 아기. 아기 표시 순서."
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "인스턴스 시간대 기준 촬영 날짜."
+                },
+                "photo_count": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "preview": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetSummary"
+                  },
+                  "description": "그날 최신 3장. 촬영 시각 최신순."
+                },
+                "uploader_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "description": "그날 올린 사용자. 중복 없음, 순서 무의미."
+                },
+                "video_count": {
+                  "type": "integer",
+                  "format": "int64"
                 }
               }
             }

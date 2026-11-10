@@ -277,3 +277,80 @@ async fn put_babies_replaces_tags(pool: PgPool) {
     let detail: Value = app.server.get(&format!("/api/assets/{id}")).await.json();
     assert_eq!(detail["baby_ids"], json!([b, c]));
 }
+
+#[sqlx::test]
+async fn list_by_date(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    settings::queries::set(&pool, "timezone", json!("Asia/Seoul"))
+        .await
+        .unwrap();
+    // 현지 05-01 23:30, 05-02 00:30·01:30, 05-03 00:30
+    let t = Utc.with_ymd_and_hms(2024, 5, 1, 14, 30, 0).unwrap();
+    seed(&pool, app.user.id, t).await;
+    let a = seed(&pool, app.user.id, t + Duration::hours(1)).await;
+    let b = seed(&pool, app.user.id, t + Duration::hours(2)).await;
+    seed(
+        &pool,
+        app.user.id,
+        t + Duration::days(1) + Duration::hours(1),
+    )
+    .await;
+    let mut trashed = AssetSeed::photo(app.user.id);
+    trashed.taken_at = t + Duration::hours(3);
+    trashed.deleted_at = Some(Utc::now());
+    insert_asset(&pool, trashed).await;
+
+    let page: Value = app
+        .server
+        .get("/api/assets")
+        .add_query_param("date", "2024-05-02")
+        .await
+        .json();
+    assert_eq!(ids(&page), vec![b, a]);
+
+    let first: Value = app
+        .server
+        .get("/api/assets")
+        .add_query_param("date", "2024-05-02")
+        .add_query_param("limit", 1)
+        .await
+        .json();
+    assert_eq!(ids(&first), vec![b]);
+    let second: Value = app
+        .server
+        .get("/api/assets")
+        .add_query_param("date", "2024-05-02")
+        .add_query_param("limit", 1)
+        .add_query_param("cursor", first["next_cursor"].as_str().unwrap())
+        .await
+        .json();
+    assert_eq!(ids(&second), vec![a]);
+    assert!(second["next_cursor"].is_null());
+
+    let res = app
+        .server
+        .get("/api/assets")
+        .add_query_param("date", "05/02")
+        .await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "request.invalidQuery");
+}
+
+#[sqlx::test]
+async fn summary_has_uploaded_by(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let (_, dad) = app.login_as("dad", Role::Guardian).await;
+    let id = seed(&pool, dad.id, Utc::now()).await;
+
+    let page: Value = app.server.get("/api/assets").await.json();
+    assert_eq!(page["items"][0]["uploaded_by"], json!(dad.id));
+    let detail: Value = app.server.get(&format!("/api/assets/{id}")).await.json();
+    assert_eq!(detail["uploaded_by"], json!(dad.id));
+
+    app.server
+        .delete(&format!("/api/assets/{id}"))
+        .add_header(XRW, XRW_VALUE)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    let trash: Value = app.server.get("/api/trash").await.json();
+    assert_eq!(trash["items"][0]["uploaded_by"], json!(dad.id));
+}

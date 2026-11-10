@@ -193,6 +193,9 @@
       "notFound": "The baby could not be found.",
       "orderMismatch": "The order doesn't match the current list. Please refresh."
     },
+    "day": {
+      "notFound": "No photos on this day."
+    },
     "invite": {
       "expired": "This invite link has expired.",
       "invalidExpiry": "The expiry time is not valid.",
