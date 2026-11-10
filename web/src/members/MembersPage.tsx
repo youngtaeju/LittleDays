@@ -18,9 +18,9 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { useSettings } from '@/settings/useSettings'
+import { usersKey, useUsers } from './useUsers'
 import { formatInZone } from '@/viewer/zoned'
 
-const usersKey = ['users'] as const
 const invitesKey = ['invites'] as const
 const INVITE_ROLES = ['guardian', 'family'] as const
 const EXPIRY_HOURS = [24, 72, 168] as const
@@ -363,10 +363,7 @@ export function MembersPage() {
   const { t } = useTranslation()
   const { user: me } = useMe()
   const manage = hasRole(me, 'owner')
-  const users = useQuery({
-    queryKey: usersKey,
-    queryFn: () => call(api.GET('/api/users')),
-  })
+  const users = useUsers()
 
   return (
     <div className="mx-auto grid max-w-xl gap-6">

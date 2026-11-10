@@ -119,15 +119,34 @@
     "home": "Go to timeline"
   },
   "timeline": {
-    "all": "All",
-    "filter": "Baby filter",
     "photo": "Photo",
     "video": "Video",
     "processing": "Processing",
-    "failed": "Processing failed",
-    "empty": "Upload your first photo",
-    "emptyFiltered": "No photos of this baby yet.",
-    "upload": "Upload photos"
+    "failed": "Processing failed"
+  },
+  "feed": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "empty": "No photos yet",
+    "emptyHint": "Tap + to upload your first photo",
+    "emptyFamily": "Photos will show up here when your family uploads them",
+    "emptyFiltered": "No photos of this baby yet",
+    "all": "All",
+    "babyFilter": "Baby filter",
+    "dPlus": "D+{{n}}",
+    "dMinus": "D-{{n}}",
+    "uploadedBy": "By {{name}}",
+    "uploadedBy_batchim": "By {{name}}",
+    "uploadedBy_unknown": "By {{name}}",
+    "pair": "{{a}} and {{b}}",
+    "uploadedByMany_one": "By {{name}} and {{count}} other",
+    "uploadedByMany_other": "By {{name}} and {{count}} others",
+    "photos_one": "{{count}} photo",
+    "photos_other": "{{count}} photos",
+    "videos_one": "{{count}} video",
+    "videos_other": "{{count}} videos",
+    "viewAll_one": "View {{count}} item from {{date}}",
+    "viewAll_other": "View all {{count}} from {{date}}"
   },
   "upload": {
     "queue": "Upload queue",

@@ -94,6 +94,7 @@ function createQueue(): Uploader {
     if (!created || uploadStore.activeCount() > 0) return
     created = false
     void queryClient?.invalidateQueries({ queryKey: ['assets'] })
+    void queryClient?.invalidateQueries({ queryKey: ['days'] })
   }
 
   async function finalize(id: string): Promise<void> {

@@ -14,6 +14,7 @@ import {
   assetFixture,
   assetSummaryFixture,
   babyFixture,
+  dayFixture,
   settingsFixture,
   userFixture,
 } from '@/test/fixtures'
@@ -59,6 +60,18 @@ function renderViewer(opts: {
         items: opts.list?.() ?? ids.map((id) => assetSummaryFixture(id)),
         next_cursor: null,
       }),
+    // 홈으로 닫을 때. 목록 앞 3장이 대표.
+    'GET /api/days': () =>
+      json(200, {
+        items: [
+          dayFixture('2024-05-10', {
+            photo_count: ids.length,
+            preview: ids.slice(0, 3).map((id) => assetSummaryFixture(id)),
+          }),
+        ],
+        next_cursor: null,
+      }),
+    'GET /api/users': () => json(200, { users: [userFixture('guardian')] }),
     ...detail,
     ...opts.extra,
   })

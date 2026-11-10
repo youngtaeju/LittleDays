@@ -75,6 +75,7 @@ export function TrashPage() {
   function invalidate(withBabies: boolean) {
     void qc.invalidateQueries({ queryKey: trashKey })
     void qc.invalidateQueries({ queryKey: ['assets'] })
+    void qc.invalidateQueries({ queryKey: ['days'] })
     // 휴지통 이동 시 서버가 이미 대표사진 지정 해제. 영구 삭제 후 아기 캐시 재확인용.
     if (withBabies) void qc.invalidateQueries({ queryKey: babiesKey })
   }

@@ -18,4 +18,5 @@ export function useAsset(id: string) {
 export function applyAsset(qc: QueryClient, a: Asset): void {
   qc.setQueryData(assetKey(a.id), a)
   void qc.invalidateQueries({ queryKey: ['assets'] })
+  void qc.invalidateQueries({ queryKey: ['days'] })
 }

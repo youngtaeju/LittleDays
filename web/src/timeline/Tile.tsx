@@ -6,9 +6,10 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AssetSummary } from '@/api/types'
 import { Blurhash } from './Blurhash'
-import { formatDay } from './group'
+import { formatDay } from '@/lib/dates'
+import { cn } from '@/lib/utils'
 import { formatClock } from '@/viewer/zoned'
-import { thumbUrl } from './media'
+import { previewSources, thumbUrl } from './media'
 
 // m:ss. 1시간 이상도 분으로.
 function formatDuration(ms: number): string {
@@ -17,21 +18,34 @@ function formatDuration(ms: number): string {
   return `${String(Math.floor(total / 60))}:${String(s).padStart(2, '0')}`
 }
 
-// 정사각 썸네일. 바탕은 dominant_color → blurhash → 썸네일 순으로 덮음.
+// 썸네일 + 미리보기 후보. 실제 가로 폭(w) 기준이라 칸 크기에 맞는 쪽을 브라우저가 고름.
+function srcSet(item: AssetSummary): string | undefined {
+  const { thumb, preview } = item.derivatives
+  const webp = previewSources(item).webp
+  if (!thumb || !preview || !webp) return undefined
+  return `${thumbUrl(item.id)} ${String(thumb.width)}w, ${webp} ${String(preview.width)}w`
+}
+
+// 기본 정사각 썸네일. 바탕은 dominant_color → blurhash → 썸네일 순으로 덮음.
 // baby: 뷰어 이전/다음이 같은 필터 목록을 따르도록 전달.
 // timezone: 인스턴스 시간대. 지정 시 라벨에 촬영 시각(HH:mm) 추가.
 // onSelect: 지정 시 뷰어 링크 대신 버튼(휴지통 등). 안정된 콜백 필요(memo).
+// sizes: 지정 시 미리보기까지 후보(큰 칸). className: 비율·크기 덮어쓰기.
 // memo: 목록 캐시 교체 시 바뀐 항목만 다시 그림(나머지 항목은 같은 객체).
 export const Tile = memo(function Tile({
   item,
   baby,
   timezone,
   onSelect,
+  sizes,
+  className,
 }: {
   item: AssetSummary
   baby?: string | undefined
   timezone?: string | undefined
   onSelect?: (id: string) => void
+  sizes?: string
+  className?: string
 }) {
   const { t, i18n } = useTranslation()
   const video = item.kind === 'video'
@@ -64,6 +78,8 @@ export const Tile = memo(function Tile({
       {item.status === 'ready' && (
         <img
           src={thumbUrl(item.id)}
+          srcSet={sizes ? srcSet(item) : undefined}
+          sizes={sizes}
           alt=""
           loading="lazy"
           decoding="async"
@@ -102,7 +118,10 @@ export const Tile = memo(function Tile({
         onClick={() => {
           onSelect(item.id)
         }}
-        className="relative block w-full aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2"
+        className={cn(
+          'relative block w-full aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2',
+          className,
+        )}
         style={style}
       >
         {content}
@@ -115,7 +134,10 @@ export const Tile = memo(function Tile({
       params={{ id: item.id }}
       search={{ baby }}
       aria-label={label}
-      className="relative block aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2"
+      className={cn(
+        'relative block aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2',
+        className,
+      )}
       style={style}
     >
       {content}

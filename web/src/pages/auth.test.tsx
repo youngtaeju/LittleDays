@@ -9,7 +9,7 @@ import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
 import {
   apiError,
-  emptyTimelineRoutes,
+  emptyFeedRoutes,
   settingsFixture,
   userFixture,
 } from '@/test/fixtures'
@@ -30,7 +30,7 @@ function browserLanguage(lang: string) {
 // 로그인 화면 공통 요청. me 는 상태 변수로 로그인 전후 응답 전환.
 function authRoutes(state: { me: User | null }, signupOpen = false) {
   return {
-    ...emptyTimelineRoutes,
+    ...emptyFeedRoutes,
     'GET /api/auth/me': () =>
       state.me ? json(200, { user: state.me }) : apiError(401, 'auth.required'),
     'GET /api/auth/status': () => json(200, { signup_open: signupOpen }),
@@ -217,6 +217,7 @@ describe('guards', () => {
   it('photo_direct_entry_applies_locale', async () => {
     mockFetch({
       ...authRoutes({ me: { ...userFixture('family'), locale: 'en' } }),
+      'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
       'GET /api/assets/x': () => apiError(404, 'asset.notFound'),
     })
     renderApp('/photos/x')
@@ -241,7 +242,7 @@ describe('signup', () => {
       browserLanguage('ko-KR')
       let body: unknown
       mockFetch({
-        ...emptyTimelineRoutes,
+        ...emptyFeedRoutes,
         'GET /api/auth/status': () => json(200, { signup_open: true }),
         'GET /api/settings': () => json(200, settingsFixture),
         'POST /api/auth/signup': async (req) => {

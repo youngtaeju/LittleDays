@@ -209,6 +209,7 @@ export function ViewerPage() {
       ),
     onSuccess: (_, assetId) => {
       void qc.invalidateQueries({ queryKey: ['assets'] })
+      void qc.invalidateQueries({ queryKey: ['days'] })
       // 떠나는 항목이라 즉시 재조회 안 함.
       void qc.invalidateQueries({
         queryKey: assetKey(assetId),

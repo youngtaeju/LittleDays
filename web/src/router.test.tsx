@@ -7,7 +7,7 @@ import { json, mockFetch } from '@/test/fetch'
 import {
   apiError,
   assetFixture,
-  emptyTimelineRoutes,
+  emptyFeedRoutes,
   settingsFixture,
   userFixture,
 } from '@/test/fixtures'
@@ -23,13 +23,14 @@ afterEach(() => {
 
 function mockApp(role: Role) {
   mockFetch({
-    ...emptyTimelineRoutes,
+    ...emptyFeedRoutes,
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/auth/sessions': () => json(200, { sessions: [] }),
     'GET /api/users': () => json(200, { users: [userFixture(role)] }),
     'GET /api/invites': () => json(200, { invites: [] }),
     'GET /api/trash': () => json(200, { items: [], next_cursor: null }),
+    'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
     'GET /api/assets/a1': () => json(200, assetFixture('a1')),
   })
 }

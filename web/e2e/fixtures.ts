@@ -69,12 +69,12 @@ async function restoreTrash(page: Page): Promise<void> {
   }
 }
 
-// 타임라인 타일(뷰어 링크). 라벨은 "사진, …" 또는 "영상, …".
+// 홈 모자이크 칸(뷰어 링크). 라벨은 "사진, …" 또는 "영상, …". "+N" 칸은 제외.
 export function tiles(page: Page) {
   return page.getByRole('main').getByRole('link', { name: /^(사진|영상),/ })
 }
 
-// 타일 썸네일 전부 로드 확인. alt="" 라 역할 대신 위치로 선택.
+// 모자이크 칸 이미지 전부 로드 확인. alt="" 라 역할 대신 위치로 선택.
 export async function expectThumbnailsLoaded(
   page: Page,
   count: number,

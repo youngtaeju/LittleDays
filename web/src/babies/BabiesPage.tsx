@@ -56,6 +56,7 @@ function invalidateAfterDelete(qc: QueryClient) {
   return Promise.all([
     qc.invalidateQueries({ queryKey: babiesKey }),
     qc.invalidateQueries({ queryKey: ['assets'] }),
+    qc.invalidateQueries({ queryKey: ['days'] }),
   ])
 }
 

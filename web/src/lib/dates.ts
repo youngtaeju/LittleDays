@@ -1,32 +1,3 @@
-import type { AssetSummary } from '@/api/types'
-
-export type DayGroup = { date: string; items: AssetSummary[] }
-export type MonthGroup = { month: string; days: DayGroup[] }
-
-// 서버 local_date(인스턴스 시간대)만 사용. 브라우저 시간대로 재계산 안 함.
-export function groupByLocalDate(items: AssetSummary[]): MonthGroup[] {
-  const months: MonthGroup[] = []
-  const monthIndex = new Map<string, MonthGroup>()
-  const dayIndex = new Map<string, DayGroup>()
-  for (const item of items) {
-    let day = dayIndex.get(item.local_date)
-    if (!day) {
-      const key = item.local_date.slice(0, 7)
-      let month = monthIndex.get(key)
-      if (!month) {
-        month = { month: key, days: [] }
-        monthIndex.set(key, month)
-        months.push(month)
-      }
-      day = { date: item.local_date, items: [] }
-      dayIndex.set(item.local_date, day)
-      month.days.push(day)
-    }
-    day.items.push(item)
-  }
-  return months
-}
-
 const dayFormats = new Map<string, Intl.DateTimeFormat>()
 const monthFormats = new Map<string, Intl.DateTimeFormat>()
 
@@ -58,4 +29,11 @@ export function formatMonth(month: string, lng: string): string {
   return cached(monthFormats, lng, { year: 'numeric', month: 'long' }).format(
     new Date(`${month}-01T00:00:00Z`),
   )
+}
+
+// YYYY-MM-DD 달력 날짜 더하기.
+export function addDays(date: string, n: number): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
 }

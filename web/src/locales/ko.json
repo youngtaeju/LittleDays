@@ -119,15 +119,34 @@
     "home": "타임라인으로 가기"
   },
   "timeline": {
-    "all": "전체",
-    "filter": "아기 필터",
     "photo": "사진",
     "video": "영상",
     "processing": "처리 중",
-    "failed": "처리 실패",
-    "empty": "첫 사진을 올려 보세요",
-    "emptyFiltered": "이 아기의 사진이 아직 없어요.",
-    "upload": "사진 올리기"
+    "failed": "처리 실패"
+  },
+  "feed": {
+    "today": "오늘",
+    "yesterday": "어제",
+    "empty": "아직 올라온 사진이 없어요",
+    "emptyHint": "+ 를 눌러 첫 사진을 올려 보세요",
+    "emptyFamily": "가족이 사진을 올리면 여기에 보여요",
+    "emptyFiltered": "이 아기의 사진이 아직 없어요",
+    "all": "전체",
+    "babyFilter": "아기 필터",
+    "dPlus": "D+{{n}}",
+    "dMinus": "D-{{n}}",
+    "uploadedBy": "{{name}}가 올림",
+    "uploadedBy_batchim": "{{name}}이 올림",
+    "uploadedBy_unknown": "{{name}}이(가) 올림",
+    "pair": "{{a}}, {{b}}",
+    "uploadedByMany_one": "{{name}} 외 {{count}}명이 올림",
+    "uploadedByMany_other": "{{name}} 외 {{count}}명이 올림",
+    "photos_one": "사진 {{count}}장",
+    "photos_other": "사진 {{count}}장",
+    "videos_one": "영상 {{count}}개",
+    "videos_other": "영상 {{count}}개",
+    "viewAll_one": "{{date}} {{count}}개 모두 보기",
+    "viewAll_other": "{{date}} {{count}}개 모두 보기"
   },
   "upload": {
     "queue": "업로드 목록",

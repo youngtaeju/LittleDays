@@ -7,6 +7,7 @@ import { setSignedIn } from '@/auth/session'
 import { Field, FormError, formText } from '@/components/Field'
 import { SelectField } from '@/components/NativeSelect'
 import { Button } from '@/components/ui/button'
+import { usersKey } from '@/members/useUsers'
 
 export function ProfileSection({ user }: { user: User }) {
   const { t } = useTranslation()
@@ -20,6 +21,8 @@ export function ProfileSection({ user }: { user: User }) {
     onSuccess: ({ user: updated }) => {
       // 캐시 갱신과 UI 언어 전환 동시 처리.
       setSignedIn(qc, updated)
+      // 피드 올린 사람·가족 목록의 표시 이름.
+      void qc.invalidateQueries({ queryKey: usersKey })
       toast(t('settings.profileSaved'))
     },
   })

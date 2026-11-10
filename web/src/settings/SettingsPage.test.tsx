@@ -5,7 +5,7 @@ import { initI18n } from '@/i18n'
 import { json, mockFetch } from '@/test/fetch'
 import {
   apiError,
-  emptyTimelineRoutes,
+  emptyFeedRoutes,
   settingsFixture,
   userFixture,
 } from '@/test/fixtures'
@@ -46,7 +46,7 @@ function renderSettings(
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settings),
     'GET /api/auth/sessions': () => json(200, { sessions: [CURRENT, OTHER] }),
-    ...emptyTimelineRoutes,
+    ...emptyFeedRoutes,
     ...extra,
   })
   return renderApp('/me')
@@ -118,6 +118,29 @@ describe('SettingsPage', () => {
       await screen.findByRole('heading', { name: 'Profile' }),
     ).toBeInTheDocument()
     expect(bodies).toEqual([{ locale: 'en' }])
+  })
+
+  it('profile_save_refreshes_member_names', async () => {
+    const { user, queryClient } = renderSettings({
+      'PATCH /api/users/me': () =>
+        json(200, {
+          user: { ...userFixture('guardian'), display_name: '엄마' },
+        }),
+    })
+    // 피드 올린 사람 이름용 멤버 목록 캐시.
+    queryClient.setQueryData(['users'], { users: [userFixture('guardian')] })
+    const name = await screen.findByLabelText('표시 이름')
+    await user.clear(name)
+    await user.type(name, '엄마')
+    await user.click(
+      within(screen.getByRole('region', { name: '프로필' })).getByRole(
+        'button',
+        { name: '저장' },
+      ),
+    )
+    await waitFor(() => {
+      expect(queryClient.getQueryState(['users'])?.isInvalidated).toBe(true)
+    })
   })
 
   it('instance_section_owner_only', async () => {

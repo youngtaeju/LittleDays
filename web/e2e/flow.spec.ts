@@ -36,11 +36,12 @@ test('first_signup_and_baby', async ({ page }) => {
   await page.getByRole('button', { name: '아기 추가' }).click()
 
   await expect(page).toHaveURL(/\/$/)
-  // 데스크톱은 사이드바, 휴대폰은 머리글.
+  // 데스크톱은 사이드바, 휴대폰은 머리글(아기 2명 이상일 때). 아기 1명이면 홈 머리글은 아기 이름.
   await expect(
-    page.getByText(INSTANCE_NAME).filter({ visible: true }),
+    page.getByText(INSTANCE_NAME).filter({ visible: true }).first(),
   ).toBeVisible()
-  await expect(page.getByText('첫 사진을 올려 보세요')).toBeVisible()
+  await expect(page.getByRole('banner').getByText(BABY_NAME)).toBeVisible()
+  await expect(page.getByText('아직 올라온 사진이 없어요')).toBeVisible()
   await expect(tiles(page)).toHaveCount(0)
 })
 
@@ -61,6 +62,10 @@ test('upload_and_process', async ({ ownerPage: page }) => {
   await expect(page.getByRole('img', { name: '처리 중' })).toHaveCount(0, {
     timeout: 60_000,
   })
+  // 촬영일 하루 묶음. 사진 2장인 날 + 영상 1개인 날. 처리 후 촬영 시각 반영(폴링 + 재조회) 대기.
+  await expect(page.getByRole('main').getByRole('article')).toHaveCount(2, {
+    timeout: 60_000,
+  })
   await expect(page.getByRole('img', { name: '처리 실패' })).toHaveCount(0)
   await expectThumbnailsLoaded(page, 3)
   // 아기 1명이면 자동 태그.
@@ -68,7 +73,7 @@ test('upload_and_process', async ({ ownerPage: page }) => {
 })
 
 test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {
-  // 타임라인이 스크롤되도록 낮은 창.
+  // 홈 피드가 스크롤되도록 낮은 창.
   await page.setViewportSize({ width: 1280, height: 400 })
   await page.goto('/')
   await expectThumbnailsLoaded(page, 3)
@@ -175,7 +180,7 @@ test('invite_family_cannot_upload', async ({
       guest.getByRole('button', { name: '사진 올리기' }),
     ).toHaveCount(0)
 
-    // 주소 직접 입력도 타임라인으로.
+    // 주소 직접 입력도 홈으로.
     await guest.goto('/upload')
     await expect(guest).toHaveURL(/\/$/)
   } finally {
