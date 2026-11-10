@@ -73,7 +73,8 @@ function tusError(
 
 export interface Uploader {
   uppy: UploaderUppy
-  add: (files: File[], babyIds: string[]) => void
+  // 반환: 파일별 업로드 목록 항목 ID(큐에 이미 있는 파일·지원 안 함 포함).
+  add: (files: File[], babyIds: string[]) => string[]
   retry: (id: string) => void
 }
 
@@ -207,17 +208,31 @@ function createQueue(): Uploader {
     created = false
   })
 
-  function add(files: File[], babyIds: string[]): void {
+  function add(files: File[], babyIds: string[]): string[] {
     uploadStore.startRun()
-    uppy.addFiles(
-      files.map((data) => ({
-        name: data.name,
-        // MIME 없는 파일은 확장자로 보정(Uppy 제한·tus filetype).
-        type: fileMime(data),
-        data,
-        meta: { babyIds },
-      })),
-    )
+    // addFiles 안에서 동기로 발생하는 이벤트로 ID 수집. 이벤트 순서와 무관하게 파일 순서로.
+    const ids = new Map<unknown, string>()
+    const added = (file: { id: string; data: unknown }) => {
+      ids.set(file.data, file.id)
+    }
+    const rejected = (file: { id: string; data: unknown } | undefined) => {
+      if (file) ids.set(file.data, file.id)
+    }
+    uppy.on('file-added', added).on('restriction-failed', rejected)
+    try {
+      uppy.addFiles(
+        files.map((data) => ({
+          name: data.name,
+          // MIME 없는 파일은 확장자로 보정(Uppy 제한·tus filetype).
+          type: fileMime(data),
+          data,
+          meta: { babyIds },
+        })),
+      )
+    } finally {
+      uppy.off('file-added', added).off('restriction-failed', rejected)
+    }
+    return files.flatMap((f) => ids.get(f) ?? [])
   }
 
   return {

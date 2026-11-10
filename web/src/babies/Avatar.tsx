@@ -38,9 +38,9 @@ export function Avatar({
   })
   const w = asset.data?.width
   const h = asset.data?.height
-  // 크기 조회 실패·크기 없음 → 가운데 자르기.
+  // 크기 조회 실패·일시정지(오프라인)·크기 없음 → 가운데 자르기. 조회 중에만 대기.
   const style = crop && w && h ? cropStyle(crop, w, h, size) : undefined
-  const waiting = !!crop && asset.isPending
+  const waiting = !!crop && asset.isPending && asset.fetchStatus === 'fetching'
 
   return (
     <span

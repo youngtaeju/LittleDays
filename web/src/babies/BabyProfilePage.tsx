@@ -20,7 +20,7 @@ import { Blurhash } from '@/timeline/Blurhash'
 import { thumbUrl } from '@/timeline/media'
 import { useBabies } from '@/timeline/useBabies'
 import { Avatar } from './Avatar'
-import { BabyManager } from './BabyManager'
+import { BabyMenu } from './BabyMenu'
 import { BabySwitcher } from './BabySwitcher'
 import { saveLastBaby } from './lastBaby'
 import { ageMonthLabel, ageParam, useBabyStats } from './useBabyStats'
@@ -222,7 +222,9 @@ export function BabyProfilePage() {
         <div className="min-w-0 flex-1">
           <ProfileHeader baby={baby} />
         </div>
-        {hasRole(user, 'guardian') && <BabyManager />}
+        {hasRole(user, 'guardian') && (
+          <BabyMenu baby={baby} count={babies.data.length} />
+        )}
       </div>
       <Numbers id={baby.id} />
       <MonthAlbums id={baby.id} />

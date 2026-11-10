@@ -5,7 +5,7 @@ import { hasRole, useMe } from '@/auth/session'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
 import { useBabies } from '@/timeline/useBabies'
-import { AddBabyDialog } from './BabyManager'
+import { BabyEditSheet } from './BabyEditSheet'
 import { pickBaby } from './lastBaby'
 
 // /babies. 아기가 있으면 라우트가 아기 화면으로 넘김. 여기는 아기 없음·조회 실패.
@@ -51,7 +51,13 @@ export function BabiesIndexPage() {
           >
             {t('babies.add')}
           </Button>
-          <AddBabyDialog open={adding} onOpenChange={setAdding} />
+          {adding && (
+            <BabyEditSheet
+              onClose={() => {
+                setAdding(false)
+              }}
+            />
+          )}
         </>
       ) : (
         <p>{t('babies.empty')}</p>

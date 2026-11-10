@@ -11,6 +11,7 @@ import {
   tiles,
   trashAsset,
 } from './fixtures'
+import type { Baby } from '@/api/types'
 
 // 선언 순서대로 실행(워커 1개). 앞 테스트가 만든 계정·사진 사용.
 // 첫 테스트 외에는 재시도해도 최종 상태가 같도록 작성(복구까지 한 테스트 안에서).
@@ -144,6 +145,52 @@ test('baby_age_album', async ({ ownerPage: page }) => {
   // 뒤로 → 아기 화면.
   await banner.getByRole('button', { name: '뒤로' }).click()
   await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+})
+
+test('baby_avatar_pick_and_crop', async ({ ownerPage: page }) => {
+  await page.goto('/babies')
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+  const id = new URL(page.url()).pathname.split('/').at(-1) ?? ''
+
+  // ⋮ → 아기 정보 고치기 → 우리 사진에서 고르기.
+  await page.getByRole('button', { name: '아기 메뉴' }).click()
+  await page.getByRole('menuitem', { name: '아기 정보 고치기' }).click()
+  const sheet = page.getByRole('dialog', { name: '아기 정보 고치기' })
+  await sheet.getByRole('button', { name: '우리 사진에서 고르기' }).click()
+  const grid = sheet.getByRole('list', { name: '우리 사진에서 고르기' })
+  // 사진 2장(영상 제외).
+  await expect(grid.getByRole('button')).toHaveCount(2)
+  await grid.getByRole('button').first().click()
+
+  // 원 안 미리보기 로드 후 키보드로 확대·이동.
+  const stage = sheet.getByRole('group', { name: '사진 위치' })
+  await expect
+    .poll(() =>
+      stage
+        .locator('img')
+        .evaluate((e) => e instanceof HTMLImageElement && e.naturalWidth > 0),
+    )
+    .toBe(true)
+  await stage.focus()
+  await page.keyboard.press('+')
+  await page.keyboard.press('ArrowLeft')
+  await sheet.getByRole('button', { name: '이 위치로 정하기' }).click()
+  await sheet.getByRole('button', { name: '저장하기' }).click()
+  await expect(sheet).toBeHidden()
+
+  // 머리글 아바타(72px = preview) 표시. 저장된 자르기 영역.
+  const avatar = page.getByRole('main').locator('img[src$="/preview.webp"]')
+  await expect
+    .poll(() =>
+      avatar
+        .first()
+        .evaluate((e) => e instanceof HTMLImageElement && e.naturalWidth > 0),
+    )
+    .toBe(true)
+  const res = await page.request.get('/api/babies')
+  const baby = ((await res.json()) as Baby[]).find((b) => b.id === id)
+  expect(baby?.avatar_asset_id).toBeTruthy()
+  expect(baby?.avatar_crop?.size).toBeCloseTo(0.8)
 })
 
 test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {

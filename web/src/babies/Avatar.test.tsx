@@ -1,8 +1,8 @@
-import { QueryClientProvider } from '@tanstack/react-query'
+import { onlineManager, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { json, mockFetch } from '@/test/fetch'
-import { assetFixture, babyFixture } from '@/test/fixtures'
+import { apiError, assetFixture, babyFixture } from '@/test/fixtures'
 import { createTestQueryClient } from '@/test/query'
 import { Avatar } from './Avatar'
 
@@ -56,5 +56,32 @@ describe('Avatar', () => {
     const img = el.querySelector('img')
     expect(img).toHaveAttribute('src', `/api/assets/${AVATAR}/preview.webp`)
     expect(img).toHaveStyle({ width: '192px', left: '-48px' })
+  })
+
+  // 크기 조회 일시정지(오프라인)·실패 → 빈 원 대신 가운데 자르기.
+  it('size_unavailable_falls_back_to_center', async () => {
+    const crop = { x: 0.25, y: 0.1, size: 0.5 }
+    onlineManager.setOnline(false)
+    try {
+      mockFetch({})
+      const offline = renderAvatar({
+        baby: babyFixture({ avatar_asset_id: AVATAR, avatar_crop: crop }),
+        size: 72,
+      })
+      expect(offline.querySelector('img')).toHaveClass('object-cover')
+    } finally {
+      onlineManager.setOnline(true)
+    }
+
+    mockFetch({
+      [`GET /api/assets/${AVATAR}`]: () => apiError(500, 'internal'),
+    })
+    const failed = renderAvatar({
+      baby: babyFixture({ avatar_asset_id: AVATAR, avatar_crop: crop }),
+      size: 40,
+    })
+    await waitFor(() => {
+      expect(failed.querySelector('img')).toHaveClass('object-cover')
+    })
   })
 })
