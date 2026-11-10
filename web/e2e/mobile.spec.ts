@@ -15,6 +15,18 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
   await expectThumbnailsLoaded(page, 3)
   await expectNoHorizontalOverflow(page)
 
+  // 사진 있는 날의 그날 화면(홈 날짜 링크).
+  await page
+    .getByRole('main')
+    .getByRole('article')
+    .first()
+    .getByRole('heading')
+    .getByRole('link')
+    .click()
+  await expect(page).toHaveURL(/\/days\//)
+  await expect(tiles(page).first()).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
   await page.goto('/babies')
   await expect(page.getByText(BABY_NAME).first()).toBeVisible()
   await expectNoHorizontalOverflow(page)

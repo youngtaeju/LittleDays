@@ -7,7 +7,7 @@ import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
 import {
   babyFixture,
-  emptyTimelineRoutes,
+  emptyFeedRoutes,
   settingsFixture,
   userFixture,
 } from '@/test/fixtures'
@@ -32,7 +32,7 @@ afterEach(() => {
 
 async function renderShell(role: Role, path = '/', babies: Baby[] = []) {
   mockFetch({
-    ...emptyTimelineRoutes,
+    ...emptyFeedRoutes,
     'GET /api/babies': () => json(200, babies),
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settingsFixture),

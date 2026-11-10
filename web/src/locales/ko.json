@@ -116,18 +116,45 @@
   },
   "notFound": {
     "title": "페이지를 찾을 수 없어요.",
-    "home": "타임라인으로 가기"
+    "home": "홈으로"
   },
   "timeline": {
-    "all": "전체",
-    "filter": "아기 필터",
     "photo": "사진",
     "video": "영상",
     "processing": "처리 중",
-    "failed": "처리 실패",
-    "empty": "첫 사진을 올려 보세요",
-    "emptyFiltered": "이 아기의 사진이 아직 없어요.",
-    "upload": "사진 올리기"
+    "failed": "처리 실패"
+  },
+  "feed": {
+    "today": "오늘",
+    "yesterday": "어제",
+    "empty": "아직 올라온 사진이 없어요",
+    "emptyHint": "+ 를 눌러 첫 사진을 올려 보세요",
+    "emptyFamily": "가족이 사진을 올리면 여기에 보여요",
+    "emptyFiltered": "이 아기의 사진이 아직 없어요",
+    "all": "전체",
+    "babyFilter": "아기 필터",
+    "dPlus": "D+{{n}}",
+    "dMinus": "D-{{n}}",
+    "uploadedBy": "{{name}}가 올림",
+    "uploadedBy_batchim": "{{name}}이 올림",
+    "uploadedBy_unknown": "{{name}}이(가) 올림",
+    "pair": "{{a}}, {{b}}",
+    "uploadedByMany_one": "{{name}} 외 {{count}}명이 올림",
+    "uploadedByMany_other": "{{name}} 외 {{count}}명이 올림",
+    "photos_one": "사진 {{count}}장",
+    "photos_other": "사진 {{count}}장",
+    "videos_one": "영상 {{count}}개",
+    "videos_other": "영상 {{count}}개",
+    "viewAll_one": "{{date}} {{count}}개 모두 보기",
+    "viewAll_other": "{{date}} {{count}}개 모두 보기"
+  },
+  "day": {
+    "back": "뒤로",
+    "empty": "이날은 사진이 없어요",
+    "home": "홈으로",
+    "prev": "이전 날",
+    "next": "다음 날",
+    "nav": "이전·다음 날"
   },
   "upload": {
     "queue": "업로드 목록",
@@ -152,7 +179,23 @@
   "age": {
     "days": "생후 {{days}}일",
     "monthsDays": "{{months}}개월 {{days}}일",
-    "yearsMonths": "{{years}}살 {{months}}개월"
+    "yearsMonths": "{{years}}살 {{months}}개월",
+    "due": "출산 예정 D-{{n}}",
+    "specialDays": "{{n}}일",
+    "birthdayN": "{{n}}번째 생일",
+    "birthdayWord": {
+      "1": "첫 생일",
+      "2": "두 번째 생일",
+      "3": "세 번째 생일",
+      "4": "네 번째 생일",
+      "5": "다섯 번째 생일",
+      "6": "여섯 번째 생일",
+      "7": "일곱 번째 생일",
+      "8": "여덟 번째 생일",
+      "9": "아홉 번째 생일",
+      "10": "열 번째 생일"
+    },
+    "until": "{{label}}까지 {{n}}일"
   },
   "errors": {
     "unknown": "문제가 생겼어요. 잠시 후 다시 시도해 주세요.",

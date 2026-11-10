@@ -3,11 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Invite, Role, User } from '@/api/types'
 import { initI18n } from '@/i18n'
 import { json, mockFetch } from '@/test/fetch'
-import {
-  emptyTimelineRoutes,
-  settingsFixture,
-  userFixture,
-} from '@/test/fixtures'
+import { emptyFeedRoutes, settingsFixture, userFixture } from '@/test/fixtures'
 import { renderApp } from '@/test/router'
 
 beforeEach(() => {
@@ -57,11 +53,11 @@ function renderMembers(
   }: { role?: Role; users?: User[] } = {},
 ) {
   mockFetch({
+    ...emptyFeedRoutes,
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/users': () => json(200, { users }),
     'GET /api/invites': () => json(200, { invites: [] }),
-    ...emptyTimelineRoutes,
     ...extra,
   })
   return renderApp('/family')

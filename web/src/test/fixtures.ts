@@ -2,6 +2,7 @@ import type {
   Asset,
   AssetSummary,
   Baby,
+  DaySummary,
   Role,
   Settings,
   User,
@@ -92,8 +93,25 @@ export function assetFixture(id: string, over: Partial<Asset> = {}): Asset {
   }
 }
 
-// `/` 도착 시 타임라인 요청. 빈 목록.
-export const emptyTimelineRoutes = {
+// 사진 1장인 하루. preview 항목 id 는 `${date}-a`.
+export function dayFixture(
+  date: string,
+  over: Partial<DaySummary> = {},
+): DaySummary {
+  return {
+    date,
+    photo_count: 1,
+    video_count: 0,
+    uploader_ids: [userFixture('guardian').id],
+    baby_ids: [],
+    preview: [assetSummaryFixture(`${date}-a`, { local_date: date })],
+    ...over,
+  }
+}
+
+// `/` 도착 시 피드 요청. 빈 목록.
+export const emptyFeedRoutes = {
   'GET /api/babies': () => json(200, []),
-  'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
+  'GET /api/days': () => json(200, { items: [], next_cursor: null }),
+  'GET /api/users': () => json(200, { users: [] }),
 }

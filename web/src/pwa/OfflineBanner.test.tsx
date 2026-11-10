@@ -8,11 +8,7 @@ import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { createApp } from '@/router'
 import { json, mockFetch } from '@/test/fetch'
-import {
-  emptyTimelineRoutes,
-  settingsFixture,
-  userFixture,
-} from '@/test/fixtures'
+import { emptyFeedRoutes, settingsFixture, userFixture } from '@/test/fixtures'
 import { createTestQueryClient } from '@/test/query'
 import { renderApp } from '@/test/router'
 import { OfflineBanner } from './OfflineBanner'
@@ -60,7 +56,7 @@ describe('OfflineBanner', () => {
   it('full_screen_when_me_unreachable', async () => {
     let me: () => Response = offline
     mockFetch({
-      ...emptyTimelineRoutes,
+      ...emptyFeedRoutes,
       'GET /api/auth/me': () => me(),
       'GET /api/settings': () => json(200, settingsFixture),
     })
@@ -82,7 +78,8 @@ describe('OfflineBanner', () => {
       'GET /api/auth/me': offline,
       'GET /api/settings': offline,
       'GET /api/babies': offline,
-      'GET /api/assets': offline,
+      'GET /api/days': offline,
+      'GET /api/users': offline,
     })
     const app = createApp(
       createTestQueryClient,

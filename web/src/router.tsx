@@ -22,9 +22,10 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { OfflineScreen } from '@/pwa/OfflineBanner'
 import { RouteError, RoutePending } from '@/pages/RouteError'
 import { AppShell } from '@/shell/AppShell'
-import { TimelinePage } from '@/timeline/TimelinePage'
+import { FeedPage } from '@/feed/FeedPage'
+import { isCalendarDate } from '@/lib/dates'
 
-// 타임라인·로그인·셸만 메인 번들. 나머지 화면은 첫 진입 때 청크 로드.
+// 홈 피드·로그인·셸만 메인 번들. 나머지 화면은 첫 진입 때 청크 로드.
 const InvitePage = lazyRouteComponent(
   () => import('@/pages/InvitePage'),
   'InvitePage',
@@ -49,6 +50,7 @@ const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
   'TrashPage',
 )
+const DayPage = lazyRouteComponent(() => import('@/feed/DayPage'), 'DayPage')
 const ViewerPage = lazyRouteComponent(
   () => import('@/viewer/ViewerPage'),
   'ViewerPage',
@@ -79,7 +81,7 @@ function safeRedirect(v: unknown): string | undefined {
   }
 }
 
-// 홈·뷰어 공용. baby = 목록·이전/다음 필터.
+// 홈·그날·뷰어 공용. baby = 목록·이전/다음 필터.
 function babySearch(s: Record<string, unknown>): { baby?: string } {
   return { baby: typeof s.baby === 'string' ? s.baby : undefined }
 }
@@ -165,11 +167,24 @@ const shellRoute = createRoute({
   component: AppShell,
 })
 
-const timelineRoute = createRoute({
+const homeRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/',
   validateSearch: babySearch,
-  component: TimelinePage,
+  component: FeedPage,
+})
+
+const dayRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/days/$date',
+  validateSearch: babySearch,
+  // 형식·실존 날짜가 아니면 홈. 서버 요청 전에 차단.
+  beforeLoad: ({ params, search }) => {
+    if (!isCalendarDate(params.date)) {
+      throw redirect({ to: '/', search, replace: true })
+    }
+  },
+  component: DayPage,
 })
 
 const babiesRoute = createRoute({
@@ -241,7 +256,8 @@ const routeTree = rootRoute.addChildren([
   legacyRoute('/trash', '/me/trash'),
   authedRoute.addChildren([
     shellRoute.addChildren([
-      timelineRoute,
+      homeRoute,
+      dayRoute,
       babiesRoute,
       familyRoute,
       meRoute,
@@ -262,7 +278,7 @@ export function createAppRouter(
     // 청크 로드 실패 등 라우트 오류는 새로고침 안내.
     defaultErrorComponent: RouteError,
     defaultPendingComponent: RoutePending,
-    // 뷰어를 닫고 돌아오면 타임라인 스크롤 위치 복원.
+    // 뷰어를 닫고 돌아오면 홈 스크롤 위치 복원.
     scrollRestoration: true,
   })
 }

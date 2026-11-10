@@ -32,7 +32,10 @@ export function InstanceSection({ settings }: { settings: Settings }) {
       const stale = [qc.invalidateQueries({ queryKey: settingsQueryKey })]
       // 시간대가 바뀌면 서버 local_date 가 달라짐.
       if (body.timezone !== undefined) {
-        stale.push(qc.invalidateQueries({ queryKey: ['assets'] }))
+        stale.push(
+          qc.invalidateQueries({ queryKey: ['assets'] }),
+          qc.invalidateQueries({ queryKey: ['days'] }),
+        )
       }
       await Promise.all(stale)
       toast(t('settings.instanceSaved'))

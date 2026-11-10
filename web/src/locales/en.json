@@ -116,18 +116,45 @@
   },
   "notFound": {
     "title": "Page not found.",
-    "home": "Go to timeline"
+    "home": "Go home"
   },
   "timeline": {
-    "all": "All",
-    "filter": "Baby filter",
     "photo": "Photo",
     "video": "Video",
     "processing": "Processing",
-    "failed": "Processing failed",
-    "empty": "Upload your first photo",
-    "emptyFiltered": "No photos of this baby yet.",
-    "upload": "Upload photos"
+    "failed": "Processing failed"
+  },
+  "feed": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "empty": "No photos yet",
+    "emptyHint": "Tap + to upload your first photo",
+    "emptyFamily": "Photos will show up here when your family uploads them",
+    "emptyFiltered": "No photos of this baby yet",
+    "all": "All",
+    "babyFilter": "Baby filter",
+    "dPlus": "D+{{n}}",
+    "dMinus": "D-{{n}}",
+    "uploadedBy": "By {{name}}",
+    "uploadedBy_batchim": "By {{name}}",
+    "uploadedBy_unknown": "By {{name}}",
+    "pair": "{{a}} and {{b}}",
+    "uploadedByMany_one": "By {{name}} and {{count}} other",
+    "uploadedByMany_other": "By {{name}} and {{count}} others",
+    "photos_one": "{{count}} photo",
+    "photos_other": "{{count}} photos",
+    "videos_one": "{{count}} video",
+    "videos_other": "{{count}} videos",
+    "viewAll_one": "View {{count}} item from {{date}}",
+    "viewAll_other": "View all {{count}} from {{date}}"
+  },
+  "day": {
+    "back": "Back",
+    "empty": "No photos on this day",
+    "home": "Go home",
+    "prev": "Previous day",
+    "next": "Next day",
+    "nav": "Previous and next day"
   },
   "upload": {
     "queue": "Upload queue",
@@ -152,7 +179,23 @@
   "age": {
     "days": "Day {{days}}",
     "monthsDays": "{{months}} mo {{days}} d",
-    "yearsMonths": "{{years}} y {{months}} mo"
+    "yearsMonths": "{{years}} y {{months}} mo",
+    "due": "Due in {{n}} d",
+    "specialDays": "Day {{n}}",
+    "birthdayN": "{{ordinal}} birthday",
+    "until": "{{n}} d until {{label}}",
+    "birthdayWord": {
+      "1": "1st birthday",
+      "2": "2nd birthday",
+      "3": "3rd birthday",
+      "4": "4th birthday",
+      "5": "5th birthday",
+      "6": "6th birthday",
+      "7": "7th birthday",
+      "8": "8th birthday",
+      "9": "9th birthday",
+      "10": "10th birthday"
+    }
   },
   "errors": {
     "unknown": "Something went wrong. Please try again in a moment.",

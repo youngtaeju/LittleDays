@@ -6,7 +6,7 @@ import { json, mockFetch } from '@/test/fetch'
 import {
   assetFixture,
   babyFixture,
-  emptyTimelineRoutes,
+  emptyFeedRoutes,
   settingsFixture,
   userFixture,
 } from '@/test/fixtures'
@@ -35,7 +35,7 @@ type Routes = Parameters<typeof mockFetch>[0]
 // 큐는 셸 위쪽 패널. 홈에서 확인.
 function renderUpload(opts: { extra?: Routes } = {}) {
   mockFetch({
-    ...emptyTimelineRoutes,
+    ...emptyFeedRoutes,
     'GET /api/auth/me': () => json(200, { user: userFixture('guardian') }),
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/babies': () => json(200, [babyFixture()]),

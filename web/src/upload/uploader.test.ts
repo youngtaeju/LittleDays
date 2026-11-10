@@ -59,7 +59,7 @@ describe('uploader', () => {
     uppy.destroy()
   })
 
-  it('invalidates_assets_once_when_queue_drains', async () => {
+  it('invalidates_lists_once_when_queue_drains', async () => {
     const qc = createTestQueryClient()
     const invalidate = vi.spyOn(qc, 'invalidateQueries')
     const { uppy } = getUploader(qc)
@@ -100,8 +100,9 @@ describe('uploader', () => {
     await waitFor(() => {
       expect(status(b)).toBe('done')
     })
-    expect(invalidate).toHaveBeenCalledTimes(1)
+    expect(invalidate).toHaveBeenCalledTimes(2)
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['assets'] })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['days'] })
   })
 
   it('logout_clears_queue_and_uploader', async () => {

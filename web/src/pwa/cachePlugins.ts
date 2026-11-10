@@ -15,7 +15,7 @@ export function isDerivative({
   )
 }
 
-// 오프라인 새로고침용 GET 응답(사용자·설정·아기·타임라인·자산 상세). 쿼리 포함 URL 이 키.
+// 오프라인 새로고침용 GET 응답(사용자·설정·아기·하루 묶음·타임라인·자산 상세). 쿼리 포함 URL 이 키.
 // 메서드 판정은 라우트 쪽(GET 기본값). 파일·업로드·관리 화면 API 는 제외.
 export function isOfflineApi({
   url,
@@ -26,7 +26,7 @@ export function isOfflineApi({
 }): boolean {
   return (
     sameOrigin &&
-    /^\/api\/(auth\/me|settings|babies|assets(\/(months|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))?)$/i.test(
+    /^\/api\/(auth\/me|settings|babies|days(\/\d{4}-\d{2}-\d{2})?|assets(\/(months|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}))?)$/i.test(
       url.pathname,
     )
   )

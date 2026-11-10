@@ -6,7 +6,7 @@ import { json, mockFetch } from '@/test/fetch'
 import {
   assetFixture,
   assetSummaryFixture,
-  emptyTimelineRoutes,
+  emptyFeedRoutes,
   settingsFixture,
   userFixture,
 } from '@/test/fixtures'
@@ -39,7 +39,7 @@ function renderTrash(
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settings),
     'GET /api/trash': () => json(200, { items, next_cursor: null }),
-    ...emptyTimelineRoutes,
+    ...emptyFeedRoutes,
     ...extra,
   })
   return renderApp('/me/trash')

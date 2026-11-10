@@ -9,11 +9,15 @@ import {
 import { useMemo } from 'react'
 import { api, call } from '@/api/client'
 import { ApiError } from '@/api/errors'
-import type { Asset, AssetPage, AssetSummary } from '@/api/types'
+import type { Asset, AssetPage, AssetSummary, DayPage } from '@/api/types'
 
 // 무효화는 ['assets'] 접두로 전체.
-export function timelineKey(babyId?: string) {
-  return ['assets', { baby: babyId ?? null }] as const
+// date: 그날 화면의 하루 목록. 전체 타임라인 캐시와 키 분리.
+export function timelineKey(babyId?: string, date?: string) {
+  return [
+    'assets',
+    date ? { baby: babyId ?? null, date } : { baby: babyId ?? null },
+  ] as const
 }
 
 export function assetKey(id: string) {
@@ -23,15 +27,18 @@ export function assetKey(id: string) {
 // refetchOnMount false: 뷰어용. 이미 받은 페이지 전체 재조회 방지.
 export function useTimeline(
   babyId: string | undefined,
-  { refetchOnMount = true }: { refetchOnMount?: boolean } = {},
+  {
+    refetchOnMount = true,
+    date,
+  }: { refetchOnMount?: boolean; date?: string } = {},
 ) {
   const query = useInfiniteQuery({
-    queryKey: timelineKey(babyId),
+    queryKey: timelineKey(babyId, date),
     queryFn: ({ pageParam }) =>
       call(
         api.GET('/api/assets', {
           params: {
-            query: { limit: 100, cursor: pageParam, baby_id: babyId },
+            query: { limit: 100, cursor: pageParam, baby_id: babyId, date },
           },
         }),
       ),
@@ -59,7 +66,7 @@ export function useTimeline(
   }
 }
 
-// 처리 결과 필드만 교체. local_date·taken_at 은 처리로 바뀌지 않음.
+// 처리 결과 필드만 교체. 촬영 시각 변경(날짜 묶음·순서)은 호출 측이 목록 재조회.
 function applyProcessed(qc: QueryClient, a: Asset): void {
   const merge = (s: AssetSummary): AssetSummary =>
     s.id !== a.id
@@ -87,6 +94,35 @@ function applyProcessed(qc: QueryClient, a: Asset): void {
       }
     },
   )
+  // 하루 묶음 대표 사진. 그 항목이 있는 날만 새 객체(나머지 DayCard 는 그대로).
+  qc.setQueriesData<InfiniteData<DayPage>>({ queryKey: ['days'] }, (old) => {
+    if (!old?.pages) return old
+    return {
+      ...old,
+      pages: old.pages.map((p) => ({
+        ...p,
+        items: p.items.map((d) =>
+          d.preview.some((s) => s.id === a.id)
+            ? { ...d, preview: d.preview.map(merge) }
+            : d,
+        ),
+      })),
+    }
+  })
+}
+
+// 함께 보이던 항목은 응답이 몇 ms 차이로 따로 도착. 짧은 구간 안 요청을 목록 재조회 1회로 합침.
+const REFETCH_WINDOW_MS = 300
+const refetchScheduled = new WeakSet<QueryClient>()
+
+function scheduleListRefetch(qc: QueryClient): void {
+  if (refetchScheduled.has(qc)) return
+  refetchScheduled.add(qc)
+  setTimeout(() => {
+    refetchScheduled.delete(qc)
+    void qc.invalidateQueries({ queryKey: ['assets'] })
+    void qc.invalidateQueries({ queryKey: ['days'] })
+  }, REFETCH_WINDOW_MS)
 }
 
 // 처리 중 항목을 화면에 보이는 동안만 5초 간격 조회. 끝나면 목록 캐시 교체 → 폴링 주체 해제.
@@ -99,7 +135,11 @@ export function useProcessingPoll(item: AssetSummary, visible: boolean): void {
         api.GET('/api/assets/{id}', { params: { path: { id: item.id } } }),
       )
       // 새로 받은 응답만 반영. 캐시의 옛 응답으로 목록을 되돌리지 않음.
-      if (a.status !== 'processing') applyProcessed(qc, a)
+      if (a.status !== 'processing') {
+        applyProcessed(qc, a)
+        // 처리 중 촬영 시각은 파일 수정 시각 등. EXIF·영상 메타로 바뀌면 다른 날로 이동.
+        if (a.taken_at !== item.taken_at) scheduleListRefetch(qc)
+      }
       return a
     },
     enabled: visible,
