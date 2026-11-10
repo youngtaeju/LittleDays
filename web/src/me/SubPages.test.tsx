@@ -35,12 +35,13 @@ const CURRENT = session({
 })
 const OTHER = session({})
 
-function renderSettings(
+function renderPage(
   extra: Parameters<typeof mockFetch>[0] = {},
   {
     role = 'guardian',
     settings = settingsFixture,
-  }: { role?: Role; settings?: Settings } = {},
+    path = '/me/profile',
+  }: { role?: Role; settings?: Settings; path?: string } = {},
 ) {
   mockFetch({
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
@@ -49,51 +50,51 @@ function renderSettings(
     ...emptyFeedRoutes,
     ...extra,
   })
-  return renderApp('/me')
+  return renderApp(path)
 }
 
-describe('SettingsPage', () => {
+describe('me sub pages', () => {
   it('wrong_current_password_stays_logged_in', async () => {
-    const { user, router } = renderSettings({
-      'POST /api/users/me/password': () =>
-        apiError(401, 'auth.invalidCredentials'),
-    })
+    const { user, router } = renderPage(
+      {
+        'POST /api/users/me/password': () =>
+          apiError(401, 'auth.invalidCredentials'),
+      },
+      { path: '/me/password' },
+    )
     await user.type(await screen.findByLabelText('현재 비밀번호'), 'wrong-pass')
     await user.type(screen.getByLabelText('새 비밀번호'), 'new-password-1')
-    await user.click(screen.getByRole('button', { name: '비밀번호 변경' }))
+    await user.click(screen.getByRole('button', { name: '비밀번호 바꾸기' }))
 
     expect(
       await screen.findByText('현재 비밀번호가 맞지 않아요.'),
     ).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/me')
+    expect(router.state.location.pathname).toBe('/me/password')
   })
 
-  it('password_change_refetches_sessions', async () => {
-    let sessionCalls = 0
-    const { user } = renderSettings({
-      'GET /api/auth/sessions': () => {
-        sessionCalls += 1
-        return json(200, {
-          sessions: sessionCalls === 1 ? [CURRENT, OTHER] : [CURRENT],
-        })
-      },
-      'POST /api/users/me/password': () => json(204, null),
-    })
-    await screen.findByText('Firefox')
-    await user.type(screen.getByLabelText('현재 비밀번호'), 'old-password-1')
+  it('password_change_invalidates_sessions', async () => {
+    const { user, queryClient } = renderPage(
+      { 'POST /api/users/me/password': () => json(204, null) },
+      { path: '/me/password' },
+    )
+    // 서버가 다른 세션을 지우므로 목록 캐시 무효화.
+    queryClient.setQueryData(['sessions'], { sessions: [CURRENT, OTHER] })
+    await user.type(
+      await screen.findByLabelText('현재 비밀번호'),
+      'old-password-1',
+    )
     await user.type(screen.getByLabelText('새 비밀번호'), 'new-password-1')
-    await user.click(screen.getByRole('button', { name: '비밀번호 변경' }))
+    await user.click(screen.getByRole('button', { name: '비밀번호 바꾸기' }))
     await waitFor(() => {
-      expect(screen.queryByText('Firefox')).not.toBeInTheDocument()
+      expect(queryClient.getQueryState(['sessions'])?.isInvalidated).toBe(true)
     })
-    expect(sessionCalls).toBe(2)
   })
 
   it('timezone_list_falls_back_without_intl_support', async () => {
     const spy = vi.spyOn(Intl, 'supportedValuesOf').mockImplementation(() => {
       throw new RangeError('unsupported')
     })
-    renderSettings({}, { role: 'owner' })
+    renderPage({}, { role: 'owner', path: '/me/instance' })
     const select = await screen.findByLabelText('시간대')
     expect(within(select).getAllByRole('option')).toHaveLength(1)
     spy.mockRestore()
@@ -101,27 +102,32 @@ describe('SettingsPage', () => {
 
   it('locale_change_applies', async () => {
     const bodies: unknown[] = []
-    const { user } = renderSettings({
-      'PATCH /api/users/me': async (req) => {
-        bodies.push(await req.json())
-        return json(200, { user: { ...userFixture('guardian'), locale: 'en' } })
+    const { user } = renderPage(
+      {
+        'PATCH /api/users/me': async (req) => {
+          bodies.push(await req.json())
+          return json(200, {
+            user: { ...userFixture('guardian'), locale: 'en' },
+          })
+        },
       },
-    })
-    await user.selectOptions(await screen.findByLabelText('언어'), 'en')
-    await user.click(
-      within(screen.getByRole('region', { name: '프로필' })).getByRole(
-        'button',
-        { name: '저장' },
-      ),
+      { path: '/me/appearance' },
     )
+    await user.selectOptions(await screen.findByLabelText('언어'), 'en')
     expect(
-      await screen.findByRole('heading', { name: 'Profile' }),
+      await screen.findByRole('heading', { name: 'Display & language' }),
     ).toBeInTheDocument()
     expect(bodies).toEqual([{ locale: 'en' }])
   })
 
+  it('theme_change_applies', async () => {
+    const { user } = renderPage({}, { path: '/me/appearance' })
+    await user.selectOptions(await screen.findByLabelText('테마'), 'dark')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
   it('profile_save_refreshes_member_names', async () => {
-    const { user, queryClient } = renderSettings({
+    const { user, queryClient } = renderPage({
       'PATCH /api/users/me': () =>
         json(200, {
           user: { ...userFixture('guardian'), display_name: '엄마' },
@@ -132,32 +138,22 @@ describe('SettingsPage', () => {
     const name = await screen.findByLabelText('표시 이름')
     await user.clear(name)
     await user.type(name, '엄마')
-    await user.click(
-      within(screen.getByRole('region', { name: '프로필' })).getByRole(
-        'button',
-        { name: '저장' },
-      ),
-    )
+    await user.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => {
       expect(queryClient.getQueryState(['users'])?.isInvalidated).toBe(true)
     })
   })
 
-  it('instance_section_owner_only', async () => {
-    renderSettings()
-    await screen.findByText('Chrome')
-    expect(screen.queryByText('인스턴스')).not.toBeInTheDocument()
-    cleanup()
-
-    renderSettings({}, { role: 'owner' })
+  it('instance_page_renders_for_owner', async () => {
+    renderPage({}, { role: 'owner', path: '/me/instance' })
     expect(
-      await screen.findByRole('heading', { name: '인스턴스' }),
+      await screen.findByRole('heading', { name: '우리 집 설정' }),
     ).toBeInTheDocument()
   })
 
   it('instance_patch_sends_changed_fields_only', async () => {
     const bodies: unknown[] = []
-    const { user } = renderSettings(
+    const { user } = renderPage(
       {
         'PATCH /api/settings': async (req) => {
           bodies.push(await req.json())
@@ -166,18 +162,14 @@ describe('SettingsPage', () => {
       },
       {
         role: 'owner',
+        path: '/me/instance',
         settings: { ...settingsFixture, trash_retention_days: 14 },
       },
     )
     const input = await screen.findByLabelText('휴지통 보관 일수')
     await user.clear(input)
     await user.type(input, '30')
-    await user.click(
-      within(screen.getByRole('region', { name: '인스턴스' })).getByRole(
-        'button',
-        { name: '저장' },
-      ),
-    )
+    await user.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => {
       expect(bodies).toEqual([{ trash_retention_days: 30 }])
     })
@@ -186,9 +178,13 @@ describe('SettingsPage', () => {
   it('same_device_sessions_have_distinct_labels', async () => {
     const A = session({ id: 'a', last_seen_at: '2026-01-02T00:00:00Z' })
     const B = session({ id: 'b', last_seen_at: '2026-01-03T00:00:00Z' })
-    renderSettings({
-      'GET /api/auth/sessions': () => json(200, { sessions: [CURRENT, A, B] }),
-    })
+    renderPage(
+      {
+        'GET /api/auth/sessions': () =>
+          json(200, { sessions: [CURRENT, A, B] }),
+      },
+      { path: '/me/devices' },
+    )
     const buttons = await screen.findAllByRole('button', {
       name: /^Firefox 로그아웃/,
     })
@@ -203,12 +199,15 @@ describe('SettingsPage', () => {
 
   it('revoke_other_session', async () => {
     let deleted = ''
-    const { user } = renderSettings({
-      [`DELETE /api/auth/sessions/${OTHER.id}`]: () => {
-        deleted = OTHER.id
-        return json(204, null)
+    const { user } = renderPage(
+      {
+        [`DELETE /api/auth/sessions/${OTHER.id}`]: () => {
+          deleted = OTHER.id
+          return json(204, null)
+        },
       },
-    })
+      { path: '/me/devices' },
+    )
     await screen.findByText('Chrome')
     expect(
       screen.queryByRole('button', { name: /^Chrome 로그아웃/ }),

@@ -1,4 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import IconMore from '~icons/material-symbols/more-vert-rounded'
+import { DropdownMenu } from 'radix-ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -22,6 +24,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { MeSubPage } from '@/me/MeSubPage'
 import { useSettings } from '@/settings/useSettings'
 import { babiesKey } from '@/timeline/useBabies'
 import { thumbUrl } from '@/timeline/media'
@@ -31,6 +34,16 @@ import { trashKey, useTrash } from './useTrash'
 import { errorMessage } from '@/i18n'
 
 type Confirm = 'permanent' | 'empty' | null
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// 영구 삭제까지 남은 일수(올림, 최소 1). 자동 삭제 없음(0일)이면 null.
+function daysLeft(deletedAt: string, retentionDays: number | undefined) {
+  if (!retentionDays) return null
+  const left =
+    (Date.parse(deletedAt) + retentionDays * DAY_MS - Date.now()) / DAY_MS
+  return Math.max(1, Math.ceil(left))
+}
 
 export function TrashPage() {
   const { t, i18n } = useTranslation()
@@ -126,20 +139,35 @@ export function TrashPage() {
 
   const days = settings?.trash_retention_days
 
-  return (
-    <div className="grid gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <h1 className="text-lg font-semibold">{t('nav.trash')}</h1>
-        <Button
-          variant="outline"
-          disabled={items.length === 0}
-          onClick={() => {
-            setConfirm('empty')
-          }}
-        >
-          {t('trash.empty')}
+  const menu = (
+    <DropdownMenu.Root modal={false}>
+      <DropdownMenu.Trigger asChild>
+        <Button variant="ghost" size="icon" aria-label={t('trash.more')}>
+          <IconMore aria-hidden className="size-6" />
         </Button>
-      </div>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          align="end"
+          sideOffset={4}
+          className="z-50 min-w-48 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg"
+        >
+          <DropdownMenu.Item
+            disabled={items.length === 0}
+            className="flex min-h-11 cursor-default items-center rounded-lg px-3 text-sm text-destructive outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent"
+            onSelect={() => {
+              setConfirm('empty')
+            }}
+          >
+            {t('trash.empty')}
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  )
+
+  return (
+    <MeSubPage title={t('nav.trash')} actions={menu}>
       {days != null && (
         <p className="text-sm text-muted-foreground">
           {days === 0
@@ -162,11 +190,28 @@ export function TrashPage() {
         <p className="py-16 text-center text-base">{t('trash.emptyState')}</p>
       )}
       <ul className="-mx-4 grid grid-cols-3 gap-[2px] sm:mx-0 sm:grid-cols-4 lg:grid-cols-6">
-        {items.map((item) => (
-          <li key={item.id}>
-            <Tile item={item} timezone={settings?.timezone} onSelect={select} />
-          </li>
-        ))}
+        {items.map((item) => {
+          const left = daysLeft(item.deleted_at, days)
+          return (
+            <li key={item.id} className="relative">
+              <Tile
+                item={item}
+                timezone={settings?.timezone}
+                onSelect={select}
+                extraLabel={
+                  left === null
+                    ? undefined
+                    : t('trash.daysLeft', { count: left })
+                }
+              />
+              {left !== null && (
+                <span className="pointer-events-none absolute bottom-0 left-0 bg-black/60 px-1.5 py-0.5 text-xs font-semibold text-white tabular-nums">
+                  {t('trash.daysLeft', { count: left })}
+                </span>
+              )}
+            </li>
+          )
+        })}
       </ul>
       <div ref={sentinel} />
       {isFetchingNextPage && (
@@ -275,6 +320,6 @@ export function TrashPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </MeSubPage>
   )
 }

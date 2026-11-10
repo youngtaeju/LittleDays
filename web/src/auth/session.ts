@@ -16,7 +16,7 @@ import { clearUploads } from '@/upload/useUploadStore'
 
 export const meQueryKey = ['me'] as const
 
-const meQuery = queryOptions({
+export const meQuery = queryOptions({
   queryKey: meQueryKey,
   queryFn: async (): Promise<User | null> => {
     try {

@@ -28,7 +28,7 @@ test('first_signup_and_baby', async ({ page }) => {
   await page.getByLabel('아이디').fill(OWNER.username)
   await page.getByLabel('표시 이름').fill(OWNER.displayName)
   await page.getByLabel('비밀번호').fill(OWNER.password)
-  await page.getByLabel('인스턴스 이름').fill(INSTANCE_NAME)
+  await page.getByLabel('우리 집 이름').fill(INSTANCE_NAME)
   await page.getByRole('button', { name: '계정 만들기' }).click()
 
   await expect(page.getByText('첫 아기 추가')).toBeVisible()
@@ -287,6 +287,7 @@ test('invite_family_cannot_upload', async ({
 }) => {
   await page.goto('/family')
   // 기본 역할 가족.
+  await page.getByRole('button', { name: '가족 초대하기' }).click()
   await page.getByRole('button', { name: '초대 링크 만들기' }).click()
   const url = await page.getByLabel('초대 링크', { exact: true }).inputValue()
   expect(url).toContain('/invite/')
@@ -369,8 +370,8 @@ test('security_headers_and_no_csp_violations', async ({ ownerPage: page }) => {
   const nav = page.getByRole('navigation', { name: '주 메뉴' })
   for (const [name, heading] of [
     ['아기', '아기'],
-    ['가족', '멤버'],
-    ['나', '설정'],
+    ['가족', '가족'],
+    ['나', OWNER.displayName],
   ] as const) {
     await nav.getByRole('link', { name }).click()
     await expect(

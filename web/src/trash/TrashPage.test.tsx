@@ -1,5 +1,5 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Role, Settings, TrashItem } from '@/api/types'
 import { initI18n } from '@/i18n'
 import { json, mockFetch } from '@/test/fetch'
@@ -117,8 +117,9 @@ describe('TrashPage', () => {
       'POST /api/trash/empty': () => json(200, { deleted: 3 }),
       'GET /api/babies': () => json(200, []),
     })
+    await user.click(await screen.findByRole('button', { name: '더보기' }))
     await user.click(
-      await screen.findByRole('button', { name: '휴지통 비우기' }),
+      await screen.findByRole('menuitem', { name: '휴지통 비우기' }),
     )
     const dialog = await screen.findByRole('dialog')
     expect(
@@ -130,10 +131,32 @@ describe('TrashPage', () => {
     expect(await screen.findByText('3개를 영구 삭제했어요')).toBeInTheDocument()
   })
 
+  it('shows_remaining_days', async () => {
+    vi.useFakeTimers({
+      toFake: ['Date'],
+      now: new Date('2024-06-11T03:00:00Z'),
+    })
+    try {
+      renderTrash([trashItem()])
+      // 삭제 2024-06-01 + 보관 30일, 10일 경과.
+      expect(await screen.findByText('20일 남음')).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('empty_button_disabled_without_items', async () => {
+    const { user } = renderTrash([])
+    await user.click(await screen.findByRole('button', { name: '더보기' }))
+    expect(
+      await screen.findByRole('menuitem', { name: '휴지통 비우기' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('family_redirected', async () => {
     const { router } = renderTrash([], {}, { role: 'family' })
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/')
+      expect(router.state.location.pathname).toBe('/me')
     })
   })
 })

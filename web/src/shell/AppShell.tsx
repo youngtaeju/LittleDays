@@ -1,4 +1,4 @@
-import { Outlet, useMatch } from '@tanstack/react-router'
+import { Outlet, useMatch, useRouterState } from '@tanstack/react-router'
 import { Suspense, lazy, useSyncExternalStore } from 'react'
 import { AgeAlbumHeader } from '@/babies/AgeAlbumHeader'
 import { DayHeader } from '@/feed/DayHeader'
@@ -43,6 +43,10 @@ export function AppShell() {
     from: '/authed/shell/babies/$id/age/$age',
     shouldThrow: false,
   })
+  // 나 탭 하위 화면은 MeSubPage 머리글. 셸 머리글은 오프라인 배너만.
+  const meSub = useRouterState({
+    select: (s) => /^\/me\/[^/]/.test(s.location.pathname),
+  })
   const scrolled = useScrolled()
   const queueOpen = useQueueOpen()
 
@@ -51,9 +55,12 @@ export function AppShell() {
       <div className="min-h-dvh lg:flex">
         <Sidebar instanceName={settings?.instance_name} />
         <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-10 bg-background">
+          <header
+            className={cn('bg-background', !meSub && 'sticky top-0 z-10')}
+          >
             <div
               className={cn(
+                meSub && 'hidden',
                 'border-b',
                 scrolled ? 'border-border' : 'border-transparent',
                 // 데스크톱은 사이드바가 우리 집 이름 표시. 홈·그날·개월 앨범은 자체 머리글이라 유지.

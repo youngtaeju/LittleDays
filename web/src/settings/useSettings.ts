@@ -5,13 +5,16 @@ import { todayInZone } from '@/viewer/zoned'
 
 export const settingsQueryKey = ['settings'] as const
 
-export function useSettings(): Settings | undefined {
-  const { data } = useQuery({
+export function useSettingsQuery() {
+  return useQuery({
     queryKey: settingsQueryKey,
     queryFn: () => call(api.GET('/api/settings')),
     staleTime: 5 * 60_000,
   })
-  return data
+}
+
+export function useSettings(): Settings | undefined {
+  return useSettingsQuery().data
 }
 
 // 인스턴스 시간대 오늘(YYYY-MM-DD). 설정 조회 전은 브라우저 시간대.

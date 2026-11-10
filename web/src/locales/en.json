@@ -23,9 +23,12 @@
     "logout": "Sign out"
   },
   "roles": {
-    "owner": "Owner",
+    "owner": "Admin",
     "guardian": "Guardian",
-    "family": "Family"
+    "family": "Family",
+    "ownerDesc": "Manages the family and settings",
+    "guardianDesc": "Uploads photos and edits baby info",
+    "familyDesc": "Views photos and shared moments"
   },
   "auth": {
     "username": "Username",
@@ -41,7 +44,7 @@
     "signup": {
       "title": "Create the first account",
       "description": "This account becomes the owner.",
-      "instanceName": "Instance name",
+      "instanceName": "Home name",
       "instanceNameHint": "Shown at the top of every page.",
       "submit": "Create account",
       "babyTitle": "Add your first baby",
@@ -327,7 +330,7 @@
       "notFound": "The requested item could not be found."
     },
     "settings": {
-      "instanceNameInvalid": "The instance name is not valid.",
+      "instanceNameInvalid": "The home name is not valid.",
       "invalidLocale": "This language is not supported.",
       "invalidTimezone": "The time zone is not valid.",
       "trashRetentionInvalid": "The trash retention period is not valid."
@@ -374,10 +377,13 @@
     "emptyConfirmMore": "{{count}}+ items will be permanently deleted. This cannot be undone.",
     "permanentDone": "Permanently deleted",
     "emptied_one": "{{count}} item permanently deleted",
-    "emptied_other": "{{count}} items permanently deleted"
+    "emptied_other": "{{count}} items permanently deleted",
+    "daysLeft_one": "{{count}} day left",
+    "daysLeft_other": "{{count}} days left",
+    "more": "More"
   },
   "members": {
-    "usersTitle": "Members",
+    "usersTitle": "Family",
     "username": "Username",
     "email": "Email",
     "noEmail": "No email",
@@ -390,7 +396,7 @@
     "suspended": "Suspended",
     "unsuspended": "Unsuspended",
     "roleChanged": "Role changed",
-    "invitesTitle": "Invites",
+    "invitesTitle": "Pending invites",
     "createInvite": "Create invite link",
     "inviteRole": "Role",
     "inviteExpiry": "Valid for",
@@ -401,7 +407,7 @@
     },
     "inviteCreated": "Invite link created",
     "inviteUrl": "Invite link",
-    "inviteUrlHint": "You can only see this link now. Copy it and share it.",
+    "inviteUrlHint": "You can only see this link now. Copy or share it.",
     "copyFailed": "Could not copy. Select the link and copy it manually.",
     "noInvites": "No invite links yet.",
     "expiresAt": "Expires {{time}}",
@@ -413,38 +419,41 @@
     },
     "revoke": "Revoke",
     "revokeLabel": "Revoke {{role}} invite",
-    "revoked": "Invite link revoked"
+    "revoked": "Invite link revoked",
+    "inviteMember": "Invite family",
+    "inviteSheetTitle": "Invite family",
+    "self": "You",
+    "rolesTitle": "Roles",
+    "linkCopied": "Link copied",
+    "shareTitle": "Invitation to {{instance}}",
+    "shareTitleGeneric": "Family invitation",
+    "shareTextGeneric": "Join with this invitation link.",
+    "share": "Share",
+    "shareText": "Join {{instance}}.",
+    "memberSheetTitle": "{{name}}"
   },
   "settings": {
-    "title": "Settings",
-    "profile": "Profile",
     "displayName": "Display name",
     "email": "Email",
     "emailHint": "Leave empty to remove your email.",
-    "locale": "Language",
-    "localeKo": "한국어",
     "localeEn": "English",
     "profileSaved": "Profile saved",
-    "password": "Change password",
     "currentPassword": "Current password",
     "newPassword": "New password",
     "newPasswordHint": "At least 8 characters.",
     "currentPasswordWrong": "The current password is incorrect.",
     "changePassword": "Change password",
     "passwordChanged": "Password changed. Other devices signed out",
-    "appearance": "Appearance",
     "theme": "Theme",
-    "themeSystem": "Follow system",
+    "themeSystem": "System",
     "themeLight": "Light",
     "themeDark": "Dark",
-    "sessions": "Signed-in devices",
     "unknownDevice": "Unknown device",
     "lastSeen": "Last used {{time}}",
     "currentSession": "This device",
     "revokeSession": "Sign out {{device}}",
     "sessionRevoked": "Device signed out",
-    "instance": "Instance",
-    "instanceName": "Instance name",
+    "instanceName": "Home name",
     "timezone": "Time zone",
     "timezoneHint": "Photos are grouped by date in this zone. Changing it can move photos to a different date.",
     "defaultLocale": "Default language for new members",
@@ -452,7 +461,9 @@
     "avifHint": "Smaller files, longer processing.",
     "trashRetention": "Trash retention (days)",
     "trashRetentionHint": "0 never empties the trash automatically. Up to 3650 days.",
-    "instanceSaved": "Instance settings saved"
+    "instanceSaved": "Home settings saved",
+    "language": "Language",
+    "localeKo": "한국어"
   },
   "offline": {
     "banner": "You are offline. Only saved photos are shown.",
@@ -467,5 +478,20 @@
   "pwa": {
     "updateAvailable": "A new version is available",
     "reload": "Reload"
+  },
+  "me": {
+    "account": "My account",
+    "app": "App",
+    "photos": "Photos",
+    "home": "Our home",
+    "profile": "Profile",
+    "password": "Change password",
+    "devices": "Signed-in devices",
+    "appearance": "Display & language",
+    "trash": "Trash",
+    "instance": "Home settings",
+    "logout": "Sign out",
+    "version": "App version {{version}}",
+    "back": "Back"
   }
 }
