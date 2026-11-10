@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import IconDownload from '~icons/material-symbols/download-rounded'
 import IconEdit from '~icons/material-symbols/edit-outline-rounded'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,25 +10,22 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { useUsers } from '@/members/useUsers'
 import { useSettings } from '@/settings/useSettings'
-import { originalUrl } from '@/timeline/media'
 import { babiesKey, useBabies } from '@/timeline/useBabies'
 import { assetKey } from '@/timeline/useTimeline'
 import { TakenAtEditor } from './TakenAtEditor'
 import { applyAsset } from './useAsset'
 import { formatInZone } from './zoned'
 
-type Editing = 'takenAt' | 'caption' | 'babies'
+export type Editing = 'takenAt' | 'caption' | 'babies'
 
 // 기기 메타데이터가 아닌 출처만 보조 표시.
 const DEVICE_SOURCES = new Set<Asset['taken_at_source']>(['exif', 'video_meta'])
@@ -42,6 +38,30 @@ function cameraText(make: string | null, model: string | null): string {
       : `${make} ${model}`
   }
   return make ?? model ?? ''
+}
+
+// 예 "4032 × 3024 · 2.3MB · HEIC". 형식은 파일 확장자, 없으면 MIME.
+function fileText(asset: Asset, lng: string): string {
+  const mb = asset.size_bytes / 1_000_000
+  const size = new Intl.NumberFormat(lng, {
+    style: 'unit',
+    unit: mb >= 1 ? 'megabyte' : 'kilobyte',
+    maximumFractionDigits: 1,
+  }).format(mb >= 1 ? mb : asset.size_bytes / 1000)
+  const dot = asset.original_filename.lastIndexOf('.')
+  const format =
+    dot > 0
+      ? asset.original_filename.slice(dot + 1).toUpperCase()
+      : (asset.mime.split('/')[1]?.toUpperCase() ?? '')
+  return [
+    asset.width && asset.height
+      ? `${String(asset.width)} × ${String(asset.height)}`
+      : '',
+    size,
+    format,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 // 편집 종료 시 편집 버튼으로 포커스 복귀.
@@ -276,60 +296,30 @@ function AvatarDialog({ asset, babies }: { asset: Asset; babies: Baby[] }) {
   )
 }
 
-function TrashDialog({
-  onTrash,
-  pending,
-  error,
-}: {
-  onTrash: () => void
-  pending: boolean
-  error: unknown
-}) {
-  const { t } = useTranslation()
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline" className="text-destructive">
-          {t('viewer.trash')}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="dark text-foreground">
-        <DialogHeader>
-          <DialogTitle>{t('viewer.trashTitle')}</DialogTitle>
-          <DialogDescription>{t('viewer.trashDescription')}</DialogDescription>
-        </DialogHeader>
-        <FormError error={error} />
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">{t('common.cancel')}</Button>
-          </DialogClose>
-          <Button variant="destructive" disabled={pending} onClick={onTrash}>
-            {t('viewer.trash')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// 정보 시트 내용. 편집은 guardian 이상.
+// 정보 패널 내용. 편집은 guardian 이상. 편집 상태는 뷰어 소유(더 보기 메뉴의 촬영일 고치기).
 export function InfoPanel({
   asset,
   canEdit,
-  onTrash,
-  trashing,
-  trashError,
+  editing,
+  onEditingChange,
+  onRetry,
+  retrying,
+  retryError,
 }: {
   asset: Asset
   canEdit: boolean
-  onTrash: () => void
-  trashing: boolean
-  trashError: unknown
+  editing: Editing | null
+  onEditingChange: (editing: Editing | null) => void
+  onRetry: (() => void) | undefined
+  retrying: boolean
+  retryError: unknown
 }) {
   const { t, i18n } = useTranslation()
   const tz = useSettings()?.timezone
   const babies = useBabies().data ?? []
-  const [editing, setEditing] = useState<Editing | null>(null)
+  const uploader = useUsers().data?.users.find(
+    (u) => u.id === asset.uploaded_by,
+  )
 
   function editProps(kind: Editing, label: string) {
     if (!canEdit) return {}
@@ -337,12 +327,12 @@ export function InfoPanel({
       editLabel: label,
       editing: editing === kind,
       onEdit: () => {
-        setEditing(kind)
+        onEditingChange(kind)
       },
     }
   }
   const done = () => {
-    setEditing(null)
+    onEditingChange(null)
   }
 
   const tagged = babies.filter((b) => asset.baby_ids.includes(b.id))
@@ -355,6 +345,39 @@ export function InfoPanel({
 
   return (
     <div className="grid gap-5 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      {asset.status === 'failed' && (
+        <section className="grid justify-items-start gap-2">
+          <p>{t('viewer.failed')}</p>
+          {/* 서버 원문. 언어 혼재 가능. */}
+          {asset.processing_error && (
+            <p className="text-sm break-words text-muted-foreground">
+              {asset.processing_error}
+            </p>
+          )}
+          {onRetry && (
+            <Button variant="outline" disabled={retrying} onClick={onRetry}>
+              {t('viewer.retry')}
+            </Button>
+          )}
+          <FormError error={retryError} />
+        </section>
+      )}
+
+      <Section
+        title={t('viewer.caption')}
+        {...editProps('caption', t('viewer.editCaption'))}
+      >
+        {editing === 'caption' ? (
+          <CaptionEditor asset={asset} onDone={done} />
+        ) : asset.caption ? (
+          <p className="break-words whitespace-pre-wrap">{asset.caption}</p>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {t('viewer.noCaption')}
+          </p>
+        )}
+      </Section>
+
       <Section
         title={t('viewer.takenAt')}
         {...(tz ? editProps('takenAt', t('viewer.editTakenAt')) : {})}
@@ -377,27 +400,6 @@ export function InfoPanel({
           </>
         )}
       </Section>
-
-      <Section
-        title={t('viewer.caption')}
-        {...editProps('caption', t('viewer.editCaption'))}
-      >
-        {editing === 'caption' ? (
-          <CaptionEditor asset={asset} onDone={done} />
-        ) : asset.caption ? (
-          <p className="break-words whitespace-pre-wrap">{asset.caption}</p>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {t('viewer.noCaption')}
-          </p>
-        )}
-      </Section>
-
-      {camera && (
-        <Section title={t('viewer.camera')}>
-          <p>{camera}</p>
-        </Section>
-      )}
 
       <Section
         title={t('viewer.babies')}
@@ -425,22 +427,31 @@ export function InfoPanel({
         )}
       </Section>
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild variant="outline">
-          <a href={originalUrl(asset.id)} download={asset.original_filename}>
-            <IconDownload aria-hidden />
-            {t('viewer.download')}
-          </a>
-        </Button>
-        {canSetAvatar && <AvatarDialog asset={asset} babies={babies} />}
-        {canEdit && (
-          <TrashDialog
-            onTrash={onTrash}
-            pending={trashing}
-            error={trashError}
-          />
+      <Section title={t('viewer.uploadedBy')}>
+        {/* 모르는 사용자(목록 미로드·오프라인)는 시각만. */}
+        {uploader && <p className="wrap-anywhere">{uploader.display_name}</p>}
+        {tz && (
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {formatInZone(asset.created_at, tz, i18n.language)}
+          </p>
         )}
-      </div>
+      </Section>
+
+      <Section title={t('viewer.file')}>
+        <p className="tabular-nums">{fileText(asset, i18n.language)}</p>
+      </Section>
+
+      {camera && (
+        <Section title={t('viewer.camera')}>
+          <p>{camera}</p>
+        </Section>
+      )}
+
+      {canSetAvatar && (
+        <div className="flex flex-wrap gap-2">
+          <AvatarDialog asset={asset} babies={babies} />
+        </div>
+      )}
     </div>
   )
 }

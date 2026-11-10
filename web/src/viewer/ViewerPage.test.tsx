@@ -233,15 +233,33 @@ describe('ViewerPage', () => {
   })
 
   it('family_sees_no_edit_controls', async () => {
-    renderViewer({ path: '/photos/a', ids: ['a'], role: 'family' })
-    const info = await openInfo()
+    const { user } = renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      role: 'family',
+    })
+    const download = await screen.findByRole('link', {
+      name: ko.viewer.download,
+    })
+    expect(download).toHaveAttribute('href', '/api/assets/a/original')
+    // 파일 이름은 상세 도착 후.
+    await waitFor(() => {
+      expect(download).toHaveAttribute('download', 'IMG_0001.JPG')
+    })
+    expect(
+      screen.queryByRole('button', { name: ko.viewer.trashShort }),
+    ).toBeNull()
 
+    // 더 보기 메뉴는 원본 내려받기만.
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getAllByRole('menuitem')).toHaveLength(1)
     expect(
-      within(info).getByRole('link', { name: ko.viewer.download }),
+      within(menu).getByRole('menuitem', { name: ko.viewer.downloadOriginal }),
     ).toHaveAttribute('href', '/api/assets/a/original')
-    expect(
-      within(info).getByRole('link', { name: ko.viewer.download }),
-    ).toHaveAttribute('download', 'IMG_0001.JPG')
+    await user.keyboard('{Escape}')
+
+    const info = await openInfo()
     expect(
       within(info).queryByRole('button', { name: ko.viewer.editCaption }),
     ).toBeNull()
@@ -250,9 +268,6 @@ describe('ViewerPage', () => {
     ).toBeNull()
     expect(
       within(info).queryByRole('button', { name: ko.viewer.editBabies }),
-    ).toBeNull()
-    expect(
-      within(info).queryByRole('button', { name: ko.viewer.trash }),
     ).toBeNull()
     expect(
       within(info).queryByRole('button', { name: ko.viewer.setAvatar }),
@@ -299,10 +314,8 @@ describe('ViewerPage', () => {
         },
       },
     })
-    const info = await openInfo()
-
     await user.click(
-      within(info).getByRole('button', { name: ko.viewer.trash }),
+      await screen.findByRole('button', { name: ko.viewer.trashShort }),
     )
     const confirm = await screen.findByRole('dialog', {
       name: ko.viewer.trashTitle,
@@ -631,4 +644,273 @@ describe('ViewerPage', () => {
     })
     expect(router.state.location.search).toEqual({ baby: 'x' })
   })
+
+  it('swipe_disabled_when_zoomed', async () => {
+    const { router } = renderViewer({ path: '/photos/b' })
+    const stage = await screen.findByRole('main')
+    await screen.findByRole('button', { name: ko.viewer.info })
+
+    doubleTap(stage)
+    expect(
+      await screen.findByRole('button', { name: ko.viewer.zoomOut }),
+    ).toBeInTheDocument()
+
+    // 확대 중 밀기는 이동(넘김 없음).
+    swipeLeft(stage)
+    await new Promise((r) => setTimeout(r, 50))
+    expect(router.state.location.pathname).toBe('/photos/b')
+
+    // 다시 두 번 눌러 맞춤 → 넘김 동작.
+    doubleTap(stage)
+    await screen.findByRole('button', { name: ko.viewer.zoomIn })
+    swipeLeft(stage)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+  })
+
+  it('zoom_resets_on_change', async () => {
+    const derivatives = {
+      preview: { formats: ['webp'], width: 1600, height: 1200 },
+      large: { formats: ['webp'], width: 4032, height: 3024 },
+    }
+    const { router, user } = renderViewer({
+      path: '/photos/b',
+      list: () =>
+        ['a', 'b', 'c'].map((id) => assetSummaryFixture(id, { derivatives })),
+      assets: {
+        b: assetFixture('b', { derivatives }),
+        c: assetFixture('c', { derivatives }),
+      },
+    })
+    const stage = await screen.findByRole('main')
+    await screen.findByRole('button', { name: ko.viewer.info })
+
+    doubleTap(stage)
+    await screen.findByRole('button', { name: ko.viewer.zoomOut })
+    // 확대 중엔 큰 파생물.
+    expect(
+      document.querySelector('img[src="/api/assets/b/large.webp"]'),
+    ).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: ko.viewer.next }))
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    expect(
+      screen.getByRole('button', { name: ko.viewer.zoomIn }),
+    ).toBeInTheDocument()
+    expect(document.querySelector('img[src$="large.webp"]')).toBeNull()
+  })
+
+  it('bars_toggle_on_tap', async () => {
+    renderViewer({ path: '/photos/b' })
+    const stage = await screen.findByRole('main')
+    const close = await screen.findByRole('button', { name: ko.common.close })
+    const info = screen.getByRole('button', { name: ko.viewer.info })
+    expect(close.closest('[inert]')).toBeNull()
+
+    fireEvent.pointerDown(stage, at(200, 300))
+    fireEvent.pointerUp(stage, at(200, 300))
+    // 두 번 누르기 대기 후 숨김.
+    expect(close.closest('[inert]')).toBeNull()
+    await waitFor(() => {
+      expect(close.closest('[inert]')).not.toBeNull()
+    })
+    expect(info.closest('[inert]')).not.toBeNull()
+
+    fireEvent.pointerDown(stage, at(200, 300))
+    fireEvent.pointerUp(stage, at(200, 300))
+    await waitFor(() => {
+      expect(close.closest('[inert]')).toBeNull()
+    })
+
+    // 두 번 누르기(확대)는 막대 유지.
+    doubleTap(stage)
+    await screen.findByRole('button', { name: ko.viewer.zoomOut })
+    await new Promise((r) => setTimeout(r, 400))
+    expect(close.closest('[inert]')).toBeNull()
+  })
+
+  it('tap_before_nav_keeps_bars', async () => {
+    const { router, user } = renderViewer({ path: '/photos/b' })
+    const stage = await screen.findByRole('main')
+    const close = await screen.findByRole('button', { name: ko.common.close })
+
+    // 누르고 곧바로 넘기기. 대기 중이던 한 번 누르기는 다음 사진에서 취소.
+    fireEvent.pointerDown(stage, at(200, 300))
+    fireEvent.pointerUp(stage, at(200, 300))
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    await new Promise((r) => setTimeout(r, 400))
+    expect(close.closest('[inert]')).toBeNull()
+  })
+
+  it('top_bar_shows_time_and_age', async () => {
+    const baby = babyFixture({ birth_date: '2024-05-01' })
+    renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      babies: [baby],
+      assets: {
+        a: assetFixture('a', {
+          taken_at: '2024-05-10T06:24:00Z',
+          baby_ids: [baby.id],
+        }),
+      },
+    })
+    // Asia/Seoul 15:24. 올해가 아니라 연도 포함. 오전·오후는 번역 문구.
+    expect(
+      await screen.findByText('2024년 5월 10일 오후 3:24'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('생후 9일')).toBeInTheDocument()
+  })
+
+  it('menu_edit_taken_at_opens_editor', async () => {
+    const { user } = renderViewer({ path: '/photos/a', ids: ['a'] })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    const menu = await screen.findByRole('menu')
+    expect(
+      within(menu).getByRole('menuitem', { name: ko.viewer.trash }),
+    ).toBeInTheDocument()
+    await user.click(
+      within(menu).getByRole('menuitem', { name: ko.viewer.editTakenAt }),
+    )
+
+    const info = await screen.findByRole('dialog', { name: ko.viewer.info })
+    expect(within(info).getByLabelText(ko.viewer.takenAt)).toHaveValue(
+      '2024-05-10T12:00',
+    )
+  })
+
+  it('menu_trash_confirms', async () => {
+    const { router, user } = renderViewer({
+      path: '/photos/a',
+      ids: ['a', 'b'],
+      extra: { 'DELETE /api/assets/a': () => json(204, null) },
+    })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    await user.click(
+      within(await screen.findByRole('menu')).getByRole('menuitem', {
+        name: ko.viewer.trash,
+      }),
+    )
+    const confirm = await screen.findByRole('dialog', {
+      name: ko.viewer.trashTitle,
+    })
+    await user.click(
+      within(confirm).getByRole('button', { name: ko.viewer.trash }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+  })
+
+  it('info_panel_side_on_desktop', async () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === '(min-width: 1024px)',
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    )
+    const { user } = renderViewer({ path: '/photos/a', ids: ['a'] })
+    const button = await screen.findByRole('button', { name: ko.viewer.info })
+    expect(screen.queryByRole('complementary')).toBeNull()
+
+    await user.click(button)
+    const panel = await screen.findByRole('complementary', {
+      name: ko.viewer.info,
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(
+      within(panel).getByRole('button', { name: ko.viewer.editCaption }),
+    ).toBeInTheDocument()
+
+    // 모달 아님. 패널 열린 채 넘기기 가능.
+    await user.click(
+      within(panel).getByRole('button', { name: ko.viewer.closeInfo }),
+    )
+    expect(screen.queryByRole('complementary')).toBeNull()
+  })
+
+  it('shows_uploader_name', async () => {
+    renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: {
+        a: assetFixture('a', {
+          uploaded_by: 'u2',
+          created_at: '2024-05-11T01:00:00Z',
+        }),
+      },
+      extra: {
+        'GET /api/users': () =>
+          json(200, {
+            users: [
+              userFixture('guardian'),
+              { ...userFixture('family'), id: 'u2', display_name: '할머니' },
+            ],
+          }),
+      },
+    })
+    const info = await openInfo()
+    const section = within(info)
+      .getByRole('heading', { name: ko.viewer.uploadedBy })
+      .closest('section')
+    if (!(section instanceof HTMLElement)) throw new Error('섹션 없음')
+    expect(await within(section).findByText('할머니')).toBeInTheDocument()
+    expect(
+      within(section).getByText(/2024년 5월 11일 토요일/),
+    ).toBeInTheDocument()
+    // 해상도·크기·형식.
+    expect(
+      within(info).getByText('4032 × 3024 · 1MB · JPG'),
+    ).toBeInTheDocument()
+  })
+
+  it('info_shows_failure_first', async () => {
+    renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      list: () => [assetSummaryFixture('a', { status: 'failed' })],
+      assets: {
+        a: assetFixture('a', {
+          status: 'failed',
+          derivatives: {},
+          processing_error: 'decode error',
+        }),
+      },
+    })
+    const info = await openInfo()
+    const first = info.querySelector('section')
+    if (!(first instanceof HTMLElement)) throw new Error('섹션 없음')
+    expect(within(first).getByText('decode error')).toBeInTheDocument()
+    expect(
+      within(first).getByRole('button', { name: ko.viewer.retry }),
+    ).toBeInTheDocument()
+  })
 })
+
+function at(x: number, y: number) {
+  return { pointerId: 1, pointerType: 'touch', clientX: x, clientY: y }
+}
+
+function doubleTap(el: HTMLElement) {
+  for (let i = 0; i < 2; i++) {
+    fireEvent.pointerDown(el, at(200, 300))
+    fireEvent.pointerUp(el, at(200, 300))
+  }
+}
+
+function swipeLeft(el: HTMLElement) {
+  fireEvent.pointerDown(el, at(300, 300))
+  fireEvent.pointerMove(el, at(250, 300))
+  fireEvent.pointerUp(el, at(150, 305))
+}

@@ -131,18 +131,20 @@ test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {
   await expect(page).toHaveURL(/\/photos\//)
   const id = new URL(page.url()).pathname.split('/').at(-1) ?? ''
 
-  await page.getByRole('button', { name: '정보' }).click()
-  const info = page.getByRole('dialog', { name: '정보' })
-  await info.getByRole('button', { name: '설명 편집' }).click()
+  // 1024px 이상은 오른쪽 고정 패널(모달 아님).
+  await page.getByRole('button', { name: '정보', exact: true }).click()
+  const info = page.getByRole('complementary', { name: '정보' })
+  await info.getByRole('button', { name: '설명 고치기' }).click()
   const caption = `첫 나들이 ${String(test.info().retry)}`
   await info.getByRole('textbox', { name: '설명' }).fill(caption)
   await info.getByRole('button', { name: '저장' }).click()
   await expect(info.getByText(caption)).toBeVisible()
 
-  await info.getByRole('button', { name: '휴지통으로 이동' }).click()
+  // 아래 막대 휴지통.
+  await page.getByRole('button', { name: '휴지통', exact: true }).click()
   await page
-    .getByRole('dialog', { name: '휴지통으로 이동할까요?' })
-    .getByRole('button', { name: '휴지통으로 이동' })
+    .getByRole('dialog', { name: '휴지통으로 옮길까요?' })
+    .getByRole('button', { name: '휴지통으로 옮기기' })
     .click()
   // 다음 항목으로 교체 이동.
   await expect(page).not.toHaveURL(new RegExp(id))
