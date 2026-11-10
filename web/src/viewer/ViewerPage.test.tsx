@@ -583,6 +583,34 @@ describe('ViewerPage', () => {
     })
   })
 
+  it('video_tap_toggles_bars_once', async () => {
+    const video = { kind: 'video' as const, duration_ms: 65_000 }
+    renderViewer({
+      path: '/photos/b',
+      list: () => ['a', 'b', 'c'].map((id) => assetSummaryFixture(id, video)),
+      assets: { b: assetFixture('b', video) },
+    })
+    const el = await waitFor(() => {
+      const v = document.querySelector('video')
+      expect(v).not.toBeNull()
+      return v as HTMLVideoElement
+    })
+    const hidden = () =>
+      screen
+        .getAllByRole('button', { hidden: true, name: ko.common.close })[0]
+        ?.closest('[inert]') !== null
+    function tap() {
+      fireEvent.pointerDown(el, { pointerId: 1, clientX: 5, clientY: 5 })
+      fireEvent.pointerUp(el, { pointerId: 1, clientX: 5, clientY: 5 })
+      fireEvent.click(el)
+    }
+    expect(hidden()).toBe(false)
+    tap()
+    expect(hidden()).toBe(true)
+    tap()
+    expect(hidden()).toBe(false)
+  })
+
   it('caption_edit_keeps_list_taken_at_edit_refetches', async () => {
     let listCalls = 0
     const { user } = renderViewer({
@@ -807,6 +835,45 @@ describe('ViewerPage', () => {
     )
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/photos/b')
+    })
+  })
+
+  it('escape_ignored_in_text_field_but_closes_from_range', async () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: query === '(min-width: 1024px)',
+          media: query,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        }) as unknown as MediaQueryList,
+    )
+    const { router, user } = renderViewer({ path: '/photos/a', ids: ['a'] })
+    await user.click(
+      await screen.findByRole('button', { name: ko.viewer.info }),
+    )
+    const panel = await screen.findByRole('complementary')
+    await user.click(
+      within(panel).getByRole('button', { name: ko.viewer.editCaption }),
+    )
+    const box = within(panel).getByRole('textbox', { name: ko.viewer.caption })
+    await user.type(box, 'x{Escape}')
+    await new Promise((r) => setTimeout(r, 300))
+    expect(router.state.location.pathname).toBe('/photos/a')
+  })
+
+  it('escape_closes_with_range_focused', async () => {
+    const video = { kind: 'video' as const, duration_ms: 65_000 }
+    const { router, user } = renderViewer({
+      path: '/photos/a',
+      list: () => [assetSummaryFixture('a', video)],
+      assets: { a: assetFixture('a', video) },
+    })
+    const range = await screen.findByRole('slider')
+    range.focus()
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).not.toBe('/photos/a')
     })
   })
 

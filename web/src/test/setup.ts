@@ -37,3 +37,7 @@ window.ResizeObserver = class {
   unobserve = () => undefined
   disconnect = () => undefined
 }
+
+// jsdom 은 미디어 재생 미구현(호출 시 경고). 영상 뷰어가 언마운트에서 pause 호출.
+HTMLMediaElement.prototype.pause = () => undefined
+HTMLMediaElement.prototype.play = () => Promise.resolve()

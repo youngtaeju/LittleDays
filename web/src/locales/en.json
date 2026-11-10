@@ -76,6 +76,16 @@
     "emptyManage": "Add a baby to get started"
   },
   "viewer": {
+    "video": {
+      "play": "Play",
+      "pause": "Pause",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "fullscreen": "Fullscreen",
+      "error": "Can't play this video",
+      "exitFullscreen": "Exit fullscreen",
+      "seek": "Seek"
+    },
     "info": "Info",
     "prev": "Previous",
     "next": "Next",

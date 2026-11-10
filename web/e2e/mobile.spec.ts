@@ -91,6 +91,13 @@ test('viewer_nav_buttons_visible', async ({ ownerPage: page }) => {
   await expect(page.locator('main video')).toBeVisible()
   const videoUrl = page.url()
   await expect(next).toBeInViewport()
+  // 재생 버튼으로 재생 시작. 자동 재생 없음.
+  const video = page.locator('main video')
+  expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true)
+  await page.getByRole('button', { name: '재생', exact: true }).click()
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
+    .toBe(false)
   await expect(prev).toHaveCount(0)
   await expectNoHorizontalOverflow(page)
 

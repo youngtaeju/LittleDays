@@ -2,10 +2,12 @@ import { useRef, type PointerEvent } from 'react'
 
 const MIN_DISTANCE = 60
 
-// 뷰어 제스처 제외 대상. 버튼·링크·입력과 영상(기본 컨트롤 탐색 막대 조작과 구분).
+// 뷰어 제스처 제외 대상. 버튼·링크·입력과 영상 컨트롤 줄.
 export function ignoresGesture(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false
-  return !!target.closest('button, a, input, textarea, select, video')
+  return !!target.closest(
+    'button, a, input, textarea, select, [data-no-gesture]',
+  )
 }
 
 // 가로 60px 이상이고 세로보다 큰 이동만. 다른 포인터 추가(핀치) 시 취소.

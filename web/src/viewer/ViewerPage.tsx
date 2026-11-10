@@ -46,6 +46,7 @@ import { applyAsset, useAsset } from './useAsset'
 import { useDismissDrag } from './useDismissDrag'
 import { useSwipe } from './useSwipe'
 import { useZoom } from './useZoom'
+import { VideoPlayer } from './VideoPlayer'
 import { ViewerBars } from './ViewerBars'
 import { formatMoment, todayInZone } from './zoned'
 
@@ -165,6 +166,7 @@ export function ViewerPage() {
   const [infoOpen, setInfoOpen] = useState(false)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [trashOpen, setTrashOpen] = useState(false)
+  const [scrubbing, setScrubbing] = useState(false)
   if (shownId !== id) {
     setShownId(id)
     zoom.reset()
@@ -221,7 +223,7 @@ export function ViewerPage() {
   }
 
   const drag = useDismissDrag(stage, {
-    enabled: !!media && !zoom.isZoomed && !closing,
+    enabled: !!media && !zoom.isZoomed && !closing && !scrubbing,
     onDismiss: close,
   })
 
@@ -296,7 +298,7 @@ export function ViewerPage() {
   }
 
   const swipe = useSwipe({
-    enabled: !zoom.isZoomed,
+    enabled: !zoom.isZoomed && !scrubbing,
     onLeft: () => {
       go(next)
     },
@@ -310,12 +312,12 @@ export function ViewerPage() {
     function onKey(e: KeyboardEvent) {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
       const el = e.target instanceof Element ? e.target : null
-      if (
-        el?.closest('[role="dialog"], [role="menu"], input, textarea, select')
-      )
-        return
+      if (el?.closest('[role="dialog"], [role="menu"]')) return
+      // 재생 위치 막대는 글자 입력이 아니라 Esc 로 닫기 허용.
+      const typing = el?.closest('input:not([type="range"]), textarea, select')
+      if (typing) return
       if (e.key === 'Escape') close()
-      else if (el instanceof HTMLVideoElement) return
+      else if (el?.closest('input')) return
       else if (e.key === 'ArrowLeft') go(prev)
       else if (e.key === 'ArrowRight') go(next)
       else return
@@ -346,14 +348,14 @@ export function ViewerPage() {
     )
   } else if (media.kind === 'video') {
     content = (
-      <video
+      <VideoPlayer
         key={media.id}
-        controls
-        playsInline
-        aria-label={label}
+        label={label}
         poster={previewSources(media).webp}
         src={videoUrl(media.id)}
-        className="absolute inset-0 size-full"
+        durationHint={media.duration_ms ? media.duration_ms / 1000 : 0}
+        controlsVisible={barsVisible}
+        onScrubbingChange={setScrubbing}
       />
     )
   } else {
@@ -493,7 +495,7 @@ export function ViewerPage() {
               : null
           }
         />
-        {/* 영상은 넘기기 제스처 제외라 모든 폭에서 표시. 막대와 함께 숨김. */}
+        {/* 막대와 함께 숨김. */}
         {prev && (
           <Button
             variant="ghost"
