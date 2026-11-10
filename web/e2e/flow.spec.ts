@@ -287,6 +287,7 @@ test('invite_family_cannot_upload', async ({
 }) => {
   await page.goto('/family')
   // 기본 역할 가족.
+  await page.getByRole('button', { name: '가족 초대하기' }).click()
   await page.getByRole('button', { name: '초대 링크 만들기' }).click()
   const url = await page.getByLabel('초대 링크', { exact: true }).inputValue()
   expect(url).toContain('/invite/')
@@ -369,7 +370,7 @@ test('security_headers_and_no_csp_violations', async ({ ownerPage: page }) => {
   const nav = page.getByRole('navigation', { name: '주 메뉴' })
   for (const [name, heading] of [
     ['아기', '아기'],
-    ['가족', '멤버'],
+    ['가족', '가족'],
     ['나', '설정'],
   ] as const) {
     await nav.getByRole('link', { name }).click()

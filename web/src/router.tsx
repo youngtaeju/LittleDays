@@ -38,9 +38,9 @@ const SignupPage = lazyRouteComponent(
   () => import('@/pages/SignupPage'),
   'SignupPage',
 )
-const MembersPage = lazyRouteComponent(
-  () => import('@/members/MembersPage'),
-  'MembersPage',
+const FamilyPage = lazyRouteComponent(
+  () => import('@/family/FamilyPage'),
+  'FamilyPage',
 )
 const SettingsPage = lazyRouteComponent(
   () => import('@/settings/SettingsPage'),
@@ -246,7 +246,7 @@ const ageAlbumRoute = createRoute({
 const familyRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/family',
-  component: MembersPage,
+  component: FamilyPage,
 })
 
 const meRoute = createRoute({

@@ -23,9 +23,12 @@
     "logout": "Sign out"
   },
   "roles": {
-    "owner": "Owner",
+    "owner": "Admin",
     "guardian": "Guardian",
-    "family": "Family"
+    "family": "Family",
+    "ownerDesc": "Manages the family and settings",
+    "guardianDesc": "Uploads photos and edits baby info",
+    "familyDesc": "Views photos and shared moments"
   },
   "auth": {
     "username": "Username",
@@ -377,7 +380,7 @@
     "emptied_other": "{{count}} items permanently deleted"
   },
   "members": {
-    "usersTitle": "Members",
+    "usersTitle": "Family",
     "username": "Username",
     "email": "Email",
     "noEmail": "No email",
@@ -390,7 +393,7 @@
     "suspended": "Suspended",
     "unsuspended": "Unsuspended",
     "roleChanged": "Role changed",
-    "invitesTitle": "Invites",
+    "invitesTitle": "Pending invites",
     "createInvite": "Create invite link",
     "inviteRole": "Role",
     "inviteExpiry": "Valid for",
@@ -401,7 +404,7 @@
     },
     "inviteCreated": "Invite link created",
     "inviteUrl": "Invite link",
-    "inviteUrlHint": "You can only see this link now. Copy it and share it.",
+    "inviteUrlHint": "You can only see this link now. Copy or share it.",
     "copyFailed": "Could not copy. Select the link and copy it manually.",
     "noInvites": "No invite links yet.",
     "expiresAt": "Expires {{time}}",
@@ -413,7 +416,15 @@
     },
     "revoke": "Revoke",
     "revokeLabel": "Revoke {{role}} invite",
-    "revoked": "Invite link revoked"
+    "revoked": "Invite link revoked",
+    "inviteMember": "Invite family",
+    "inviteSheetTitle": "Invite family",
+    "self": "You",
+    "rolesTitle": "Roles",
+    "linkCopied": "Link copied",
+    "shareTitle": "Invitation to {{instance}}",
+    "shareText": "Join {{instance}}.",
+    "memberSheetTitle": "{{name}}"
   },
   "settings": {
     "title": "Settings",

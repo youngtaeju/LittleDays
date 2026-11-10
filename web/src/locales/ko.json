@@ -25,7 +25,10 @@
   "roles": {
     "owner": "관리자",
     "guardian": "보호자",
-    "family": "가족"
+    "family": "가족",
+    "ownerDesc": "가족과 설정을 관리해요",
+    "guardianDesc": "사진을 올리고 아기 정보를 고쳐요",
+    "familyDesc": "사진을 보고 기록을 함께 봐요"
   },
   "auth": {
     "username": "아이디",
@@ -377,7 +380,7 @@
     "emptied_other": "{{count}}개를 영구 삭제했어요"
   },
   "members": {
-    "usersTitle": "멤버",
+    "usersTitle": "가족",
     "username": "아이디",
     "email": "이메일",
     "noEmail": "이메일 없음",
@@ -390,7 +393,7 @@
     "suspended": "정지했어요",
     "unsuspended": "정지를 풀었어요",
     "roleChanged": "역할을 바꿨어요",
-    "invitesTitle": "초대",
+    "invitesTitle": "대기 중인 초대",
     "createInvite": "초대 링크 만들기",
     "inviteRole": "역할",
     "inviteExpiry": "유효 기간",
@@ -401,7 +404,7 @@
     },
     "inviteCreated": "초대 링크를 만들었어요",
     "inviteUrl": "초대 링크",
-    "inviteUrlHint": "이 링크는 지금만 볼 수 있어요. 복사해서 전달해 주세요.",
+    "inviteUrlHint": "이 링크는 지금만 볼 수 있어요. 복사하거나 공유해 주세요.",
     "copyFailed": "복사하지 못했어요. 링크를 직접 선택해서 복사해 주세요.",
     "noInvites": "만든 초대 링크가 없어요.",
     "expiresAt": "만료 {{time}}",
@@ -413,7 +416,15 @@
     },
     "revoke": "회수",
     "revokeLabel": "{{role}} 초대 회수",
-    "revoked": "초대 링크를 회수했어요"
+    "revoked": "초대 링크를 회수했어요",
+    "inviteMember": "가족 초대하기",
+    "inviteSheetTitle": "가족 초대하기",
+    "self": "나",
+    "rolesTitle": "역할 안내",
+    "linkCopied": "링크를 복사했어요",
+    "shareTitle": "{{instance}}에 초대해요",
+    "shareText": "{{instance}}에 참여해 주세요.",
+    "memberSheetTitle": "{{name}}"
   },
   "settings": {
     "title": "설정",
