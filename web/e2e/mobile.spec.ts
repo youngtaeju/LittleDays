@@ -62,8 +62,22 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
   await expect(tiles(page).first()).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
+  // 아기 화면(마지막 본 아기로 이동) → 개월 앨범.
   await page.goto('/babies')
-  await expect(page.getByText(BABY_NAME).first()).toBeVisible()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: BABY_NAME }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('region', { name: '개월별 앨범' }).locator('img').first(),
+  ).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  await page
+    .getByRole('region', { name: '개월별 앨범' })
+    .getByRole('link', { name: '2개월, 2장' })
+    .click()
+  await expect(page).toHaveURL(/\/age\/2$/)
+  await expect(tiles(page)).toHaveCount(2)
   await expectNoHorizontalOverflow(page)
 
   await page.goto('/me/trash')

@@ -76,6 +76,22 @@ describe('uploader', () => {
     up.uppy.cancelAll()
   })
 
+  // 대표 사진 올리기가 해당 항목 추적. 큐에 이미 있는 파일·지원 안 함도 항목 ID.
+  it('add_returns_item_ids', () => {
+    const up = getUploader(createTestQueryClient())
+    up.uppy.setOptions({ autoProceed: false })
+    const [a] = up.add([photo('a.jpg')], ['b1'])
+    expect(a).toBeDefined()
+    expect(up.add([photo('a.jpg')], ['b1'])).toEqual([a])
+    const ids = up.add([photo('b.jpg'), photo('note.txt', 'text/plain')], [])
+    expect(ids).toHaveLength(2)
+    const status = (id: string | undefined) =>
+      uploadStore.getSnapshot().find((i) => i.id === id)?.status
+    expect(status(a)).toBe('queued')
+    expect(ids.map(status)).toEqual(['queued', 'unsupported'])
+    up.uppy.cancelAll()
+  })
+
   it('invalidates_lists_once_when_queue_drains', async () => {
     const qc = createTestQueryClient()
     const invalidate = vi.spyOn(qc, 'invalidateQueries')

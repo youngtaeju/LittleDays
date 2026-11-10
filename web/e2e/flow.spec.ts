@@ -11,6 +11,7 @@ import {
   tiles,
   trashAsset,
 } from './fixtures'
+import type { Baby } from '@/api/types'
 
 // 선언 순서대로 실행(워커 1개). 앞 테스트가 만든 계정·사진 사용.
 // 첫 테스트 외에는 재시도해도 최종 상태가 같도록 작성(복구까지 한 테스트 안에서).
@@ -108,6 +109,88 @@ test('day_page', async ({ ownerPage: page }) => {
   ).toBeVisible()
   await page.getByRole('button', { name: '뒤로' }).click()
   await expect(page).toHaveURL(/\/$/)
+})
+
+test('baby_age_album', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  await expect(tiles(page)).toHaveCount(3)
+  // 아기 메뉴 → 마지막 본(없으면 첫째) 아기 화면.
+  await page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .getByRole('link', { name: '아기' })
+    .click()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: BABY_NAME }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('list', { name: '기록' }).getByRole('listitem'),
+  ).toHaveText(['2사진', '1영상', '2기록한 날'])
+
+  // 2024-03-01 생. 사진 2장(5월 1일) = 2개월, 영상(6월 1일) = 3개월. 최신 개월부터.
+  const albums = page.getByRole('region', { name: '개월별 앨범' })
+  await expect(albums.getByRole('link')).toHaveCount(2)
+  await expect(albums.getByRole('link').first()).toHaveAccessibleName(
+    '3개월, 1장',
+  )
+  await albums.getByRole('link', { name: '2개월, 2장' }).click()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+\/age\/2$/)
+  const banner = page.getByRole('banner')
+  await expect(banner.getByRole('heading', { name: '2개월' })).toBeVisible()
+  await expect(banner).toContainText('2024년 5월 1일 ~ 5월 31일')
+  await expect(page.getByRole('main').getByRole('article')).toHaveCount(1)
+  await expect(tiles(page)).toHaveCount(2)
+  await expectThumbnailsLoaded(page, 2)
+
+  // 뒤로 → 아기 화면.
+  await banner.getByRole('button', { name: '뒤로' }).click()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+})
+
+test('baby_avatar_pick_and_crop', async ({ ownerPage: page }) => {
+  await page.goto('/babies')
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+  const id = new URL(page.url()).pathname.split('/').at(-1) ?? ''
+
+  // ⋮ → 아기 정보 고치기 → 우리 사진에서 고르기.
+  await page.getByRole('button', { name: '아기 메뉴' }).click()
+  await page.getByRole('menuitem', { name: '아기 정보 고치기' }).click()
+  const sheet = page.getByRole('dialog', { name: '아기 정보 고치기' })
+  await sheet.getByRole('button', { name: '우리 사진에서 고르기' }).click()
+  const grid = sheet.getByRole('list', { name: '우리 사진에서 고르기' })
+  // 사진 2장(영상 제외).
+  await expect(grid.getByRole('button')).toHaveCount(2)
+  await grid.getByRole('button').first().click()
+
+  // 원 안 미리보기 로드 후 키보드로 확대·이동.
+  const stage = sheet.getByRole('group', { name: '사진 위치' })
+  await expect
+    .poll(() =>
+      stage
+        .locator('img')
+        .evaluate((e) => e instanceof HTMLImageElement && e.naturalWidth > 0),
+    )
+    .toBe(true)
+  await stage.focus()
+  await page.keyboard.press('+')
+  await page.keyboard.press('ArrowLeft')
+  await sheet.getByRole('button', { name: '이 위치로 정하기' }).click()
+  await sheet.getByRole('button', { name: '저장하기' }).click()
+  await expect(sheet).toBeHidden()
+
+  // 머리글 아바타(72px = preview) 표시. 저장된 자르기 영역.
+  const avatar = page.getByRole('main').locator('img[src$="/preview.webp"]')
+  await expect
+    .poll(() =>
+      avatar
+        .first()
+        .evaluate((e) => e instanceof HTMLImageElement && e.naturalWidth > 0),
+    )
+    .toBe(true)
+  const res = await page.request.get('/api/babies')
+  const baby = ((await res.json()) as Baby[]).find((b) => b.id === id)
+  expect(baby?.avatar_asset_id).toBeTruthy()
+  expect(baby?.avatar_crop?.size).toBeCloseTo(0.8)
 })
 
 test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {

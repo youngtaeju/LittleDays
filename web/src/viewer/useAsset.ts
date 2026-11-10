@@ -1,14 +1,21 @@
-import { useQuery, type QueryClient } from '@tanstack/react-query'
+import { queryOptions, useQuery, type QueryClient } from '@tanstack/react-query'
 import { api, call } from '@/api/client'
 import type { Asset } from '@/api/types'
 import { assetKey } from '@/timeline/useTimeline'
 
-// 타일 폴링과 같은 key. 처리 중이면 3초 간격 조회.
-export function useAsset(id: string) {
-  return useQuery({
+// 타일 폴링·아바타 크기 공용 key.
+export function assetQuery(id: string) {
+  return queryOptions({
     queryKey: assetKey(id),
     queryFn: () =>
       call(api.GET('/api/assets/{id}', { params: { path: { id } } })),
+  })
+}
+
+// 처리 중이면 3초 간격 조회.
+export function useAsset(id: string) {
+  return useQuery({
+    ...assetQuery(id),
     refetchInterval: (q) =>
       q.state.data?.status === 'processing' ? 3000 : false,
   })

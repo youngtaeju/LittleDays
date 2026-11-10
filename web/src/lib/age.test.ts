@@ -113,6 +113,17 @@ describe('next_anniversary', () => {
   it('before_birth_is_null', () => {
     expect(nextAnniversary('2024-01-31', '2024-01-01')).toBeNull()
   })
+  // 2월 29일생: 평년 생일은 2월 28일, 윤년은 2월 29일.
+  it('leap_day_birth', () => {
+    expect(nextAnniversary('2024-02-29', '2025-02-01')).toEqual({
+      day: { kind: 'birthday', n: 1 },
+      inDays: 27,
+    })
+    expect(nextAnniversary('2024-02-29', '2027-03-01')).toEqual({
+      day: { kind: 'birthday', n: 4 },
+      inDays: 365,
+    })
+  })
 })
 
 describe('age_matches_server_rule', () => {
@@ -165,6 +176,19 @@ describe('formatting', () => {
       '21st birthday',
       '22nd birthday',
       '23rd birthday',
+    ])
+    const big = [100, 101, 102, 103, 111, 112, 113, 121].map((n) =>
+      formatSpecialDay(t, { kind: 'birthday', n }),
+    )
+    expect(big).toEqual([
+      '100th birthday',
+      '101st birthday',
+      '102nd birthday',
+      '103rd birthday',
+      '111th birthday',
+      '112th birthday',
+      '113th birthday',
+      '121st birthday',
     ])
     expect(formatAgeLine(t, '2024-03-10', '2024-03-01')).toBe('Due in 9 d')
     expect(

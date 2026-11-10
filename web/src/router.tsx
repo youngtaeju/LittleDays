@@ -23,6 +23,9 @@ import { OfflineScreen } from '@/pwa/OfflineBanner'
 import { RouteError, RoutePending } from '@/pages/RouteError'
 import { AppShell } from '@/shell/AppShell'
 import { FeedPage } from '@/feed/FeedPage'
+import { pickBaby } from '@/babies/lastBaby'
+import { parseAgeParam } from '@/babies/useBabyStats'
+import { babiesQuery } from '@/timeline/useBabies'
 import { isCalendarDate } from '@/lib/dates'
 import { uploadStore } from '@/upload/useUploadStore'
 
@@ -43,9 +46,17 @@ const SettingsPage = lazyRouteComponent(
   () => import('@/settings/SettingsPage'),
   'SettingsPage',
 )
-const BabiesPage = lazyRouteComponent(
-  () => import('@/babies/BabiesPage'),
-  'BabiesPage',
+const BabiesIndexPage = lazyRouteComponent(
+  () => import('@/babies/BabiesIndexPage'),
+  'BabiesIndexPage',
+)
+const BabyProfilePage = lazyRouteComponent(
+  () => import('@/babies/BabyProfilePage'),
+  'BabyProfilePage',
+)
+const AgeAlbumPage = lazyRouteComponent(
+  () => import('@/babies/AgeAlbumPage'),
+  'AgeAlbumPage',
 )
 const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
@@ -188,10 +199,47 @@ const dayRoute = createRoute({
   component: DayPage,
 })
 
+// 마지막 본 아기(없으면 첫째)로 교체 이동. 아기 없음·조회 실패는 화면에서.
 const babiesRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/babies',
-  component: BabiesPage,
+  beforeLoad: async ({ context }) => {
+    // 캐시 있으면 그대로(화면이 다시 받음).
+    const babies = await context.queryClient
+      .query({ ...babiesQuery, staleTime: 'static' })
+      .catch(() => undefined)
+    const target = babies && pickBaby(babies)
+    if (target) {
+      throw redirect({
+        to: '/babies/$id',
+        params: { id: target.id },
+        replace: true,
+      })
+    }
+  },
+  component: BabiesIndexPage,
+})
+
+const babyRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/babies/$id',
+  component: BabyProfilePage,
+})
+
+// 개월 수(정수) 또는 before 가 아니면 아기 화면. 통계에 없는 개월은 화면에서.
+const ageAlbumRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/babies/$id/age/$age',
+  beforeLoad: ({ params }) => {
+    if (parseAgeParam(params.age) === null) {
+      throw redirect({
+        to: '/babies/$id',
+        params: { id: params.id },
+        replace: true,
+      })
+    }
+  },
+  component: AgeAlbumPage,
 })
 
 // 모든 멤버. 초대·역할 변경은 화면에서 관리자만.
@@ -270,6 +318,8 @@ const routeTree = rootRoute.addChildren([
       homeRoute,
       dayRoute,
       babiesRoute,
+      babyRoute,
+      ageAlbumRoute,
       familyRoute,
       meRoute,
       trashRoute,
