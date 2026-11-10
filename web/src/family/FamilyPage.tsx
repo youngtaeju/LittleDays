@@ -98,7 +98,7 @@ function PendingInvites() {
       toast(t('members.revoked'))
     },
   })
-  const list = invites.data?.invites ?? []
+  const list = invites.data?.invites.filter((i) => i.status === 'active') ?? []
 
   return (
     <section aria-labelledby="family-invites" className="grid gap-2">
@@ -128,34 +128,29 @@ function PendingInvites() {
               className="flex min-h-14 flex-wrap items-center gap-2 border-b border-border py-2 last:border-b-0"
             >
               <span className="font-semibold">{t(`roles.${invite.role}`)}</span>
-              <span className="text-sm text-muted-foreground">
-                {t(`members.inviteStatus.${invite.status}`)}
-              </span>
               {expires && (
                 <span className="min-w-0 flex-1 text-sm text-muted-foreground">
                   {expires}
                 </span>
               )}
-              {invite.status === 'active' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  aria-label={[
-                    t('members.revokeLabel', {
-                      role: t(`roles.${invite.role}`),
-                    }),
-                    expires,
-                  ]
-                    .filter((v) => v != null)
-                    .join(', ')}
-                  disabled={revoke.isPending}
-                  onClick={() => {
-                    revoke.mutate(invite.id)
-                  }}
-                >
-                  {t('members.revoke')}
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label={[
+                  t('members.revokeLabel', {
+                    role: t(`roles.${invite.role}`),
+                  }),
+                  expires,
+                ]
+                  .filter((v) => v != null)
+                  .join(', ')}
+                disabled={revoke.isPending}
+                onClick={() => {
+                  revoke.mutate(invite.id)
+                }}
+              >
+                {t('members.revoke')}
+              </Button>
             </li>
           )
         })}

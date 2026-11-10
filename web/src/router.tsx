@@ -42,9 +42,26 @@ const FamilyPage = lazyRouteComponent(
   () => import('@/family/FamilyPage'),
   'FamilyPage',
 )
-const SettingsPage = lazyRouteComponent(
-  () => import('@/settings/SettingsPage'),
-  'SettingsPage',
+const MePage = lazyRouteComponent(() => import('@/me/MePage'), 'MePage')
+const ProfilePage = lazyRouteComponent(
+  () => import('@/me/subPages'),
+  'ProfilePage',
+)
+const PasswordPage = lazyRouteComponent(
+  () => import('@/me/subPages'),
+  'PasswordPage',
+)
+const DevicesPage = lazyRouteComponent(
+  () => import('@/me/subPages'),
+  'DevicesPage',
+)
+const AppearancePage = lazyRouteComponent(
+  () => import('@/me/subPages'),
+  'AppearancePage',
+)
+const InstancePage = lazyRouteComponent(
+  () => import('@/me/subPages'),
+  'InstancePage',
 )
 const BabiesIndexPage = lazyRouteComponent(
   () => import('@/babies/BabiesIndexPage'),
@@ -167,9 +184,11 @@ function AuthedGate() {
   return <Outlet />
 }
 
-function requireRole(min: Role) {
+function requireRole(min: Role, to: '/' | '/me' = '/') {
   return ({ context }: { context: { me?: User } }) => {
-    if (context.me && !hasRole(context.me, min)) throw redirect({ to: '/' })
+    if (context.me && !hasRole(context.me, min)) {
+      throw redirect({ to, replace: true })
+    }
   }
 }
 
@@ -252,13 +271,44 @@ const familyRoute = createRoute({
 const meRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/me',
-  component: SettingsPage,
+  component: MePage,
+})
+
+const meProfileRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/me/profile',
+  component: ProfilePage,
+})
+
+const mePasswordRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/me/password',
+  component: PasswordPage,
+})
+
+const meDevicesRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/me/devices',
+  component: DevicesPage,
+})
+
+const meAppearanceRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/me/appearance',
+  component: AppearancePage,
+})
+
+const meInstanceRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/me/instance',
+  beforeLoad: requireRole('owner', '/me'),
+  component: InstancePage,
 })
 
 const trashRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/me/trash',
-  beforeLoad: requireRole('guardian'),
+  beforeLoad: requireRole('guardian', '/me'),
   component: TrashPage,
 })
 
@@ -322,6 +372,11 @@ const routeTree = rootRoute.addChildren([
       ageAlbumRoute,
       familyRoute,
       meRoute,
+      meProfileRoute,
+      mePasswordRoute,
+      meDevicesRoute,
+      meAppearanceRoute,
+      meInstanceRoute,
       trashRoute,
     ]),
     photoRoute,

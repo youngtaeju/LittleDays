@@ -167,7 +167,7 @@ describe('guards', () => {
     mockFetch(authRoutes({ me: userFixture('family') }))
     const { router } = renderApp('/me/trash')
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/')
+      expect(router.state.location.pathname).toBe('/me')
     })
     await screen.findAllByText(settingsFixture.instance_name)
   })

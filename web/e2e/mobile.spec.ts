@@ -89,7 +89,15 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
   await expectNoHorizontalOverflow(page)
 
   await page.goto('/me')
-  await expect(page.getByRole('heading', { name: '설정' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: OWNER.displayName }),
+  ).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
+  await page.goto('/me/instance')
+  await expect(
+    page.getByRole('heading', { name: '우리 집 설정' }),
+  ).toBeVisible()
   await expect(page.getByLabel('시간대')).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })

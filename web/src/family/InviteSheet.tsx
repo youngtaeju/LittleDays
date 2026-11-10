@@ -38,31 +38,31 @@ export function InviteSheet({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // 공유 시트 우선. 사용자 취소(AbortError)는 무시, 미지원·그 외 실패는 복사.
+  // 버튼 클릭 안에서만 호출(iOS 는 사용자 동작 직후여야 허용). 사용자 취소(AbortError)는 무시, 그 외 실패는 복사.
   async function share(link: string) {
-    const instance = settings?.instance_name ?? ''
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({
-          title: t('members.shareTitle', { instance }),
-          text: t('members.shareText', { instance }),
-          url: link,
-        })
-        return
-      } catch (e) {
-        if (e instanceof DOMException && e.name === 'AbortError') return
-      }
+    const instance = settings?.instance_name
+    try {
+      await navigator.share({
+        title: instance
+          ? t('members.shareTitle', { instance })
+          : t('members.shareTitleGeneric'),
+        text: instance
+          ? t('members.shareText', { instance })
+          : t('members.shareTextGeneric'),
+        url: link,
+      })
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
+      await copy(link, true)
     }
-    await copy(link, true)
   }
 
   const create = useMutation({
     mutationFn: (body: { role: Role; expires_in_hours: number }) =>
       call(api.POST('/api/invites', { body })),
-    onSuccess: async (res) => {
+    onSuccess: (res) => {
       setUrl(res.url)
-      await qc.invalidateQueries({ queryKey: invitesKey })
-      await share(res.url)
+      void qc.invalidateQueries({ queryKey: invitesKey })
     },
   })
 
@@ -123,6 +123,11 @@ export function InviteSheet({ onClose }: { onClose: () => void }) {
                   e.currentTarget.select()
                 }}
               />
+              {typeof navigator.share === 'function' && (
+                <Button variant="outline" onClick={() => void share(url)}>
+                  {t('members.share')}
+                </Button>
+              )}
               <Button variant="outline" onClick={() => void copy(url)}>
                 {t('common.copy')}
               </Button>

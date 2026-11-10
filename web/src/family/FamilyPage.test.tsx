@@ -140,6 +140,9 @@ describe('FamilyPage', () => {
     const { user } = renderMembers(createRoute(bodies))
     await createInvite(user)
     expect(bodies).toEqual([{ role: 'family', expires_in_hours: 72 }])
+    // 만든 직후 자동 공유 없음. 버튼 클릭에서만.
+    expect(share).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: '공유하기' }))
     expect(share).toHaveBeenCalledWith(
       expect.objectContaining({ url: 'http://x/invite/r' }),
     )
@@ -158,17 +161,24 @@ describe('FamilyPage', () => {
     vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(writeText)
     const { user } = renderMembers(createRoute([]))
     await createInvite(user)
+    await user.click(screen.getByRole('button', { name: '공유하기' }))
     expect(share).toHaveBeenCalled()
     expect(writeText).not.toHaveBeenCalled()
   })
 
   it('copy_fallback', async () => {
+    Object.defineProperty(navigator, 'share', {
+      value: undefined,
+      configurable: true,
+    })
     const { user } = renderMembers(createRoute([]))
     await createInvite(user)
+    expect(screen.queryByRole('button', { name: '공유하기' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: '복사' }))
     await waitFor(async () => {
       expect(await navigator.clipboard.readText()).toBe('http://x/invite/r')
     })
-    expect(await screen.findByText('링크를 복사했어요')).toBeInTheDocument()
+    expect(await screen.findByText('복사했어요')).toBeInTheDocument()
     expect(screen.getByDisplayValue('http://x/invite/r')).toHaveAttribute(
       'readonly',
     )
@@ -240,8 +250,10 @@ describe('FamilyPage', () => {
         return json(204, null)
       },
     })
-    // 사용됨 초대에는 버튼 없음. 중복이면 findByRole 이 실패.
+    // 사용됨 초대는 목록에서 제외. 중복이면 findByRole 이 실패.
     await user.click(await screen.findByRole('button', { name: /초대 회수/ }))
+    expect(screen.getAllByRole('button', { name: /초대 회수/ })).toHaveLength(1)
+    expect(screen.queryByText('사용됨')).toBeNull()
     await waitFor(() => {
       expect(revoked).toBe('c1')
     })

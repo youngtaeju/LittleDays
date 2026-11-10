@@ -39,6 +39,7 @@ export const Tile = memo(function Tile({
   onSelect,
   sizes,
   className,
+  extraLabel,
 }: {
   item: AssetSummary
   baby?: string | undefined
@@ -46,6 +47,8 @@ export const Tile = memo(function Tile({
   onSelect?: (id: string) => void
   sizes?: string
   className?: string
+  // 접근성 이름 끝에 덧붙일 문구(휴지통 남은 일수 등).
+  extraLabel?: string | undefined
 }) {
   const { t, i18n } = useTranslation()
   const video = item.kind === 'video'
@@ -63,6 +66,7 @@ export const Tile = memo(function Tile({
     formatDay(item.local_date, i18n.language),
     timezone ? formatClock(item.taken_at, timezone, i18n.language) : null,
     state,
+    extraLabel,
   ]
     .filter((v) => v != null)
     .join(', ')
