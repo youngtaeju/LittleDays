@@ -29,10 +29,10 @@ describe('theme', () => {
         'meta[name="theme-color"]:not([media])',
       )
     expect(metas()).toHaveLength(1)
-    expect(metas()[0]?.content).toBe('#F5F7F6')
+    expect(metas()[0]?.content).toBe('#FFFFFF')
     applyTheme('system', true)
     expect(metas()).toHaveLength(1)
-    expect(metas()[0]?.content).toBe('#14181B')
+    expect(metas()[0]?.content).toBe('#121416')
     expect(document.head.querySelector('meta[name="theme-color"]')).toBe(
       metas()[0],
     )

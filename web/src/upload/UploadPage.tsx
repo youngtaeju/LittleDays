@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Upload } from 'lucide-react'
+import IconUpload from '~icons/material-symbols/upload-rounded'
 import { useEffect, useId, useRef, useState, type DragEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
@@ -132,12 +132,12 @@ export function UploadPage() {
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          'grid place-items-center gap-3 rounded-md border-2 border-dashed border-border p-6 text-center',
+          'grid place-items-center gap-3 rounded-lg border-2 border-dashed border-border p-6 text-center',
           dragging && 'border-primary',
         )}
       >
         <Button disabled={!ready} onClick={() => inputRef.current?.click()}>
-          <Upload aria-hidden />
+          <IconUpload aria-hidden />
           {t('upload.choose')}
         </Button>
         <p className="hidden text-sm text-muted-foreground lg:block">

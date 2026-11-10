@@ -5,16 +5,14 @@ import {
   useNavigate,
   useRouter,
 } from '@tanstack/react-router'
-import {
-  ChevronLeft,
-  ChevronRight,
-  Info,
-  LoaderCircle,
-  TriangleAlert,
-  X,
-  ZoomIn,
-  ZoomOut,
-} from 'lucide-react'
+import IconChevronLeft from '~icons/material-symbols/chevron-left-rounded'
+import IconChevronRight from '~icons/material-symbols/chevron-right-rounded'
+import IconClose from '~icons/material-symbols/close-rounded'
+import IconInfo from '~icons/material-symbols/info-outline-rounded'
+import IconProgress from '~icons/material-symbols/progress-activity-rounded'
+import IconWarning from '~icons/material-symbols/warning-outline-rounded'
+import IconZoomIn from '~icons/material-symbols/zoom-in-rounded'
+import IconZoomOut from '~icons/material-symbols/zoom-out-rounded'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -65,7 +63,7 @@ function ProcessingView({ media }: { media: Asset | AssetSummary }) {
           />
         )}
         <p className="relative flex items-center gap-2 rounded-full bg-black/60 px-3 py-1 text-sm">
-          <LoaderCircle
+          <IconProgress
             aria-hidden
             className="size-4 animate-spin motion-reduce:animate-none"
           />
@@ -90,7 +88,7 @@ function FailedView({
   const { t } = useTranslation()
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-8 text-center">
-      <TriangleAlert aria-hidden className="size-8 text-muted-foreground" />
+      <IconWarning aria-hidden className="size-8 text-muted-foreground" />
       <p>{t('viewer.failed')}</p>
       {/* 서버 원문. 언어 혼재 가능. */}
       {error && (
@@ -362,7 +360,7 @@ export function ViewerPage() {
           onClick={close}
           autoFocus
         >
-          <X />
+          <IconClose />
         </Button>
         <div className="flex-1" />
         {canZoom && (
@@ -374,14 +372,14 @@ export function ViewerPage() {
               setZoomed((z) => !z)
             }}
           >
-            {zoomed ? <ZoomOut /> : <ZoomIn />}
+            {zoomed ? <IconZoomOut /> : <IconZoomIn />}
           </Button>
         )}
         {detail && (
           <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label={t('viewer.info')}>
-                <Info />
+                <IconInfo />
               </Button>
             </SheetTrigger>
             <SheetContent
@@ -424,7 +422,7 @@ export function ViewerPage() {
             go(prev)
           }}
         >
-          <ChevronLeft />
+          <IconChevronLeft />
         </Button>
       )}
       {next && (
@@ -437,7 +435,7 @@ export function ViewerPage() {
             go(next)
           }}
         >
-          <ChevronRight />
+          <IconChevronRight />
         </Button>
       )}
     </div>

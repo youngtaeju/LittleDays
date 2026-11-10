@@ -56,3 +56,14 @@ export function onlyCacheable({
       : null,
   )
 }
+
+// 자체 서빙 글꼴(Pretendard 서브셋). 파일명 해시라 CacheFirst.
+export function isFont({
+  url,
+  sameOrigin,
+}: {
+  url: URL
+  sameOrigin: boolean
+}): boolean {
+  return sameOrigin && /\.woff2$/.test(url.pathname)
+}

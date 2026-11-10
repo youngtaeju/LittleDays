@@ -58,7 +58,7 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
   })
 
   return (
-    <li className="grid gap-2 rounded-md border border-border bg-card p-3">
+    <li className="grid gap-2 rounded-lg border border-border bg-card p-3">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <p className="min-w-0 flex-1 basis-40 truncate font-semibold">
           {user.display_name}
@@ -236,7 +236,7 @@ function InviteCreator() {
       </form>
       <FormError error={create.error} />
       {url !== null && (
-        <div className="grid gap-2 rounded-md border border-border bg-card p-3">
+        <div className="grid gap-2 rounded-lg border border-border bg-card p-3">
           <label htmlFor="invite-url" className="text-sm font-semibold">
             {t('members.inviteUrl')}
           </label>
@@ -308,7 +308,7 @@ function InviteList() {
           return (
             <li
               key={invite.id}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3"
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3"
             >
               <span className="font-semibold">{t(`roles.${invite.role}`)}</span>
               <span className="text-sm text-muted-foreground">

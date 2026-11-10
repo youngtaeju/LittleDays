@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isDerivative,
+  isFont,
   isOfflineApi,
   onlyCacheable,
   stripMediaToken,
@@ -102,6 +103,19 @@ describe('cachePlugins', () => {
     expect(match('/api/babies', false)).toBe(false)
   })
 
+  // 글꼴은 precache 대신 런타임 캐시(vite.config.ts globIgnores). 빌드 sw.js 확인은 수동.
+  it('fonts_not_precached', () => {
+    const match = (path: string, sameOrigin = true) =>
+      isFont({ url: new URL(BASE + path), sameOrigin })
+    expect(match('/assets/PretendardVariable.subset.12-a1B2c3.woff2')).toBe(
+      true,
+    )
+    expect(match('/assets/index-a1B2c3.css')).toBe(false)
+    expect(match('/assets/x.woff2.js')).toBe(false)
+    expect(match('/api/assets/a1/thumb.webp')).toBe(false)
+    expect(match('/assets/x.woff2', false)).toBe(false)
+  })
+
   it('self_contained', async () => {
     const strip = revive(stripMediaToken)
     expect(
@@ -133,5 +147,10 @@ describe('cachePlugins', () => {
     expect(
       offlineApi({ url: new URL(`${BASE}/api/uploads`), sameOrigin: true }),
     ).toBe(false)
+
+    const font = revive(isFont)
+    expect(
+      font({ url: new URL(`${BASE}/assets/a.woff2`), sameOrigin: true }),
+    ).toBe(true)
   })
 })

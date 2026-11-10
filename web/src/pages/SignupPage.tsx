@@ -148,7 +148,7 @@ function BabyStep() {
             id={sexId}
             name="sex"
             defaultValue=""
-            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-base md:text-sm"
+            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-base md:text-sm"
           >
             <option value="">{t('babies.sexUnset')}</option>
             <option value="female">{t('babies.sexFemale')}</option>

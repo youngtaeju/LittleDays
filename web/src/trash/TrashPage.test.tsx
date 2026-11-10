@@ -109,7 +109,7 @@ describe('TrashPage', () => {
     await waitFor(() => {
       expect(deletes).toEqual([ID])
     })
-    expect(await screen.findByText('영구 삭제함')).toBeInTheDocument()
+    expect(await screen.findByText('영구 삭제했어요')).toBeInTheDocument()
   })
 
   it('empty_trash_reports_count', async () => {
@@ -127,7 +127,7 @@ describe('TrashPage', () => {
     await user.click(
       within(dialog).getByRole('button', { name: '휴지통 비우기' }),
     )
-    expect(await screen.findByText('3개 영구 삭제함')).toBeInTheDocument()
+    expect(await screen.findByText('3개를 영구 삭제했어요')).toBeInTheDocument()
   })
 
   it('family_redirected', async () => {

@@ -3,7 +3,10 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query'
-import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react'
+import IconArrowDown from '~icons/material-symbols/arrow-downward-rounded'
+import IconArrowUp from '~icons/material-symbols/arrow-upward-rounded'
+import IconDelete from '~icons/material-symbols/delete-outline-rounded'
+import IconEdit from '~icons/material-symbols/edit-outline-rounded'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, call } from '@/api/client'
@@ -149,7 +152,7 @@ export function BabiesPage() {
           return (
             <li
               key={baby.id}
-              className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-md border border-border bg-card p-3"
+              className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card p-3"
             >
               <Avatar baby={baby} />
               <div className="min-w-0 flex-1 basis-40">
@@ -174,7 +177,7 @@ export function BabiesPage() {
                       move(i, -1)
                     }}
                   >
-                    <ArrowUp aria-hidden />
+                    <IconArrowUp aria-hidden />
                   </Button>
                   <Button
                     variant="ghost"
@@ -185,7 +188,7 @@ export function BabiesPage() {
                       move(i, 1)
                     }}
                   >
-                    <ArrowDown aria-hidden />
+                    <IconArrowDown aria-hidden />
                   </Button>
                   <Button
                     variant="ghost"
@@ -195,7 +198,7 @@ export function BabiesPage() {
                       setDialog({ kind: 'edit', baby })
                     }}
                   >
-                    <Pencil aria-hidden />
+                    <IconEdit aria-hidden />
                   </Button>
                   <Button
                     variant="ghost"
@@ -205,7 +208,7 @@ export function BabiesPage() {
                       setDialog({ kind: 'delete', baby })
                     }}
                   >
-                    <Trash2 aria-hidden />
+                    <IconDelete aria-hidden />
                   </Button>
                 </div>
               )}

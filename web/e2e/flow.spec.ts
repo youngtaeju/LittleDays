@@ -106,7 +106,7 @@ test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {
   // 다음 항목으로 교체 이동.
   await expect(page).not.toHaveURL(new RegExp(id))
   await page.getByRole('button', { name: '실행 취소' }).click()
-  await expect(page.getByText('복구함')).toBeVisible()
+  await expect(page.getByText('복구했어요')).toBeVisible()
 
   const restored = await getAsset(page, id)
   expect(restored.deleted_at).toBeNull()
@@ -136,7 +136,7 @@ test('duplicate_in_trash_restore', async ({ ownerPage: page }) => {
     .filter({ hasText: 'orient6.jpg' })
   await expect(row.getByText('휴지통에 있음')).toBeVisible({ timeout: 30_000 })
   await row.getByRole('button', { name: '복구' }).click()
-  await expect(row.getByText('복구함')).toBeVisible()
+  await expect(row.getByText('복구했어요')).toBeVisible()
   await expect(row.getByRole('link', { name: '보기' })).toBeVisible()
 
   expect((await getAsset(page, jpg.id)).deleted_at).toBeNull()

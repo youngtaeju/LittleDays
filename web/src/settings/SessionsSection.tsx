@@ -44,7 +44,7 @@ export function SessionsSection() {
           return (
             <li
               key={s.id}
-              className="flex min-w-0 flex-wrap items-center gap-2 rounded-md border border-border bg-card p-3"
+              className="flex min-w-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-3"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{device}</p>
@@ -53,7 +53,7 @@ export function SessionsSection() {
                 )}
               </div>
               {s.current ? (
-                <span className="text-sm font-semibold text-primary">
+                <span className="text-sm font-semibold text-accent-ink">
                   {t('settings.currentSession')}
                 </span>
               ) : (

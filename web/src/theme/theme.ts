@@ -4,8 +4,8 @@ export type ThemePref = 'system' | 'light' | 'dark'
 
 const STORAGE_KEY = 'ld.theme'
 // index.html 정적 메타와 동일 값.
-const THEME_COLOR_LIGHT = '#F5F7F6'
-const THEME_COLOR_DARK = '#14181B'
+const THEME_COLOR_LIGHT = '#FFFFFF'
+const THEME_COLOR_DARK = '#121416'
 const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 export function getThemePref(): ThemePref {

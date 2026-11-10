@@ -60,7 +60,10 @@ export function LoginPage() {
       {status.data?.signup_open && (
         <p className="text-sm text-muted-foreground">
           {t('auth.login.firstRun')}{' '}
-          <Link to="/signup" className="font-semibold text-primary underline">
+          <Link
+            to="/signup"
+            className="font-semibold text-accent-ink underline"
+          >
             {t('auth.login.toSignup')}
           </Link>
         </p>

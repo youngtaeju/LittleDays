@@ -1,16 +1,13 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
-import {
-  Baby,
-  Ellipsis,
-  Images,
-  LogOut,
-  Settings,
-  Trash2,
-  Upload,
-  Users,
-  type LucideIcon,
-} from 'lucide-react'
-import { useState } from 'react'
+import IconChildCare from '~icons/material-symbols/child-care-outline-rounded'
+import IconDelete from '~icons/material-symbols/delete-outline-rounded'
+import IconGroup from '~icons/material-symbols/group-outline-rounded'
+import IconLogout from '~icons/material-symbols/logout-rounded'
+import IconMore from '~icons/material-symbols/more-horiz-rounded'
+import IconPhotos from '~icons/material-symbols/photo-library-outline-rounded'
+import IconSettings from '~icons/material-symbols/settings-outline-rounded'
+import IconUpload from '~icons/material-symbols/upload-rounded'
+import { useState, type ComponentType, type SVGProps } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { isLogoutError } from '@/api/errors'
@@ -30,7 +27,7 @@ import { useActiveUploadCount } from '@/upload/useUploadStore'
 interface NavItem {
   to: '/' | '/upload' | '/babies' | '/trash' | '/members' | '/settings'
   label: string
-  icon: LucideIcon
+  icon: ComponentType<SVGProps<SVGSVGElement>>
   // 진행 중 업로드 개수. Uppy 로딩 없이 store 만 구독.
   badge?: number
 }
@@ -42,27 +39,27 @@ function useNavItems(): { main: NavItem[]; more: NavItem[] } {
   const guardian = hasRole(user, 'guardian')
   const uploads = useActiveUploadCount()
   const main: NavItem[] = [
-    { to: '/', label: t('nav.timeline'), icon: Images },
+    { to: '/', label: t('nav.timeline'), icon: IconPhotos },
     ...(guardian
       ? [
           {
             to: '/upload' as const,
             label: t('nav.upload'),
-            icon: Upload,
+            icon: IconUpload,
             badge: uploads,
           },
         ]
       : []),
-    { to: '/babies', label: t('nav.babies'), icon: Baby },
+    { to: '/babies', label: t('nav.babies'), icon: IconChildCare },
   ]
   const more: NavItem[] = [
     ...(guardian
-      ? [{ to: '/trash' as const, label: t('nav.trash'), icon: Trash2 }]
+      ? [{ to: '/trash' as const, label: t('nav.trash'), icon: IconDelete }]
       : []),
     ...(hasRole(user, 'owner')
-      ? [{ to: '/members' as const, label: t('nav.members'), icon: Users }]
+      ? [{ to: '/members' as const, label: t('nav.members'), icon: IconGroup }]
       : []),
-    { to: '/settings', label: t('nav.settings'), icon: Settings },
+    { to: '/settings', label: t('nav.settings'), icon: IconSettings },
   ]
   return { main, more }
 }
@@ -111,7 +108,7 @@ function useBadgeLabel(): (
 const linkActiveOptions = { exact: true, includeSearch: false }
 
 const tabClass =
-  'flex h-14 w-full flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground data-[status=active]:font-semibold data-[status=active]:text-primary'
+  'flex h-14 w-full flex-col items-center justify-center gap-0.5 text-xs text-muted-foreground data-[status=active]:font-semibold data-[status=active]:text-accent-ink'
 
 export function NavTabs() {
   const { t } = useTranslation()
@@ -151,7 +148,7 @@ export function NavTabs() {
               data-status={moreActive ? 'active' : undefined}
               aria-current={moreActive ? 'page' : undefined}
             >
-              <Ellipsis aria-hidden className="size-6" />
+              <IconMore aria-hidden className="size-6" />
               {t('nav.more')}
             </SheetTrigger>
             <SheetContent side="bottom" aria-describedby={undefined}>
@@ -178,7 +175,7 @@ export function NavTabs() {
                       void signOut()
                     }}
                   >
-                    <LogOut aria-hidden className="size-5" />
+                    <IconLogout aria-hidden className="size-5" />
                     {t('nav.logout')}
                   </button>
                 </li>
@@ -192,10 +189,10 @@ export function NavTabs() {
 }
 
 const sheetItemClass =
-  'flex h-12 w-full items-center gap-3 rounded-md px-3 text-base data-[status=active]:font-semibold data-[status=active]:text-primary'
+  'flex h-12 w-full items-center gap-3 rounded-md px-3 text-base data-[status=active]:font-semibold data-[status=active]:text-accent-ink'
 
 const railItemClass =
-  'flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground data-[status=active]:font-semibold data-[status=active]:text-primary'
+  'flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground data-[status=active]:font-semibold data-[status=active]:text-accent-ink'
 
 // 1024px 이상. 하단 탭과 더보기 항목을 한 목록으로.
 export function NavRail() {
@@ -226,7 +223,7 @@ export function NavRail() {
         className={`mt-auto ${railItemClass}`}
         onClick={() => void signOut()}
       >
-        <LogOut aria-hidden className="size-5" />
+        <IconLogout aria-hidden className="size-5" />
         {t('nav.logout')}
       </button>
     </nav>

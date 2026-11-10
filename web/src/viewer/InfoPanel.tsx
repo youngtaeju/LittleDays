@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Download, Pencil } from 'lucide-react'
+import IconDownload from '~icons/material-symbols/download-rounded'
+import IconEdit from '~icons/material-symbols/edit-outline-rounded'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -76,7 +77,7 @@ function Section({
             aria-label={editLabel}
             onClick={onEdit}
           >
-            <Pencil aria-hidden />
+            <IconEdit aria-hidden />
             {t('viewer.edit')}
           </Button>
         )}
@@ -427,7 +428,7 @@ export function InfoPanel({
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline">
           <a href={originalUrl(asset.id)} download={asset.original_filename}>
-            <Download aria-hidden />
+            <IconDownload aria-hidden />
             {t('viewer.download')}
           </a>
         </Button>

@@ -1,53 +1,67 @@
 @import 'tailwindcss';
+/* 동적 서브셋. 쓰는 글자 범위의 woff2 만 내려받음. */
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #f5f7f6;
-  --foreground: #22282c;
+  --background: #ffffff;
+  --foreground: #1d1f21;
   --card: #ffffff;
-  --card-foreground: #22282c;
+  --card-foreground: #1d1f21;
   --popover: #ffffff;
-  --popover-foreground: #22282c;
-  --primary: #a85e12;
-  --primary-foreground: #ffffff;
-  --secondary: #ebefed;
-  --secondary-foreground: #22282c;
-  --muted: #ebefed;
-  --muted-foreground: #667077;
-  --accent: #ebefed;
-  --accent-foreground: #22282c;
+  --popover-foreground: #1d1f21;
+  /* 강조 채움. 위 글자는 항상 primary-foreground(흰 글자 대비 2:1). */
+  --primary: #ff9e57;
+  --primary-foreground: #3a1f07;
+  --secondary: #f4f5f6;
+  --secondary-foreground: #1d1f21;
+  /* 옅은 면. 숫자 상자·입력칸·비선택 칩. */
+  --muted: #f4f5f6;
+  /* 바탕 대비 4.9:1. 이보다 연한 글자색 금지. */
+  --muted-foreground: #6b7075;
+  /* shadcn 호버 면. 강조색 아님. */
+  --accent: #f4f5f6;
+  --accent-foreground: #1d1f21;
+  /* 강조 글자. 링크·D+·선택 탭(바탕 대비 5.8:1). */
+  --accent-ink: #a64b08;
+  /* 강조 옅은 면. 배지·아바타 기본 원. */
+  --accent-soft: #ffe6d1;
   --destructive: #b0303a;
   --destructive-foreground: #ffffff;
-  /* 바탕 대비 1.57:1. 카드(#fff) 위 1.7:1. */
-  --border: #c2c9c6;
-  --input: #c2c9c6;
-  --ring: var(--primary);
-  --radius: 0.5rem;
+  --border: #eceef0;
+  /* 입력칸·체크박스 테두리. 바탕 대비 3.2:1(WCAG 1.4.11). */
+  --input: #8b9095;
+  /* 채움색은 바탕 대비 부족. 포커스 링은 강조 글자색. */
+  --ring: var(--accent-ink);
+  /* lg 12px(버튼·입력·상자), md 10px(개월 표지), xl 20px(시트 위). */
+  --radius: 12px;
   color-scheme: light;
 }
 
 .dark {
-  --background: #14181b;
-  --foreground: #e6e9eb;
-  --card: #1c2125;
-  --card-foreground: #e6e9eb;
-  --popover: #1c2125;
-  --popover-foreground: #e6e9eb;
-  --primary: #f2b36b;
-  --primary-foreground: #14181b;
-  --secondary: #252b30;
-  --secondary-foreground: #e6e9eb;
-  --muted: #252b30;
-  --muted-foreground: #9aa3a9;
-  --accent: #252b30;
-  --accent-foreground: #e6e9eb;
+  --background: #121416;
+  --foreground: #e8eaec;
+  --card: #121416;
+  --card-foreground: #e8eaec;
+  --popover: #121416;
+  --popover-foreground: #e8eaec;
+  --primary: #ffb27a;
+  --primary-foreground: #2a1404;
+  --secondary: #1c1f22;
+  --secondary-foreground: #e8eaec;
+  --muted: #1c1f22;
+  --muted-foreground: #9aa1a7;
+  --accent: #1c1f22;
+  --accent-foreground: #e8eaec;
+  --accent-ink: #ffb27a;
+  --accent-soft: #3a2414;
   --destructive: #e5737a;
-  --destructive-foreground: #14181b;
-  /* 바탕 대비 1.75:1. 카드 위 1.55:1. */
-  --border: #3a4249;
-  --input: #3a4249;
-  --ring: var(--primary);
+  --destructive-foreground: #121416;
+  --border: #2a2f33;
+  /* 바탕 대비 3.4:1. */
+  --input: #646b72;
+  --ring: var(--accent-ink);
   color-scheme: dark;
 }
 
@@ -66,6 +80,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -74,14 +90,16 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
   --font-sans:
-    ui-sans-serif, system-ui, 'Apple SD Gothic Neo', 'Noto Sans KR',
-    'Malgun Gothic', sans-serif;
+    'Pretendard Variable', Pretendard, ui-sans-serif, system-ui,
+    'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 }
 
-/* 크기 13/15/17/20/24px, 굵기 400/600. 컴포넌트는 font-medium 대신 font-semibold. */
+/* 크기 12/13/15/17/20/24px, 굵기 400/600/700. 컴포넌트는 font-medium 대신 font-semibold. */
 @theme {
+  --text-2xs: 12px;
+  --text-2xs--line-height: 1.5;
   --text-xs: 13px;
   --text-xs--line-height: 1.5;
   --text-sm: 15px;
@@ -93,11 +111,20 @@
   --text-xl: 24px;
   --text-xl--line-height: 1.33;
   --font-weight-medium: 600;
+  /* 사용자 동작 반응만. 200ms ease-out. */
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: ease-out;
 }
 
 @layer base {
   body {
     @apply bg-background text-foreground font-sans;
+    line-height: 1.5;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
   }
   :focus-visible {
     outline: 2px solid var(--ring);
