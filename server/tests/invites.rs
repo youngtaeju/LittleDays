@@ -112,6 +112,7 @@ async fn owner_creates_invite_and_guest_accepts(pool: PgPool) {
     res.assert_json(&json!({
         "role": "guardian",
         "instance_name": "우리집",
+        "inviter_display_name": "엄마",
         "expires_at": invite["expires_at"],
     }));
 
@@ -542,4 +543,14 @@ async fn openapi_documents_invite_endpoints(pool: PgPool) {
         schemas["ErrorBody"]["properties"]["params"]["type"],
         "object"
     );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn preview_has_inviter_name(pool: PgPool) {
+    let owner = owner_server(&pool).await;
+    let (_, raw) = invite(&owner, "family").await;
+    let guest = common::test_server(pool.clone()).await;
+    let res = preview(&guest, &raw).await;
+    res.assert_status_ok();
+    assert_eq!(res.json::<Value>()["inviter_display_name"], "엄마");
 }

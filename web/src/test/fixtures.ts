@@ -40,6 +40,7 @@ export function babyFixture(over: Partial<Baby> = {}): Baby {
     birth_date: '2024-01-31',
     sex: null,
     avatar_asset_id: null,
+    avatar_crop: null,
     sort_order: 0,
     ...over,
   }
@@ -55,6 +56,7 @@ const photoFields = {
   duration_ms: null,
   blurhash: null,
   dominant_color: '#8899aa',
+  uploaded_by: '00000000-0000-4000-8000-000000000001',
   baby_ids: [],
   derivatives: {
     thumb: { formats: ['webp'], width: 400, height: 400 },
@@ -86,7 +88,6 @@ export function assetFixture(id: string, over: Partial<Asset> = {}): Asset {
     processing_error: null,
     size_bytes: 1_000_000,
     taken_at_source: 'exif',
-    uploaded_by: '00000000-0000-4000-8000-000000000001',
     ...over,
   }
 }

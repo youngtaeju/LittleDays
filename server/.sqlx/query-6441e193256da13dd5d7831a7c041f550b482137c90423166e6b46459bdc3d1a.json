@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO babies (id, name, birth_date, sex, sort_order)\n           VALUES ($1, $2, $3, $4,\n                   (SELECT COALESCE(max(sort_order) + 1, 0) FROM babies))\n           RETURNING id, name, birth_date, sex AS \"sex: Sex\", avatar_asset_id, sort_order",
+  "query": "UPDATE babies SET name = $2, birth_date = $3, sex = $4, avatar_asset_id = $5,\n               avatar_crop = $6\n           WHERE id = $1\n           RETURNING id, name, birth_date, sex AS \"sex: Sex\", avatar_asset_id,\n                      avatar_crop AS \"avatar_crop: Json<AvatarCrop>\", sort_order",
   "describe": {
     "columns": [
       {
@@ -40,6 +40,11 @@
       },
       {
         "ordinal": 5,
+        "name": "avatar_crop: Json<AvatarCrop>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
         "name": "sort_order",
         "type_info": "Int4"
       }
@@ -59,7 +64,9 @@
               ]
             }
           }
-        }
+        },
+        "Uuid",
+        "Jsonb"
       ]
     },
     "nullable": [
@@ -68,8 +75,9 @@
       false,
       true,
       true,
+      true,
       false
     ]
   },
-  "hash": "1542ac9505f61c8434a6ca43125e5226da0fcbc35029c0310b1d35be7933faa3"
+  "hash": "6441e193256da13dd5d7831a7c041f550b482137c90423166e6b46459bdc3d1a"
 }

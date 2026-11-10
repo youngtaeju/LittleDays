@@ -340,6 +340,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/babies/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["baby_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_days"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/days/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_day"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -589,6 +637,28 @@ export interface components {
             password: string;
             username: string;
         };
+        /** @description 생후 개월 묶음. 개월 경계는 월말 고정 기념일 규칙(웹 `ageAt` 과 동일). */
+        AgeMonth: {
+            /**
+             * Format: int32
+             * @description 생일 전 `-1`, 그 외 생후 개월 수.
+             */
+            age_month: number;
+            /** Format: int64 */
+            count: number;
+            /** @description 그 개월 최신 자산. */
+            cover: components["schemas"]["AssetSummary"];
+            /**
+             * Format: date
+             * @description 개월 시작일(포함). 생일 전은 `null`.
+             */
+            from: string | null;
+            /**
+             * Format: date
+             * @description 개월 마지막 날(포함). 생일 전은 생일 전날.
+             */
+            to: string;
+        };
         /** @description 자산 상세. */
         Asset: {
             /** @description 아기 표시 순서. */
@@ -661,12 +731,27 @@ export interface components {
             status: components["schemas"]["AssetStatus"];
             /** Format: date-time */
             taken_at: string;
+            /** Format: uuid */
+            uploaded_by: string;
             /** Format: int32 */
             width: number | null;
+        };
+        /**
+         * @description 대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.
+         *     `x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.
+         */
+        AvatarCrop: {
+            /** Format: double */
+            size: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
         };
         Baby: {
             /** Format: uuid */
             avatar_asset_id: string | null;
+            avatar_crop: null | components["schemas"]["AvatarCrop"];
             /** Format: date */
             birth_date: string;
             /** Format: uuid */
@@ -679,6 +764,20 @@ export interface components {
         BabyIds: {
             /** @description 태그 전체 교체 목록. */
             baby_ids: string[];
+        };
+        /** @description 아기 태그 자산 통계. 휴지통 제외. */
+        BabyStats: {
+            /** @description 최신 개월부터. `-1`(생일 전)은 맨 끝. 사진 없는 개월은 없음. */
+            age_months: components["schemas"]["AgeMonth"][];
+            /**
+             * Format: int64
+             * @description 사진이 있는 날 수.
+             */
+            day_count: number;
+            /** Format: int64 */
+            photo_count: number;
+            /** Format: int64 */
+            video_count: number;
         };
         /** Format: binary */
         BinaryBody: string;
@@ -707,6 +806,50 @@ export interface components {
             invite: components["schemas"]["Invite"];
             /** @description `{PUBLIC_URL}/invite/{원문 토큰}`. 원문 토큰은 이 응답에서만 노출. */
             url: string;
+        };
+        /** @description 그날 화면 머리글과 이전·다음 날. */
+        DayDetail: {
+            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            baby_ids: string[];
+            /**
+             * Format: date
+             * @description 인스턴스 시간대 기준 촬영 날짜.
+             */
+            date: string;
+            /**
+             * Format: date
+             * @description 더 최근의 사진 있는 날.
+             */
+            next_date: string | null;
+            /** Format: int64 */
+            photo_count: number;
+            /**
+             * Format: date
+             * @description 더 과거의 사진 있는 날.
+             */
+            prev_date: string | null;
+            /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
+            uploader_ids: string[];
+            /** Format: int64 */
+            video_count: number;
+        };
+        /** @description 홈 피드의 하루 묶음. */
+        DaySummary: {
+            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            baby_ids: string[];
+            /**
+             * Format: date
+             * @description 인스턴스 시간대 기준 촬영 날짜.
+             */
+            date: string;
+            /** Format: int64 */
+            photo_count: number;
+            /** @description 그날 최신 3장. 촬영 시각 최신순. */
+            preview: components["schemas"]["AssetSummary"][];
+            /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
+            uploader_ids: string[];
+            /** Format: int64 */
+            video_count: number;
         };
         Deleted: {
             /** Format: int64 */
@@ -763,6 +906,8 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
             instance_name: string;
+            /** @description 초대한 사용자의 표시 이름. */
+            inviter_display_name: string;
             role: components["schemas"]["Role"];
         };
         /** @enum {string} */
@@ -810,8 +955,32 @@ export interface components {
                 status: components["schemas"]["AssetStatus"];
                 /** Format: date-time */
                 taken_at: string;
+                /** Format: uuid */
+                uploaded_by: string;
                 /** Format: int32 */
                 width: number | null;
+            }[];
+            /** @description 다음 페이지가 없으면 `null`. */
+            next_cursor: string | null;
+        };
+        /** @description 커서 페이지. */
+        Page_DaySummary: {
+            items: {
+                /** @description 그날 태그된 아기. 아기 표시 순서. */
+                baby_ids: string[];
+                /**
+                 * Format: date
+                 * @description 인스턴스 시간대 기준 촬영 날짜.
+                 */
+                date: string;
+                /** Format: int64 */
+                photo_count: number;
+                /** @description 그날 최신 3장. 촬영 시각 최신순. */
+                preview: components["schemas"]["AssetSummary"][];
+                /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
+                uploader_ids: string[];
+                /** Format: int64 */
+                video_count: number;
             }[];
             /** @description 다음 페이지가 없으면 `null`. */
             next_cursor: string | null;
@@ -878,6 +1047,7 @@ export interface components {
              * @description `ready` 상태의 휴지통 밖 사진만 허용.
              */
             avatar_asset_id: string | null;
+            avatar_crop?: null | components["schemas"]["AvatarCrop"];
             /** Format: date */
             birth_date: string;
             /** @description 앞뒤 공백 제거 후 1~64자. */
@@ -985,6 +1155,8 @@ export interface operations {
                 limit?: number;
                 /** @description 해당 아기가 태그된 자산만. */
                 baby_id?: string;
+                /** @description 인스턴스 시간대 기준 그날 촬영한 자산만. */
+                date?: string;
             };
             header?: never;
             path?: never;
@@ -2153,7 +2325,7 @@ export interface operations {
                     "application/json": components["schemas"]["Baby"];
                 };
             };
-            /** @description 본문 형식, 이름, 대표 사진 오류 */
+            /** @description 본문 형식, 이름, 대표 사진, 자르기 영역 오류 */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -2238,6 +2410,158 @@ export interface operations {
                 };
             };
             /** @description 아기 없음 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    baby_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사진·영상·기록한 날 수와 생후 개월별 묶음 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BabyStats"];
+                };
+            };
+            /** @description 잘못된 ID 형식 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_days: {
+        parameters: {
+            query?: {
+                /** @description 이전 응답의 `next_cursor`. 이 날짜보다 이전 날만. */
+                cursor?: string;
+                /** @description 1~100, 기본 20. */
+                limit?: number;
+                /** @description 해당 아기가 태그된 자산만. */
+                baby_id?: string;
+                /** @description 이 날짜부터 (포함). */
+                from?: string;
+                /** @description 이 날짜까지 (포함). */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_DaySummary"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_day: {
+        parameters: {
+            query?: {
+                /** @description 해당 아기가 태그된 자산만. */
+                baby_id?: string;
+            };
+            header?: never;
+            path: {
+                /** @description 인스턴스 시간대 기준 촬영 날짜 */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 그날 개수와 이전·다음 날 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayDetail"];
+                };
+            };
+            /** @description 날짜·쿼리 형식 오류 (`request.invalidPath`, `request.invalidQuery`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 그날 휴지통 밖 자산 없음 (`day.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -63,6 +63,8 @@ pub struct InvitesResponse {
 pub struct InvitePreview {
     role: Role,
     instance_name: String,
+    /// 초대한 사용자의 표시 이름.
+    inviter_display_name: String,
     expires_at: DateTime<Utc>,
 }
 
@@ -183,6 +185,7 @@ async fn preview_invite(
     Ok(AxumJson(InvitePreview {
         role: invite.role,
         instance_name: settings.instance_name,
+        inviter_display_name: queries::inviter_display_name(&state.pool, invite.created_by).await?,
         expires_at: invite.expires_at,
     }))
 }

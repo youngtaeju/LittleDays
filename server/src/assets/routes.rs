@@ -1,5 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -43,6 +43,8 @@ struct ListQuery {
     limit: Option<i64>,
     /// 해당 아기가 태그된 자산만.
     baby_id: Option<Uuid>,
+    /// 인스턴스 시간대 기준 그날 촬영한 자산만.
+    date: Option<NaiveDate>,
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -108,7 +110,7 @@ async fn list_assets(
     }
     let after = q.cursor.as_deref().map(cursor::decode).transpose()?;
     let tz = settings::queries::load(&state.pool).await?.timezone;
-    let mut items = queries::list(&state.pool, &tz, after, q.baby_id, limit + 1).await?;
+    let mut items = queries::list(&state.pool, &tz, after, q.baby_id, q.date, limit + 1).await?;
     let next_cursor = if items.len() as i64 > limit {
         items.truncate(limit as usize);
         items

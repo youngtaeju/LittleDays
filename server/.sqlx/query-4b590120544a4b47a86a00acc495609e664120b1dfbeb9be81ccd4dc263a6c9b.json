@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT width, height FROM assets\n         WHERE id = $1 AND status = 'ready' AND kind = 'photo' AND deleted_at IS NULL",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "width",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "height",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "4b590120544a4b47a86a00acc495609e664120b1dfbeb9be81ccd4dc263a6c9b"
+}

@@ -188,10 +188,14 @@
       "usernameTaken": "This username is already taken."
     },
     "babies": {
+      "avatarCropInvalid": "The avatar crop area is invalid.",
       "avatarInvalid": "This file can't be used as a profile photo.",
       "nameInvalid": "The baby's name is not valid.",
       "notFound": "The baby could not be found.",
       "orderMismatch": "The order doesn't match the current list. Please refresh."
+    },
+    "day": {
+      "notFound": "No photos on this day."
     },
     "invite": {
       "expired": "This invite link has expired.",

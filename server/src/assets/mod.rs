@@ -128,6 +128,7 @@ pub struct AssetSummary {
     pub blurhash: Option<String>,
     #[schema(required = true)]
     pub dominant_color: Option<String>,
+    pub uploaded_by: Uuid,
     /// 아기 표시 순서.
     pub baby_ids: Vec<Uuid>,
     /// 파생물 파일 정보. 처리 전 `{}`.

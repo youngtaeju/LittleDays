@@ -472,6 +472,7 @@ describe('ViewerPage', () => {
         birth_date: '2024-01-31',
         sex: 'female',
         avatar_asset_id: 'a',
+        avatar_crop: null,
       })
     })
   })

@@ -227,6 +227,7 @@ function AvatarDialog({ asset, babies }: { asset: Asset; babies: Baby[] }) {
             birth_date: b.birth_date,
             sex: b.sex,
             avatar_asset_id: asset.id,
+            avatar_crop: null,
           },
         }),
       ),

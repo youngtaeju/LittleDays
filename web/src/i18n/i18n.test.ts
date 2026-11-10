@@ -57,7 +57,7 @@ describe('i18n', () => {
 
   it('every_server_error_key_is_translated', () => {
     const re =
-      /"((?:asset|auth|babies|invite|request|server|settings|upload|users)\.[a-zA-Z]+)"/g
+      /"((?:asset|auth|babies|day|invite|request|server|settings|upload|users)\.[a-zA-Z]+)"/g
     const keys = new Set<string>()
     for (const f of rsFiles(
       path.resolve(import.meta.dirname, '../../../server/src'),

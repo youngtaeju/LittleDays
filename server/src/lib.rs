@@ -3,6 +3,7 @@ pub mod assets;
 pub mod auth;
 pub mod babies;
 pub mod config;
+pub mod days;
 pub mod db;
 pub mod error;
 pub mod invites;

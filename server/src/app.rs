@@ -6,8 +6,8 @@ use utoipa::OpenApi;
 use utoipa_axum::router::OpenApiRouter;
 
 use crate::{
-    assets, auth, babies, error::AppError, invites, openapi::ApiDoc, routes, security, settings,
-    state::AppState, uploads, users, web,
+    assets, auth, babies, days, error::AppError, invites, openapi::ApiDoc, routes, security,
+    settings, state::AppState, uploads, users, web,
 };
 
 // 라우터 트리와 OpenAPI 문서의 단일 출처.
@@ -18,6 +18,7 @@ fn api_router() -> OpenApiRouter<AppState> {
         .merge(assets::routes::router())
         .merge(auth::routes::router())
         .merge(babies::routes::router())
+        .merge(days::routes::router())
         .merge(invites::routes::router())
         .merge(settings::routes::router())
         .merge(uploads::finalize::router())

@@ -1,0 +1,141 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH t AS (\n               SELECT a.id, a.kind, a.status, a.taken_at, a.width, a.height, a.duration_ms,\n                      a.blurhash, a.dominant_color, a.uploaded_by, a.derivatives,\n                      (a.taken_at AT TIME ZONE $2)::date AS local_date\n               FROM assets a\n               JOIN asset_babies ab ON ab.asset_id = a.id AND ab.baby_id = $1\n               WHERE a.deleted_at IS NULL\n           ), m AS (\n               SELECT t.*,\n                      ((EXTRACT(year FROM t.local_date) - EXTRACT(year FROM $3::date)) * 12\n                       + EXTRACT(month FROM t.local_date) - EXTRACT(month FROM $3::date))::int AS m0\n               FROM t\n           ), g AS (\n               SELECT m.*,\n                      CASE WHEN m.local_date < $3::date THEN -1\n                           WHEN ($3::date + make_interval(months => m.m0))::date > m.local_date\n                               THEN m.m0 - 1\n                           ELSE m.m0 END AS age_month\n               FROM m\n           ), r AS (\n               SELECT g.*,\n                      count(*) OVER (PARTITION BY g.age_month) AS cnt,\n                      row_number() OVER (PARTITION BY g.age_month\n                                         ORDER BY (g.status = 'ready') DESC,\n                                                  g.taken_at DESC, g.id DESC) AS rn\n               FROM g\n           )\n           SELECT r.age_month AS \"age_month!\", r.cnt AS \"count!\",\n                  CASE WHEN r.age_month < 0 THEN NULL\n                       ELSE ($3::date + make_interval(months => r.age_month))::date END AS \"from?\",\n                  CASE WHEN r.age_month < 0 THEN $3::date - 1\n                       ELSE ($3::date + make_interval(months => r.age_month + 1))::date - 1\n                       END AS \"to!\",\n                  r.id AS \"id!\", r.kind AS \"kind!: AssetKind\", r.status AS \"status!: AssetStatus\",\n                  r.taken_at AS \"taken_at!\", r.local_date AS \"local_date!\",\n                  r.width, r.height, r.duration_ms, r.blurhash, r.dominant_color,\n                  r.uploaded_by AS \"uploaded_by!\",\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab2 JOIN babies b ON b.id = ab2.baby_id\n                            WHERE ab2.asset_id = r.id), '{}') AS \"baby_ids!\",\n                  r.derivatives AS \"derivatives!\"\n           FROM r\n           WHERE r.rn = 1\n           ORDER BY (r.age_month < 0), r.age_month DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "age_month!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "from?",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "to!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 4,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "kind!: AssetKind",
+        "type_info": {
+          "Custom": {
+            "name": "asset_kind",
+            "kind": {
+              "Enum": [
+                "photo",
+                "video"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "status!: AssetStatus",
+        "type_info": {
+          "Custom": {
+            "name": "asset_status",
+            "kind": {
+              "Enum": [
+                "processing",
+                "ready",
+                "failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "taken_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "local_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 9,
+        "name": "width",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "height",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "duration_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 12,
+        "name": "blurhash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "dominant_color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "uploaded_by!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 15,
+        "name": "baby_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 16,
+        "name": "derivatives!",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "9e17ebcebc80aeda0c43175e4b690ad7218aea0a7a0bad42e5e8116287232c95"
+}

@@ -17,6 +17,7 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
+const CROP = { x: 0.1, y: 0, size: 0.5 }
 const AVATAR = '00000000-0000-4000-8000-0000000000a1'
 
 function renderBabies(
@@ -65,12 +66,15 @@ describe('BabiesPage', () => {
 
   it('edit_keeps_avatar', async () => {
     const bodies: unknown[] = []
-    const { user } = renderBabies([babyFixture({ avatar_asset_id: AVATAR })], {
-      'PUT /api/babies/00000000-0000-4000-8000-0000000000b1': async (req) => {
-        bodies.push(await req.json())
-        return json(200, babyFixture())
+    const { user } = renderBabies(
+      [babyFixture({ avatar_asset_id: AVATAR, avatar_crop: CROP })],
+      {
+        'PUT /api/babies/00000000-0000-4000-8000-0000000000b1': async (req) => {
+          bodies.push(await req.json())
+          return json(200, babyFixture())
+        },
       },
-    })
+    )
     await user.click(await screen.findByRole('button', { name: '하늘 수정' }))
     const dialog = await screen.findByRole('dialog')
     const name = within(dialog).getByLabelText('이름')
@@ -85,6 +89,7 @@ describe('BabiesPage', () => {
           birth_date: '2024-01-31',
           sex: null,
           avatar_asset_id: AVATAR,
+          avatar_crop: CROP,
         },
       ])
     })
@@ -101,7 +106,7 @@ describe('BabiesPage', () => {
     await user.click(await screen.findByRole('button', { name: '하늘 수정' }))
     const dialog = await screen.findByRole('dialog')
     await user.click(
-      within(dialog).getByRole('checkbox', { name: '대표사진 지우기' }),
+      within(dialog).getByRole('checkbox', { name: '대표 사진 지우기' }),
     )
     await user.click(within(dialog).getByRole('button', { name: '저장' }))
 
