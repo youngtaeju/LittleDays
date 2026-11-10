@@ -152,7 +152,23 @@
   "age": {
     "days": "생후 {{days}}일",
     "monthsDays": "{{months}}개월 {{days}}일",
-    "yearsMonths": "{{years}}살 {{months}}개월"
+    "yearsMonths": "{{years}}살 {{months}}개월",
+    "due": "출산 예정 D-{{n}}",
+    "specialDays": "{{n}}일",
+    "birthdayN": "{{n}}번째 생일",
+    "birthdayWord": {
+      "1": "첫 생일",
+      "2": "두 번째 생일",
+      "3": "세 번째 생일",
+      "4": "네 번째 생일",
+      "5": "다섯 번째 생일",
+      "6": "여섯 번째 생일",
+      "7": "일곱 번째 생일",
+      "8": "여덟 번째 생일",
+      "9": "아홉 번째 생일",
+      "10": "열 번째 생일"
+    },
+    "until": "{{label}}까지 {{n}}일"
   },
   "errors": {
     "unknown": "문제가 생겼어요. 잠시 후 다시 시도해 주세요.",

@@ -152,7 +152,23 @@
   "age": {
     "days": "Day {{days}}",
     "monthsDays": "{{months}} mo {{days}} d",
-    "yearsMonths": "{{years}} y {{months}} mo"
+    "yearsMonths": "{{years}} y {{months}} mo",
+    "due": "Due in {{n}} d",
+    "specialDays": "Day {{n}}",
+    "birthdayN": "{{ordinal}} birthday",
+    "until": "{{n}} d until {{label}}",
+    "birthdayWord": {
+      "1": "1st birthday",
+      "2": "2nd birthday",
+      "3": "3rd birthday",
+      "4": "4th birthday",
+      "5": "5th birthday",
+      "6": "6th birthday",
+      "7": "7th birthday",
+      "8": "8th birthday",
+      "9": "9th birthday",
+      "10": "10th birthday"
+    }
   },
   "errors": {
     "unknown": "Something went wrong. Please try again in a moment.",

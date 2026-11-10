@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useSettings } from '@/settings/useSettings'
-import { ageAt, formatAge } from '@/timeline/age'
+import { ageAt, formatAge } from '@/lib/age'
 import { thumbUrl } from '@/timeline/media'
 import { babiesKey, useBabies } from '@/timeline/useBabies'
 import { todayInZone } from '@/viewer/zoned'

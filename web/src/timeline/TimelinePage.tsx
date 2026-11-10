@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
 import { useSettings } from '@/settings/useSettings'
 import { useUploadPicker } from '@/upload/picker'
-import { ageAt, formatAge } from './age'
+import { ageAt, formatAge } from '@/lib/age'
 import { BabyFilter } from './BabyFilter'
 import {
   formatDay,

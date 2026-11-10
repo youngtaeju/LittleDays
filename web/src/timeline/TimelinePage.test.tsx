@@ -15,7 +15,7 @@ import {
 } from '@/test/fixtures'
 import { intersectAll } from '@/test/intersection'
 import { renderApp } from '@/test/router'
-import { ageAt, formatAge } from './age'
+import { ageAt, formatAge } from '@/lib/age'
 
 beforeEach(() => {
   initI18n('ko')
