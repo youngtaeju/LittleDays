@@ -5,6 +5,7 @@ import { initI18n } from '@/i18n'
 import { json, mockFetch } from '@/test/fetch'
 import {
   apiError,
+  assetFixture,
   babyFixture,
   settingsFixture,
   userFixture,
@@ -20,6 +21,14 @@ afterEach(cleanup)
 const CROP = { x: 0.1, y: 0, size: 0.5 }
 const AVATAR = '00000000-0000-4000-8000-0000000000a1'
 
+const EMPTY_STATS = {
+  photo_count: 0,
+  video_count: 0,
+  day_count: 0,
+  age_months: [],
+}
+
+// 첫째 아기 화면에서 시작.
 function renderBabies(
   babies: Baby[],
   extra: Parameters<typeof mockFetch>[0] = {},
@@ -29,12 +38,24 @@ function renderBabies(
     'GET /api/auth/me': () => json(200, { user: userFixture(role) }),
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/babies': () => json(200, babies),
+    ...Object.fromEntries(
+      babies.map((b) => [
+        `GET /api/babies/${b.id}/stats`,
+        () => json(200, EMPTY_STATS),
+      ]),
+    ),
     ...extra,
   })
   return renderApp('/babies')
 }
 
-describe('BabiesPage', () => {
+// ⋮ → 아기 관리 대화상자.
+async function openManager(user: ReturnType<typeof renderBabies>['user']) {
+  await user.click(await screen.findByRole('button', { name: '아기 관리' }))
+  return screen.findByRole('dialog', { name: '아기 관리' })
+}
+
+describe('BabyManager', () => {
   it('create_and_validation_error', async () => {
     const bodies: unknown[] = []
     const { user } = renderBabies([], {
@@ -55,13 +76,33 @@ describe('BabiesPage', () => {
     expect(bodies).toEqual([{ name: '하늘', birth_date: '2024-01-31' }])
   })
 
-  it('lists_age_and_initial', async () => {
-    renderBabies([
-      babyFixture({ id: 'x1', name: '하늘', birth_date: '2024-01-31' }),
-    ])
-    expect(await screen.findByText('하늘')).toBeInTheDocument()
-    expect(screen.getByText('2024-01-31')).toBeInTheDocument()
-    expect(screen.getByText('살', { exact: false })).toBeInTheDocument()
+  it('lists_babies_and_adds', async () => {
+    const bodies: unknown[] = []
+    const { user } = renderBabies(
+      [babyFixture(), babyFixture({ id: 'b2', name: '바다' })],
+      {
+        'POST /api/babies': async (req) => {
+          bodies.push(await req.json())
+          return json(201, babyFixture({ id: 'b3', name: '구름' }))
+        },
+      },
+    )
+    const dialog = await openManager(user)
+    expect(
+      within(dialog)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['하하늘', '바바다'])
+    await user.click(within(dialog).getByRole('button', { name: '아기 추가' }))
+    const form = await screen.findByRole('dialog', { name: '아기 추가' })
+    await user.type(within(form).getByLabelText('이름'), '구름')
+    await user.type(within(form).getByLabelText('생년월일'), '2025-01-01')
+    await user.click(within(form).getByRole('button', { name: '저장' }))
+    // 저장 후 목록으로.
+    expect(
+      await screen.findByRole('dialog', { name: '아기 관리' }),
+    ).toBeInTheDocument()
+    expect(bodies).toEqual([{ name: '구름', birth_date: '2025-01-01' }])
   })
 
   it('edit_keeps_avatar', async () => {
@@ -69,13 +110,18 @@ describe('BabiesPage', () => {
     const { user } = renderBabies(
       [babyFixture({ avatar_asset_id: AVATAR, avatar_crop: CROP })],
       {
+        [`GET /api/assets/${AVATAR}`]: () => json(200, assetFixture(AVATAR)),
         'PUT /api/babies/00000000-0000-4000-8000-0000000000b1': async (req) => {
           bodies.push(await req.json())
           return json(200, babyFixture())
         },
       },
     )
-    await user.click(await screen.findByRole('button', { name: '하늘 수정' }))
+    await user.click(
+      within(await openManager(user)).getByRole('button', {
+        name: '하늘 수정',
+      }),
+    )
     const dialog = await screen.findByRole('dialog')
     const name = within(dialog).getByLabelText('이름')
     await user.clear(name)
@@ -103,7 +149,11 @@ describe('BabiesPage', () => {
         return json(200, babyFixture())
       },
     })
-    await user.click(await screen.findByRole('button', { name: '하늘 수정' }))
+    await user.click(
+      within(await openManager(user)).getByRole('button', {
+        name: '하늘 수정',
+      }),
+    )
     const dialog = await screen.findByRole('dialog')
     await user.click(
       within(dialog).getByRole('checkbox', { name: '대표 사진 지우기' }),
@@ -130,7 +180,11 @@ describe('BabiesPage', () => {
         },
       },
     )
-    await user.click(await screen.findByRole('button', { name: '가 아래로' }))
+    await user.click(
+      within(await openManager(user)).getByRole('button', {
+        name: '가 아래로',
+      }),
+    )
     await waitFor(() => {
       expect(bodies).toEqual([{ ids: ['b', 'a', 'c'] }])
     })
@@ -144,7 +198,11 @@ describe('BabiesPage', () => {
         return json(204, null)
       },
     })
-    await user.click(await screen.findByRole('button', { name: '하늘 삭제' }))
+    await user.click(
+      within(await openManager(user)).getByRole('button', {
+        name: '하늘 삭제',
+      }),
+    )
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText(/태그도 함께 지워져요/)).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: '삭제' }))
@@ -153,35 +211,11 @@ describe('BabiesPage', () => {
     })
   })
 
-  it('empty_state_by_role', async () => {
-    const { user } = renderBabies([], {
-      'POST /api/babies': () => apiError(400, 'babies.nameInvalid'),
-    })
-    expect(await screen.findByText('아기를 추가해 보세요')).toBeInTheDocument()
-    const buttons = screen.getAllByRole('button', { name: '아기 추가' })
-    expect(buttons).toHaveLength(2)
-    await user.click(buttons[1] as HTMLElement)
-    expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    cleanup()
-
-    renderBabies([], {}, 'family')
-    expect(
-      await screen.findByText('아직 등록한 아기가 없어요.'),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '아기 추가' })).toBeNull()
-  })
-
   it('family_read_only', async () => {
     renderBabies([babyFixture()], {}, 'family')
-    expect(await screen.findByText('하늘')).toBeInTheDocument()
-    for (const name of [
-      '아기 추가',
-      '하늘 수정',
-      '하늘 삭제',
-      '하늘 위로',
-      '하늘 아래로',
-    ]) {
-      expect(screen.queryByRole('button', { name })).toBeNull()
-    }
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '하늘' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '아기 관리' })).toBeNull()
   })
 })

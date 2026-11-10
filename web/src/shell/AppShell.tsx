@@ -1,5 +1,6 @@
 import { Outlet, useMatch } from '@tanstack/react-router'
 import { Suspense, lazy, useSyncExternalStore } from 'react'
+import { AgeAlbumHeader } from '@/babies/AgeAlbumHeader'
 import { DayHeader } from '@/feed/DayHeader'
 import { HomeHeader } from '@/feed/HomeHeader'
 import { cn } from '@/lib/utils'
@@ -38,6 +39,10 @@ export function AppShell() {
     from: '/authed/shell/days/$date',
     shouldThrow: false,
   })
+  const album = useMatch({
+    from: '/authed/shell/babies/$id/age/$age',
+    shouldThrow: false,
+  })
   const scrolled = useScrolled()
   const queueOpen = useQueueOpen()
 
@@ -51,14 +56,16 @@ export function AppShell() {
               className={cn(
                 'border-b',
                 scrolled ? 'border-border' : 'border-transparent',
-                // 데스크톱은 사이드바가 우리 집 이름 표시. 홈·그날 화면은 자체 머리글이라 유지.
-                !home && !day && 'lg:hidden',
+                // 데스크톱은 사이드바가 우리 집 이름 표시. 홈·그날·개월 앨범은 자체 머리글이라 유지.
+                !home && !day && !album && 'lg:hidden',
               )}
             >
               {home ? (
                 <HomeHeader instanceName={settings?.instance_name} />
               ) : day ? (
                 <DayHeader />
+              ) : album ? (
+                <AgeAlbumHeader />
               ) : (
                 <div className="flex h-14 items-center px-4">
                   <p className="truncate text-lg font-semibold">

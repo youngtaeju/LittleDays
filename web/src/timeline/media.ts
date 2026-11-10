@@ -9,6 +9,11 @@ export function thumbUrl(id: string): string {
   return `${base(id)}/thumb.webp`
 }
 
+// WebP 는 항상 생성(AVIF 만 설정 의존).
+export function previewUrl(id: string): string {
+  return `${base(id)}/preview.webp`
+}
+
 // 파생물에 있는 형식만.
 export function previewSources(a: AssetSummary | Asset): {
   avif?: string

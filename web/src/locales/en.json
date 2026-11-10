@@ -73,7 +73,26 @@
     "deleteTitle": "Delete {{name}}?",
     "deleteConfirm": "Deleting a baby also removes their tag from photos and videos. The photos and videos themselves stay.",
     "empty": "No babies yet.",
-    "emptyManage": "Add a baby to get started"
+    "emptyManage": "Add a baby to get started",
+    "manage": "Manage babies",
+    "manageDescription": "Add babies or edit their details and order.",
+    "switcher": "Choose baby",
+    "ageLine": "{{age}} · Born {{date}}",
+    "dueDate": "Due {{date}}",
+    "numbers": "Records",
+    "photos": "Photos",
+    "videos": "Videos",
+    "days": "Days recorded",
+    "albums": "Monthly albums",
+    "noPhotos": "No photos of this baby yet",
+    "month_one": "{{count}} month",
+    "month_other": "{{count}} months",
+    "firstMonth": "First month",
+    "beforeBirth": "Before birth",
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items",
+    "range": "{{from}} – {{to}}",
+    "until": "Until {{to}}"
   },
   "viewer": {
     "video": {

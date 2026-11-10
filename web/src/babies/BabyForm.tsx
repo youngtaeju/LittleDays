@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { babiesKey } from '@/timeline/useBabies'
+import { babyStatsPrefix } from './useBabyStats'
 
 type Sex = NonNullable<Baby['sex']>
 
@@ -53,7 +54,11 @@ export function BabyForm({
       )
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: babiesKey })
+      // 생년월일 변경 시 개월 묶음도 바뀜.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: babiesKey }),
+        qc.invalidateQueries({ queryKey: babyStatsPrefix }),
+      ])
       onDone()
     },
   })

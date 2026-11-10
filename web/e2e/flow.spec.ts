@@ -110,6 +110,42 @@ test('day_page', async ({ ownerPage: page }) => {
   await expect(page).toHaveURL(/\/$/)
 })
 
+test('baby_age_album', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  await expect(tiles(page)).toHaveCount(3)
+  // 아기 메뉴 → 마지막 본(없으면 첫째) 아기 화면.
+  await page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .getByRole('link', { name: '아기' })
+    .click()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: BABY_NAME }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('list', { name: '기록' }).getByRole('listitem'),
+  ).toHaveText(['2사진', '1영상', '2기록한 날'])
+
+  // 2024-03-01 생. 사진 2장(5월 1일) = 2개월, 영상(6월 1일) = 3개월. 최신 개월부터.
+  const albums = page.getByRole('region', { name: '개월별 앨범' })
+  await expect(albums.getByRole('link')).toHaveCount(2)
+  await expect(albums.getByRole('link').first()).toHaveAccessibleName(
+    '3개월, 1장',
+  )
+  await albums.getByRole('link', { name: '2개월, 2장' }).click()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+\/age\/2$/)
+  const banner = page.getByRole('banner')
+  await expect(banner.getByRole('heading', { name: '2개월' })).toBeVisible()
+  await expect(banner).toContainText('2024년 5월 1일 ~ 5월 31일')
+  await expect(page.getByRole('main').getByRole('article')).toHaveCount(1)
+  await expect(tiles(page)).toHaveCount(2)
+  await expectThumbnailsLoaded(page, 2)
+
+  // 뒤로 → 아기 화면.
+  await banner.getByRole('button', { name: '뒤로' }).click()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+})
+
 test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {
   // 홈 피드가 스크롤되도록 낮은 창.
   await page.setViewportSize({ width: 1280, height: 400 })

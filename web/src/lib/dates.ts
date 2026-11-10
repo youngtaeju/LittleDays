@@ -1,6 +1,8 @@
 const dayFormats = new Map<string, Intl.DateTimeFormat>()
 const dayYearFormats = new Map<string, Intl.DateTimeFormat>()
 const monthFormats = new Map<string, Intl.DateTimeFormat>()
+const dateFormats = new Map<string, Intl.DateTimeFormat>()
+const monthDayFormats = new Map<string, Intl.DateTimeFormat>()
 
 function cached(
   cache: Map<string, Intl.DateTimeFormat>,
@@ -40,6 +42,23 @@ export function formatMonth(month: string, lng: string): string {
   return cached(monthFormats, lng, { year: 'numeric', month: 'long' }).format(
     new Date(`${month}-01T00:00:00Z`),
   )
+}
+
+// "2025년 9월 26일" / "September 26, 2025".
+export function formatDate(date: string, lng: string): string {
+  return cached(dateFormats, lng, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(`${date}T00:00:00Z`))
+}
+
+// "11월 25일" / "November 25". 기간 끝처럼 연도가 앞에서 나온 경우.
+export function formatMonthDay(date: string, lng: string): string {
+  return cached(monthDayFormats, lng, {
+    month: 'long',
+    day: 'numeric',
+  }).format(new Date(`${date}T00:00:00Z`))
 }
 
 // YYYY-MM-DD 달력 날짜 더하기.
