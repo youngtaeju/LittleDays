@@ -237,3 +237,209 @@ async fn unknown_baby_404(pool: PgPool) {
         .await;
     assert_error(&res, StatusCode::NOT_FOUND, "babies.notFound");
 }
+
+async fn baby_born(pool: &PgPool, birth: &str) -> Uuid {
+    sqlx::query_scalar!(
+        "INSERT INTO babies (id, name, birth_date, sort_order) VALUES ($1, 'b', $2, 0) RETURNING id",
+        Uuid::now_v7(),
+        birth.parse::<chrono::NaiveDate>().unwrap(),
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+/// UTC 정오 `date` 에 아기 태그된 자산.
+async fn tagged(pool: &PgPool, by: Uuid, baby: Uuid, date: &str, kind: &'static str) -> Uuid {
+    let mut s = AssetSeed::photo(by);
+    s.kind = kind;
+    s.taken_at = format!("{date}T12:00:00Z").parse().unwrap();
+    let id = insert_asset(pool, s).await;
+    littledays::assets::queries::add_babies(pool, id, &[baby], by)
+        .await
+        .unwrap();
+    id
+}
+
+async fn stats(app: &common::MediaApp, baby: Uuid) -> Value {
+    let res = app.server.get(&format!("/api/babies/{baby}/stats")).await;
+    res.assert_status_ok();
+    res.json()
+}
+
+async fn utc(pool: &PgPool) {
+    littledays::settings::queries::set(pool, "timezone", json!("UTC"))
+        .await
+        .unwrap();
+}
+
+/// `(age_month, from, to)` 목록.
+fn buckets(v: &Value) -> Vec<(i64, Option<String>, String)> {
+    v["age_months"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|b| {
+            (
+                b["age_month"].as_i64().unwrap(),
+                b["from"].as_str().map(String::from),
+                b["to"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
+}
+
+fn ages(v: &Value) -> Vec<i64> {
+    buckets(v).into_iter().map(|b| b.0).collect()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn stats_counts(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    utc(&pool).await;
+    let b = baby_born(&pool, "2025-09-26").await;
+    let other = baby_born(&pool, "2025-09-26").await;
+    tagged(&pool, app.user.id, b, "2025-10-01", "photo").await;
+    tagged(&pool, app.user.id, b, "2025-10-01", "photo").await;
+    tagged(&pool, app.user.id, b, "2025-10-02", "video").await;
+    tagged(&pool, app.user.id, other, "2025-10-03", "photo").await;
+    let mut s = AssetSeed::photo(app.user.id);
+    s.taken_at = "2025-10-04T12:00:00Z".parse().unwrap();
+    s.deleted_at = Some(Utc::now());
+    let trashed = insert_asset(&pool, s).await;
+    littledays::assets::queries::add_babies(&pool, trashed, &[b], app.user.id)
+        .await
+        .unwrap();
+
+    let v = stats(&app, b).await;
+    assert_eq!(v["photo_count"], 2);
+    assert_eq!(v["video_count"], 1);
+    assert_eq!(v["day_count"], 2);
+    assert_eq!(v["age_months"][0]["count"], 3);
+    assert!(v["age_months"][0]["cover"]["uploaded_by"].is_string());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn age_month_buckets(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    utc(&pool).await;
+    let b = baby_born(&pool, "2025-09-26").await;
+    for d in ["2025-09-26", "2025-10-25", "2025-10-26", "2026-11-09"] {
+        tagged(&pool, app.user.id, b, d, "photo").await;
+    }
+    let v = stats(&app, b).await;
+    assert_eq!(
+        buckets(&v),
+        [
+            (13, Some("2026-10-26".into()), "2026-11-25".into()),
+            (1, Some("2025-10-26".into()), "2025-11-25".into()),
+            (0, Some("2025-09-26".into()), "2025-10-25".into()),
+        ]
+    );
+    assert_eq!(v["age_months"][2]["count"], 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn before_birth_is_minus_one(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    utc(&pool).await;
+    let b = baby_born(&pool, "2025-09-26").await;
+    tagged(&pool, app.user.id, b, "2025-09-25", "photo").await;
+    tagged(&pool, app.user.id, b, "2025-09-26", "photo").await;
+    tagged(&pool, app.user.id, b, "2025-01-01", "photo").await;
+    let v = stats(&app, b).await;
+    assert_eq!(
+        buckets(&v),
+        [
+            (0, Some("2025-09-26".into()), "2025-10-25".into()),
+            (-1, None, "2025-09-25".into()),
+        ]
+    );
+    assert_eq!(v["age_months"][1]["count"], 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn month_end_birthday_buckets(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    utc(&pool).await;
+    let b = baby_born(&pool, "2025-01-31").await;
+    for d in [
+        "2025-02-27",
+        "2025-02-28",
+        "2025-03-30",
+        "2025-03-31",
+        "2025-04-30",
+    ] {
+        tagged(&pool, app.user.id, b, d, "photo").await;
+    }
+    let v = stats(&app, b).await;
+    assert_eq!(
+        buckets(&v),
+        [
+            (3, Some("2025-04-30".into()), "2025-05-30".into()),
+            (2, Some("2025-03-31".into()), "2025-04-29".into()),
+            (1, Some("2025-02-28".into()), "2025-03-30".into()),
+            (0, Some("2025-01-31".into()), "2025-02-27".into()),
+        ]
+    );
+    assert_eq!(v["age_months"][2]["count"], 2);
+
+    let leap = baby_born(&pool, "2024-02-29").await;
+    tagged(&pool, app.user.id, leap, "2025-02-27", "photo").await;
+    tagged(&pool, app.user.id, leap, "2025-02-28", "photo").await;
+    assert_eq!(ages(&stats(&app, leap).await), [12, 11]);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn age_month_uses_local_date(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    littledays::settings::queries::set(&pool, "timezone", json!("Asia/Seoul"))
+        .await
+        .unwrap();
+    let b = baby_born(&pool, "2025-09-26").await;
+    // UTC 10-25 16:00 = 서울 10-26 01:00 -> 1개월
+    let mut s = AssetSeed::photo(app.user.id);
+    s.taken_at = "2025-10-25T16:00:00Z".parse().unwrap();
+    let id = insert_asset(&pool, s).await;
+    littledays::assets::queries::add_babies(&pool, id, &[b], app.user.id)
+        .await
+        .unwrap();
+    assert_eq!(ages(&stats(&app, b).await), [1]);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn empty_months_absent(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    utc(&pool).await;
+    let b = baby_born(&pool, "2025-09-26").await;
+    tagged(&pool, app.user.id, b, "2025-09-30", "photo").await;
+    tagged(&pool, app.user.id, b, "2026-03-30", "photo").await;
+    assert_eq!(ages(&stats(&app, b).await), [6, 0]);
+    let empty = baby_born(&pool, "2025-09-26").await;
+    let v = stats(&app, empty).await;
+    assert_eq!(v["photo_count"], 0);
+    assert_eq!(v["age_months"].as_array().unwrap().len(), 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn cover_is_latest(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    utc(&pool).await;
+    let b = baby_born(&pool, "2025-09-26").await;
+    tagged(&pool, app.user.id, b, "2025-09-27", "photo").await;
+    let newest = tagged(&pool, app.user.id, b, "2025-10-20", "photo").await;
+    tagged(&pool, app.user.id, b, "2025-10-01", "photo").await;
+    let v = stats(&app, b).await;
+    assert_eq!(v["age_months"][0]["cover"]["id"], newest.to_string());
+    assert_eq!(v["age_months"][0]["count"], 3);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn stats_baby_not_found(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    let res = app
+        .server
+        .get(&format!("/api/babies/{}/stats", Uuid::now_v7()))
+        .await;
+    assert_error(&res, StatusCode::NOT_FOUND, "babies.notFound");
+}

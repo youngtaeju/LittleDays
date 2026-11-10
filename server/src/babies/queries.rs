@@ -1,8 +1,11 @@
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
-use super::{Baby, BabyInput, Sex};
-use crate::error::{AppError, AppResult};
+use super::{AgeMonth, Baby, BabyInput, BabyStats, Sex};
+use crate::{
+    assets::{AssetKind, AssetStatus, AssetSummary},
+    error::{AppError, AppResult},
+};
 
 pub async fn list(exec: impl PgExecutor<'_>) -> AppResult<Vec<Baby>> {
     let babies = sqlx::query_as!(
@@ -107,4 +110,111 @@ pub async fn reorder(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<()> {
     .execute(&mut *conn)
     .await?;
     Ok(())
+}
+
+/// 개수와 생후 개월별 묶음. 아기 없으면 `babies.notFound`.
+pub async fn stats(
+    exec: impl PgExecutor<'_> + Copy,
+    id: Uuid,
+    timezone: &str,
+) -> AppResult<BabyStats> {
+    let birth = sqlx::query_scalar!("SELECT birth_date FROM babies WHERE id = $1", id)
+        .fetch_optional(exec)
+        .await?
+        .ok_or(AppError::NotFound("babies.notFound"))?;
+
+    let counts = sqlx::query!(
+        r#"SELECT count(*) FILTER (WHERE a.kind = 'photo') AS "photo_count!",
+                  count(*) FILTER (WHERE a.kind = 'video') AS "video_count!",
+                  count(DISTINCT (a.taken_at AT TIME ZONE $2)::date) AS "day_count!"
+           FROM assets a
+           JOIN asset_babies ab ON ab.asset_id = a.id AND ab.baby_id = $1
+           WHERE a.deleted_at IS NULL"#,
+        id,
+        timezone,
+    )
+    .fetch_one(exec)
+    .await?;
+
+    // 개월 경계: 생일 + n개월(월말 고정) 이 날짜보다 뒤면 한 달 앞. Postgres `age()` 는 월말 처리가 달라 미사용.
+    let rows = sqlx::query!(
+        r#"WITH t AS (
+               SELECT a.id, a.kind, a.status, a.taken_at, a.width, a.height, a.duration_ms,
+                      a.blurhash, a.dominant_color, a.uploaded_by, a.derivatives,
+                      (a.taken_at AT TIME ZONE $2)::date AS local_date
+               FROM assets a
+               JOIN asset_babies ab ON ab.asset_id = a.id AND ab.baby_id = $1
+               WHERE a.deleted_at IS NULL
+           ), m AS (
+               SELECT t.*,
+                      ((EXTRACT(year FROM t.local_date) - EXTRACT(year FROM $3::date)) * 12
+                       + EXTRACT(month FROM t.local_date) - EXTRACT(month FROM $3::date))::int AS m0
+               FROM t
+           ), g AS (
+               SELECT m.*,
+                      CASE WHEN m.local_date < $3::date THEN -1
+                           WHEN ($3::date + make_interval(months => m.m0))::date > m.local_date
+                               THEN m.m0 - 1
+                           ELSE m.m0 END AS age_month
+               FROM m
+           ), r AS (
+               SELECT g.*,
+                      count(*) OVER (PARTITION BY g.age_month) AS cnt,
+                      row_number() OVER (PARTITION BY g.age_month
+                                         ORDER BY g.taken_at DESC, g.id DESC) AS rn
+               FROM g
+           )
+           SELECT r.age_month AS "age_month!", r.cnt AS "count!",
+                  CASE WHEN r.age_month < 0 THEN NULL
+                       ELSE ($3::date + make_interval(months => r.age_month))::date END AS "from?",
+                  CASE WHEN r.age_month < 0 THEN $3::date - 1
+                       ELSE ($3::date + make_interval(months => r.age_month + 1))::date - 1
+                       END AS "to!",
+                  r.id AS "id!", r.kind AS "kind!: AssetKind", r.status AS "status!: AssetStatus",
+                  r.taken_at AS "taken_at!", r.local_date AS "local_date!",
+                  r.width, r.height, r.duration_ms, r.blurhash, r.dominant_color,
+                  r.uploaded_by AS "uploaded_by!",
+                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
+                            FROM asset_babies ab2 JOIN babies b ON b.id = ab2.baby_id
+                            WHERE ab2.asset_id = r.id), '{}') AS "baby_ids!",
+                  r.derivatives AS "derivatives!"
+           FROM r
+           WHERE r.rn = 1
+           ORDER BY (r.age_month < 0), r.age_month DESC"#,
+        id,
+        timezone,
+        birth,
+    )
+    .fetch_all(exec)
+    .await?;
+
+    Ok(BabyStats {
+        photo_count: counts.photo_count,
+        video_count: counts.video_count,
+        day_count: counts.day_count,
+        age_months: rows
+            .into_iter()
+            .map(|r| AgeMonth {
+                age_month: r.age_month,
+                count: r.count,
+                from: r.from,
+                to: r.to,
+                cover: AssetSummary {
+                    id: r.id,
+                    kind: r.kind,
+                    status: r.status,
+                    taken_at: r.taken_at,
+                    local_date: r.local_date,
+                    width: r.width,
+                    height: r.height,
+                    duration_ms: r.duration_ms,
+                    blurhash: r.blurhash,
+                    dominant_color: r.dominant_color,
+                    uploaded_by: r.uploaded_by,
+                    baby_ids: r.baby_ids,
+                    derivatives: r.derivatives,
+                },
+            })
+            .collect(),
+    })
 }

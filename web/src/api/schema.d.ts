@@ -340,6 +340,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/babies/{id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["baby_stats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/days": {
         parameters: {
             query?: never;
@@ -621,6 +637,28 @@ export interface components {
             password: string;
             username: string;
         };
+        /** @description 생후 개월 묶음. 개월 경계는 월말 고정 기념일 규칙(웹 `ageAt` 과 동일). */
+        AgeMonth: {
+            /**
+             * Format: int32
+             * @description 생일 전 `-1`, 그 외 생후 개월 수.
+             */
+            age_month: number;
+            /** Format: int64 */
+            count: number;
+            /** @description 그 개월 최신 자산. */
+            cover: components["schemas"]["AssetSummary"];
+            /**
+             * Format: date
+             * @description 개월 시작일(포함). 생일 전은 `null`.
+             */
+            from: string | null;
+            /**
+             * Format: date
+             * @description 개월 마지막 날(포함). 생일 전은 생일 전날.
+             */
+            to: string;
+        };
         /** @description 자산 상세. */
         Asset: {
             /** @description 아기 표시 순서. */
@@ -713,6 +751,20 @@ export interface components {
         BabyIds: {
             /** @description 태그 전체 교체 목록. */
             baby_ids: string[];
+        };
+        /** @description 아기 태그 자산 통계. 휴지통 제외. */
+        BabyStats: {
+            /** @description 최신 개월부터. `-1`(생일 전)은 맨 끝. 사진 없는 개월은 없음. */
+            age_months: components["schemas"]["AgeMonth"][];
+            /**
+             * Format: int64
+             * @description 사진이 있는 날 수.
+             */
+            day_count: number;
+            /** Format: int64 */
+            photo_count: number;
+            /** Format: int64 */
+            video_count: number;
         };
         /** Format: binary */
         BinaryBody: string;
@@ -2342,6 +2394,56 @@ export interface operations {
                 };
             };
             /** @description 아기 없음 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    baby_stats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 사진·영상·기록한 날 수와 생후 개월별 묶음 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BabyStats"];
+                };
+            };
+            /** @description 잘못된 ID 형식 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;

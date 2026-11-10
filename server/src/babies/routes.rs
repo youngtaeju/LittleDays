@@ -5,11 +5,12 @@ use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{Baby, BabyInput, Sex, queries};
+use super::{Baby, BabyInput, BabyStats, Sex, queries};
 use crate::{
     auth::{extract::CurrentUser, validate::trimmed_name},
     error::{AppError, AppResult, ErrorBody},
     request::{Json, Path},
+    settings,
     state::AppState,
     users::Role,
 };
@@ -19,6 +20,7 @@ pub fn router() -> OpenApiRouter<AppState> {
         .routes(routes!(list_babies, create_baby))
         .routes(routes!(replace_baby, delete_baby))
         .routes(routes!(reorder_babies))
+        .routes(routes!(baby_stats))
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -166,4 +168,24 @@ async fn reorder_babies(
     queries::reorder(&mut tx, &req.ids).await?;
     tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/babies/{id}/stats",
+    params(("id" = Uuid, Path, description = "아기 ID")),
+    responses(
+        (status = 200, description = "사진·영상·기록한 날 수와 생후 개월별 묶음", body = BabyStats),
+        (status = 400, description = "잘못된 ID 형식", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 404, description = "아기 없음 (`babies.notFound`)", body = ErrorBody),
+    )
+)]
+async fn baby_stats(
+    State(state): State<AppState>,
+    _current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<AxumJson<BabyStats>> {
+    let tz = settings::queries::load(&state.pool).await?.timezone;
+    Ok(AxumJson(queries::stats(&state.pool, id, &tz).await?))
 }

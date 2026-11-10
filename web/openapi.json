@@ -1465,6 +1465,65 @@
         }
       }
     },
+    "/api/babies/{id}/stats": {
+      "get": {
+        "operationId": "baby_stats",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "사진·영상·기록한 날 수와 생후 개월별 묶음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BabyStats"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "잘못된 ID 형식",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/days": {
       "get": {
         "operationId": "list_days",
@@ -2923,6 +2982,45 @@
           }
         }
       },
+      "AgeMonth": {
+        "type": "object",
+        "description": "생후 개월 묶음. 개월 경계는 월말 고정 기념일 규칙(웹 `ageAt` 과 동일).",
+        "required": [
+          "age_month",
+          "count",
+          "cover",
+          "from",
+          "to"
+        ],
+        "properties": {
+          "age_month": {
+            "type": "integer",
+            "format": "int32",
+            "description": "생일 전 `-1`, 그 외 생후 개월 수."
+          },
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cover": {
+            "$ref": "#/components/schemas/AssetSummary",
+            "description": "그 개월 최신 자산."
+          },
+          "from": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "개월 시작일(포함). 생일 전은 `null`."
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "description": "개월 마지막 날(포함). 생일 전은 생일 전날."
+          }
+        }
+      },
       "Asset": {
         "type": "object",
         "description": "자산 상세.",
@@ -3251,6 +3349,38 @@
               "format": "uuid"
             },
             "description": "태그 전체 교체 목록."
+          }
+        }
+      },
+      "BabyStats": {
+        "type": "object",
+        "description": "아기 태그 자산 통계. 휴지통 제외.",
+        "required": [
+          "photo_count",
+          "video_count",
+          "day_count",
+          "age_months"
+        ],
+        "properties": {
+          "age_months": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgeMonth"
+            },
+            "description": "최신 개월부터. `-1`(생일 전)은 맨 끝. 사진 없는 개월은 없음."
+          },
+          "day_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "사진이 있는 날 수."
+          },
+          "photo_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "video_count": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
