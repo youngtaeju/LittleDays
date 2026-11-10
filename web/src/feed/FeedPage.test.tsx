@@ -1,11 +1,4 @@
-import {
-  act,
-  cleanup,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Baby, DayPage, DaySummary, Role, User } from '@/api/types'
 import { initI18n } from '@/i18n'
@@ -483,10 +476,8 @@ describe('FeedPage', () => {
       expect(router.state.location.pathname).toBe('/photos/a')
     })
 
-    fireEvent.click(await screen.findByRole('button', { name: ko.viewer.info }))
-    const info = await screen.findByRole('dialog', { name: ko.viewer.info })
     await user.click(
-      within(info).getByRole('button', { name: ko.viewer.trash }),
+      await screen.findByRole('button', { name: ko.viewer.trashShort }),
     )
     const confirm = await screen.findByRole('dialog', {
       name: ko.viewer.trashTitle,

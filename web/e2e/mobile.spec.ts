@@ -8,6 +8,40 @@ import {
   test,
   tiles,
 } from './fixtures'
+import type { Page } from '@playwright/test'
+
+type Point = { x: number; y: number }
+
+// 손가락 끌기. Playwright touchscreen 은 누르기만 지원해 CDP 터치 이벤트 사용.
+async function touchDrag(page: Page, from: Point, to: Point) {
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [from],
+  })
+  const steps = 10
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [
+        {
+          x: from.x + ((to.x - from.x) * i) / steps,
+          y: from.y + ((to.y - from.y) * i) / steps,
+        },
+      ],
+    })
+  }
+  await cdp.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  })
+  await cdp.detach()
+}
+
+async function doubleTap(page: Page, at: Point) {
+  await page.touchscreen.tap(at.x, at.y)
+  await page.touchscreen.tap(at.x, at.y)
+}
 
 // desktop 이 만든 데이터 사용(사진 2장, 영상 1개).
 
@@ -57,6 +91,13 @@ test('viewer_nav_buttons_visible', async ({ ownerPage: page }) => {
   await expect(page.locator('main video')).toBeVisible()
   const videoUrl = page.url()
   await expect(next).toBeInViewport()
+  // 재생 버튼으로 재생 시작. 자동 재생 없음.
+  const video = page.locator('main video')
+  expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true)
+  await page.getByRole('button', { name: '재생', exact: true }).click()
+  await expect
+    .poll(() => video.evaluate((v: HTMLVideoElement) => v.paused))
+    .toBe(false)
   await expect(prev).toHaveCount(0)
   await expectNoHorizontalOverflow(page)
 
@@ -106,4 +147,52 @@ test('upload_sheet_and_pill', async ({ ownerPage: page }) => {
   if (!pillBox || !barBox) throw new Error('알약·탭 바 위치 없음')
   expect(pillBox.y + pillBox.height).toBeLessThanOrEqual(barBox.y)
   await expect(pill).toBeHidden({ timeout: 10_000 })
+})
+
+test('viewer_zoom_and_dismiss', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  await expect(tiles(page)).toHaveCount(3)
+  // 첫 사진은 목록 중간(영상이 최신). 다음 항목 있음.
+  await page
+    .getByRole('link', { name: /^사진,/ })
+    .first()
+    .click()
+  await expect(page).toHaveURL(/\/photos\//)
+  const url = page.url()
+  await expect(page.getByRole('button', { name: '닫기' })).toBeFocused()
+  await expect(page.locator('main img').first()).toBeVisible()
+
+  const viewport = page.viewportSize()
+  if (!viewport) throw new Error('화면 크기 없음')
+  const center = { x: viewport.width / 2, y: viewport.height / 2 }
+  // 확대 단추는 데스크톱 전용(휴대폰은 숨김). 상태 확인용.
+  const zoomOut = page.getByRole('button', {
+    name: '화면에 맞추기',
+    includeHidden: true,
+  })
+  const zoomIn = page.getByRole('button', {
+    name: '크게 보기',
+    includeHidden: true,
+  })
+
+  // 두 번 눌러 확대 → 가로로 끌어도 넘기지 않고 이동만.
+  await doubleTap(page, center)
+  await expect(zoomOut).toHaveCount(1)
+  await touchDrag(
+    page,
+    { x: center.x + 80, y: center.y },
+    { x: center.x - 120, y: center.y },
+  )
+  await expect(zoomOut).toHaveCount(1)
+  expect(page.url()).toBe(url)
+
+  // 다시 두 번 눌러 맞춤 → 아래로 끌어 닫기.
+  await doubleTap(page, center)
+  await expect(zoomIn).toHaveCount(1)
+  await touchDrag(
+    page,
+    { x: center.x, y: center.y - 100 },
+    { x: center.x, y: center.y + 200 },
+  )
+  await expect(page).toHaveURL(/\/$/)
 })

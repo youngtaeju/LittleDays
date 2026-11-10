@@ -101,3 +101,31 @@ export function fromZonedInput(local: string, tz: string): string {
   const o2 = offset(t1, tz)
   return new Date(o2 !== o1 ? t0 - o2 : t1).toISOString()
 }
+
+// 예 "11월 9일 오후 3:24". 올해(tz 기준)가 아니면 연도 포함.
+// 오전·오후는 번역 문구. ICU 버전마다 ko 표기가 "오후"/"PM" 으로 다름.
+export function formatMoment(
+  iso: string,
+  tz: string,
+  locale: string,
+  period: { am: string; pm: string },
+  now: Date = new Date(),
+): string {
+  const t = new Date(iso).getTime()
+  const w = wall(t, tz)
+  const withYear = w.year !== wall(now.getTime(), tz).year
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: tz,
+    ...(withYear && { year: 'numeric' }),
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hourCycle: 'h12',
+  })
+    .formatToParts(t)
+    .map((p) =>
+      p.type === 'dayPeriod' ? (w.hour < 12 ? period.am : period.pm) : p.value,
+    )
+    .join('')
+}

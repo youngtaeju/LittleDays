@@ -8,11 +8,8 @@ import {
 import IconChevronLeft from '~icons/material-symbols/chevron-left-rounded'
 import IconChevronRight from '~icons/material-symbols/chevron-right-rounded'
 import IconClose from '~icons/material-symbols/close-rounded'
-import IconInfo from '~icons/material-symbols/info-outline-rounded'
 import IconProgress from '~icons/material-symbols/progress-activity-rounded'
 import IconWarning from '~icons/material-symbols/warning-outline-rounded'
-import IconZoomIn from '~icons/material-symbols/zoom-in-rounded'
-import IconZoomOut from '~icons/material-symbols/zoom-out-rounded'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -27,22 +24,37 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from '@/components/ui/sheet'
+import { ageParts } from '@/feed/dayMeta'
 import { errorMessage } from '@/i18n'
+import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
+import { useSettings } from '@/settings/useSettings'
 import { Blurhash } from '@/timeline/Blurhash'
-import { largeUrl, previewSources, thumbUrl, videoUrl } from '@/timeline/media'
-import { babiesKey } from '@/timeline/useBabies'
+import {
+  largeUrl,
+  originalUrl,
+  previewSources,
+  thumbUrl,
+  videoUrl,
+} from '@/timeline/media'
+import { babiesKey, useBabies } from '@/timeline/useBabies'
 import { assetKey, useTimeline } from '@/timeline/useTimeline'
-import { InfoPanel } from './InfoPanel'
+import { InfoPanel, type Editing } from './InfoPanel'
 import { neighbors } from './neighbors'
 import { applyAsset, useAsset } from './useAsset'
+import { useDismissDrag } from './useDismissDrag'
 import { useSwipe } from './useSwipe'
+import { useZoom } from './useZoom'
+import { VideoPlayer } from './VideoPlayer'
+import { ViewerBars } from './ViewerBars'
+import { formatMoment, todayInZone } from './zoned'
 
 const route = getRouteApi('/authed/photos/$id')
 
-const FADE_MS = 150
+const FADE_MS = 200
+// 이만큼 끌면 바탕이 가장 옅어짐.
+const DRAG_FADE_PX = 400
 
 function ProcessingView({ media }: { media: Asset | AssetSummary }) {
   const { t } = useTranslation()
@@ -81,7 +93,7 @@ function FailedView({
   retryError,
 }: {
   error: string | null
-  onRetry?: () => void
+  onRetry: (() => void) | undefined
   retrying: boolean
   retryError: unknown
 }) {
@@ -107,7 +119,7 @@ function FailedView({
 }
 
 export function ViewerPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id } = route.useParams()
   const { baby } = route.useSearch()
   const navigate = useNavigate()
@@ -115,6 +127,9 @@ export function ViewerPage() {
   const canGoBack = useCanGoBack()
   const qc = useQueryClient()
   const canEdit = hasRole(useMe().user, 'guardian')
+  const tz = useSettings()?.timezone
+  const babies = useBabies().data
+  const wide = useMediaQuery(WIDE)
 
   const asset = useAsset(id)
   const {
@@ -128,15 +143,35 @@ export function ViewerPage() {
   const { prev, next } = neighbors(ids, id)
   // 상세 도착 전엔 목록 항목으로 표시. 넘길 때 빈 화면 방지.
   const media = asset.data ?? items.find((i) => i.id === id)
+  const detail = asset.data
+  const canZoom = media?.status === 'ready' && media.kind === 'photo'
 
-  // 항목이 바뀌면 확대·정보 시트 초기화.
+  const stage = useRef<HTMLElement>(null)
+  const [barsVisible, setBarsVisible] = useState(true)
+  const preview = media?.derivatives.preview
+  const zoom = useZoom(stage, {
+    enabled: canZoom,
+    aspect: preview
+      ? preview.width / preview.height
+      : media?.width && media.height
+        ? media.width / media.height
+        : undefined,
+    onTap: () => {
+      setBarsVisible((v) => !v)
+    },
+  })
+
+  // 정보 패널은 넘겨도 유지(데스크톱 옆 패널). 확대·편집·휴지통 확인은 항목마다 초기화.
   const [shownId, setShownId] = useState(id)
-  const [zoomed, setZoomed] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
+  const [editing, setEditing] = useState<Editing | null>(null)
+  const [trashOpen, setTrashOpen] = useState(false)
+  const [scrubbing, setScrubbing] = useState(false)
   if (shownId !== id) {
     setShownId(id)
-    setZoomed(false)
-    setInfoOpen(false)
+    zoom.reset()
+    setEditing(null)
+    setTrashOpen(false)
   }
 
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
@@ -187,6 +222,11 @@ export function ViewerPage() {
     )
   }
 
+  const drag = useDismissDrag(stage, {
+    enabled: !!media && !zoom.isZoomed && !closing && !scrubbing,
+    onDismiss: close,
+  })
+
   const restore = useMutation({
     mutationFn: (assetId: string) =>
       call(
@@ -227,7 +267,10 @@ export function ViewerPage() {
         },
       })
       if (next) go(next)
-      else close()
+      else {
+        setTrashOpen(false)
+        close()
+      }
     },
   })
 
@@ -242,9 +285,20 @@ export function ViewerPage() {
       applyAsset(qc, a)
     },
   })
+  const retryProps = {
+    onRetry:
+      canEdit && media
+        ? () => {
+            retry.mutate(media.id)
+          }
+        : undefined,
+    retrying: retry.isPending,
+    // 다른 항목의 이전 실패는 표시 안 함.
+    retryError: media && retry.variables === media.id ? retry.error : null,
+  }
 
   const swipe = useSwipe({
-    enabled: !zoomed,
+    enabled: !zoom.isZoomed && !scrubbing,
     onLeft: () => {
       go(next)
     },
@@ -253,14 +307,17 @@ export function ViewerPage() {
     },
   })
 
-  // 입력·시트·대화상자 안의 키는 무시. 영상 포커스 중 화살표는 탐색용.
+  // 입력·시트·대화상자·메뉴 안의 키는 무시. 영상 포커스 중 화살표는 탐색용.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
       const el = e.target instanceof Element ? e.target : null
-      if (el?.closest('[role="dialog"], input, textarea, select')) return
+      if (el?.closest('[role="dialog"], [role="menu"]')) return
+      // 재생 위치 막대는 글자 입력이 아니라 Esc 로 닫기 허용.
+      const typing = el?.closest('input:not([type="range"]), textarea, select')
+      if (typing) return
       if (e.key === 'Escape') close()
-      else if (el instanceof HTMLVideoElement) return
+      else if (el?.closest('input')) return
       else if (e.key === 'ArrowLeft') go(prev)
       else if (e.key === 'ArrowRight') go(next)
       else return
@@ -272,9 +329,6 @@ export function ViewerPage() {
     }
   })
 
-  const detail = asset.data
-  const ready = media?.status === 'ready'
-  const canZoom = ready && media.kind === 'photo' && !!media.derivatives.large
   const label =
     detail?.caption ||
     (media?.kind === 'video' ? t('timeline.video') : t('timeline.photo'))
@@ -290,155 +344,223 @@ export function ViewerPage() {
     content = <ProcessingView media={media} />
   } else if (media.status === 'failed') {
     content = (
-      <FailedView
-        error={detail?.processing_error ?? null}
-        {...(canEdit && {
-          onRetry: () => {
-            retry.mutate(media.id)
-          },
-        })}
-        retrying={retry.isPending}
-        // 다른 항목의 이전 실패는 표시 안 함.
-        retryError={retry.variables === media.id ? retry.error : null}
-      />
+      <FailedView error={detail?.processing_error ?? null} {...retryProps} />
     )
   } else if (media.kind === 'video') {
     content = (
-      <video
+      <VideoPlayer
         key={media.id}
-        controls
-        playsInline
-        aria-label={label}
+        label={label}
         poster={previewSources(media).webp}
         src={videoUrl(media.id)}
-        className="absolute inset-0 size-full"
+        durationHint={media.duration_ms ? media.duration_ms / 1000 : 0}
+        controlsVisible={barsVisible}
+        onScrubbingChange={setScrubbing}
       />
-    )
-  } else if (zoomed) {
-    content = (
-      <div className="absolute inset-0 flex overflow-auto">
-        <img
-          src={largeUrl(media.id)}
-          alt={label}
-          draggable={false}
-          className="m-auto max-w-none"
-        />
-      </div>
     )
   } else {
     const src = previewSources(media)
     content = (
-      <picture>
-        {src.avif && <source type="image/avif" srcSet={src.avif} />}
-        <img
-          src={src.webp ?? thumbUrl(media.id)}
-          alt={label}
-          draggable={false}
-          className="absolute inset-0 size-full object-contain"
-        />
-      </picture>
+      // 항목마다 새 요소. 이전 사진의 확대 해제가 전환 효과로 보이지 않게.
+      <div
+        key={media.id}
+        className={cn(
+          'absolute inset-0',
+          !zoom.gesturing && 'transition-transform',
+        )}
+        style={{
+          transform: `translate(${String(zoom.tx)}px, ${String(zoom.ty)}px) scale(${String(zoom.scale)})`,
+        }}
+      >
+        <picture>
+          {src.avif && <source type="image/avif" srcSet={src.avif} />}
+          <img
+            src={src.webp ?? thumbUrl(media.id)}
+            alt={label}
+            draggable={false}
+            className="absolute inset-0 size-full object-contain"
+          />
+        </picture>
+        {/* 확대 중엔 큰 파생물을 위에 겹침. 불러오는 동안 미리보기 유지. */}
+        {zoom.isZoomed && media.derivatives.large && (
+          <img
+            src={largeUrl(media.id)}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 size-full object-contain"
+          />
+        )}
+      </div>
     )
   }
 
-  // 모든 폭에서 표시(영상은 스와이프 제외라 버튼이 유일한 터치 이동 수단).
-  // 640px 미만: 상단 바의 닫기 옆, 작게. 영상 컨트롤·가운데 재생 버튼과 겹침 방지.
-  // 640px 이상: 화면 좌우 가운데.
-  const navButton =
-    'absolute top-2.5 text-white sm:top-1/2 sm:size-10 sm:-translate-y-1/2 sm:rounded-full sm:bg-black/40 sm:hover:bg-black/60'
+  const panel = detail && (
+    <InfoPanel
+      asset={detail}
+      canEdit={canEdit}
+      editing={editing}
+      onEditingChange={setEditing}
+      {...retryProps}
+    />
+  )
+
+  const localDate = media && tz && todayInZone(tz, new Date(media.taken_at))
+  const age =
+    media && localDate && babies
+      ? ageParts(t, { date: localDate, baby_ids: media.baby_ids }, babies, baby)
+          .map((a) => a.text)
+          .join(' · ')
+      : ''
+
+  // 끌어 내리는 동안 바탕이 옅어짐.
+  const backdrop = 1 - Math.min(drag.offset / DRAG_FADE_PX, 0.7)
+  const navButton = cn(
+    'absolute top-1/2 z-10 size-11 -translate-y-1/2 rounded-full bg-black/50 text-white transition-opacity duration-200 hover:bg-black/70',
+    !barsVisible && 'opacity-0',
+  )
+  const showBars = barsVisible && drag.offset === 0
 
   return (
     <div
       className={cn(
-        'dark fixed inset-0 flex flex-col bg-black text-white transition-opacity duration-150 starting:opacity-0',
+        'dark fixed inset-0 flex text-white transition-opacity starting:opacity-0',
         closing && 'opacity-0',
       )}
+      style={{ backgroundColor: `rgb(0 0 0 / ${String(backdrop)})` }}
     >
-      <div className="flex h-14 shrink-0 items-center gap-1 px-2">
-        {/* 진입 시 포커스를 뷰어 안으로. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('common.close')}
-          onClick={close}
-          autoFocus
+      <div className="relative min-w-0 flex-1 overflow-hidden">
+        <main
+          ref={stage}
+          {...swipe}
+          className={cn(
+            'absolute inset-0 touch-none select-none',
+            !drag.dragging && 'transition-transform',
+          )}
+          style={
+            drag.offset > 0
+              ? { transform: `translateY(${String(drag.offset)}px)` }
+              : undefined
+          }
         >
-          <IconClose />
-        </Button>
-        <div className="flex-1" />
-        {canZoom && (
+          {content}
+        </main>
+        <ViewerBars
+          visible={showBars}
+          title={
+            media && tz
+              ? formatMoment(media.taken_at, tz, i18n.language, {
+                  am: t('viewer.am'),
+                  pm: t('viewer.pm'),
+                })
+              : null
+          }
+          age={age}
+          onClose={close}
+          zoom={
+            canZoom ? { zoomed: zoom.isZoomed, onToggle: zoom.toggle } : null
+          }
+          download={{
+            href: originalUrl(id),
+            filename: detail?.original_filename,
+          }}
+          info={
+            detail
+              ? {
+                  open: infoOpen,
+                  onToggle: () => {
+                    setInfoOpen((o) => !o)
+                  },
+                }
+              : null
+          }
+          onEditTakenAt={
+            canEdit && tz && detail
+              ? () => {
+                  setInfoOpen(true)
+                  setEditing('takenAt')
+                }
+              : null
+          }
+          trash={
+            canEdit && media
+              ? {
+                  open: trashOpen,
+                  onOpenChange: setTrashOpen,
+                  onConfirm: () => {
+                    trash.mutate(media.id)
+                  },
+                  pending: trash.isPending,
+                  error: trash.variables === media.id ? trash.error : null,
+                }
+              : null
+          }
+        />
+        {/* 막대와 함께 숨김. */}
+        {prev && (
           <Button
             variant="ghost"
             size="icon"
-            aria-label={zoomed ? t('viewer.zoomOut') : t('viewer.zoomIn')}
+            inert={!showBars}
+            aria-label={t('viewer.prev')}
+            className={cn(navButton, 'left-2')}
             onClick={() => {
-              setZoomed((z) => !z)
+              go(prev)
             }}
           >
-            {zoomed ? <IconZoomOut /> : <IconZoomIn />}
+            <IconChevronLeft className="size-6" />
           </Button>
         )}
-        {detail && (
-          <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={t('viewer.info')}>
-                <IconInfo />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="bottom"
-              aria-describedby={undefined}
-              className="dark max-h-[85dvh] overflow-y-auto text-foreground"
-            >
-              <SheetHeader>
-                <SheetTitle>{t('viewer.info')}</SheetTitle>
-              </SheetHeader>
-              <InfoPanel
-                asset={detail}
-                canEdit={canEdit}
-                onTrash={() => {
-                  trash.mutate(detail.id)
-                }}
-                trashing={trash.isPending}
-                trashError={trash.variables === detail.id ? trash.error : null}
-              />
-            </SheetContent>
-          </Sheet>
+        {next && (
+          <Button
+            variant="ghost"
+            size="icon"
+            inert={!showBars}
+            aria-label={t('viewer.next')}
+            className={cn(navButton, 'right-2')}
+            onClick={() => {
+              go(next)
+            }}
+          >
+            <IconChevronRight className="size-6" />
+          </Button>
         )}
       </div>
-      <main
-        {...swipe}
-        className={cn(
-          'relative min-h-0 flex-1',
-          !zoomed && 'touch-pan-y touch-pinch-zoom',
-        )}
-      >
-        {content}
-      </main>
-      {prev && (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('viewer.prev')}
-          className={cn(navButton, 'left-12 sm:left-2')}
-          onClick={() => {
-            go(prev)
-          }}
-        >
-          <IconChevronLeft />
-        </Button>
-      )}
-      {next && (
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t('viewer.next')}
-          className={cn(navButton, 'left-22 sm:right-2 sm:left-auto')}
-          onClick={() => {
-            go(next)
-          }}
-        >
-          <IconChevronRight />
-        </Button>
+      {wide ? (
+        infoOpen &&
+        panel && (
+          <aside
+            aria-label={t('viewer.info')}
+            className="w-[360px] shrink-0 overflow-y-auto border-l bg-background text-foreground"
+          >
+            <div className="flex h-14 items-center justify-between pr-2 pl-4">
+              <h2 className="text-base font-semibold">{t('viewer.info')}</h2>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('viewer.closeInfo')}
+                onClick={() => {
+                  setInfoOpen(false)
+                }}
+              >
+                <IconClose className="size-6" />
+              </Button>
+            </div>
+            {panel}
+          </aside>
+        )
+      ) : (
+        <Sheet open={infoOpen && !!panel} onOpenChange={setInfoOpen}>
+          <SheetContent
+            side="bottom"
+            aria-describedby={undefined}
+            className="dark max-h-[85dvh] overflow-y-auto text-foreground"
+          >
+            <SheetHeader>
+              <SheetTitle>{t('viewer.info')}</SheetTitle>
+            </SheetHeader>
+            {panel}
+          </SheetContent>
+        </Sheet>
       )}
     </div>
   )

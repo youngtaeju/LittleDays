@@ -76,6 +76,16 @@
     "emptyManage": "Add a baby to get started"
   },
   "viewer": {
+    "video": {
+      "play": "Play",
+      "pause": "Pause",
+      "mute": "Mute",
+      "unmute": "Unmute",
+      "fullscreen": "Fullscreen",
+      "error": "Can't play this video",
+      "exitFullscreen": "Exit fullscreen",
+      "seek": "Seek"
+    },
     "info": "Info",
     "prev": "Previous",
     "next": "Next",
@@ -103,7 +113,7 @@
     "editCaption": "Edit caption",
     "editTakenAt": "Edit date taken",
     "editBabies": "Edit baby tags",
-    "download": "Download original",
+    "download": "Download",
     "setAvatar": "Set as profile photo",
     "setAvatarTitle": "Whose profile photo should this be?",
     "avatarSet": "Set as {{name}}'s profile photo",
@@ -112,7 +122,15 @@
     "trashDescription": "You can restore it from the trash.",
     "trashed": "Moved to trash",
     "undo": "Undo",
-    "restored": "Restored"
+    "restored": "Restored",
+    "downloadOriginal": "Download original",
+    "trashShort": "Trash",
+    "more": "More",
+    "closeInfo": "Close info",
+    "uploadedBy": "Uploaded by",
+    "file": "File",
+    "am": "AM",
+    "pm": "PM"
   },
   "notFound": {
     "title": "Page not found.",

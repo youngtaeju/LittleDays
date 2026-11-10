@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   formatInZone,
+  formatMoment,
   fromZonedInput,
   todayInZone,
   toZonedInput,
@@ -68,5 +69,35 @@ describe('zoned', () => {
     const text = formatInZone('2024-05-01T16:30:00Z', 'Asia/Seoul', 'ko')
     expect(text).toContain('2024년 5월 2일')
     expect(text).toContain('1:30')
+  })
+
+  it('format_moment_period_and_year', () => {
+    const ko = { am: '오전', pm: '오후' }
+    const now = new Date('2026-11-10T00:00:00Z')
+    // 같은 해는 연도 생략. tz 기준 시각·오전/오후.
+    expect(
+      formatMoment('2026-11-09T06:24:00Z', 'Asia/Seoul', 'ko', ko, now),
+    ).toBe('11월 9일 오후 3:24')
+    expect(
+      formatMoment('2026-11-08T23:05:00Z', 'Asia/Seoul', 'ko', ko, now),
+    ).toBe('11월 9일 오전 8:05')
+    expect(
+      formatMoment('2025-12-31T16:00:00Z', 'Asia/Seoul', 'ko', ko, now),
+    ).toBe('1월 1일 오전 1:00')
+    expect(
+      formatMoment('2025-12-31T14:59:00Z', 'Asia/Seoul', 'ko', ko, now),
+    ).toBe('2025년 12월 31일 오후 11:59')
+    expect(
+      formatMoment(
+        '2026-11-09T06:24:00Z',
+        'Asia/Seoul',
+        'en',
+        {
+          am: 'AM',
+          pm: 'PM',
+        },
+        now,
+      ),
+    ).toMatch(/^November 9.* 3:24\sPM$/)
   })
 })
