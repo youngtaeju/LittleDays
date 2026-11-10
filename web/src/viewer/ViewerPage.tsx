@@ -139,8 +139,9 @@ export function ViewerPage() {
     setInfoOpen(false)
   }
 
-  // 불러온 목록의 마지막 항목이면 다음 페이지. 실패 시 반복 요청 없음.
-  const atEnd = ids.length > 0 && ids[ids.length - 1] === id
+  // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
+  const atEnd =
+    ids.length > 0 && (ids[ids.length - 1] === id || !ids.includes(id))
   useEffect(() => {
     if (atEnd && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
       void fetchNextPage()

@@ -31,7 +31,9 @@ export function BabyChips({
             key={id ?? ''}
             type="button"
             aria-pressed={active}
-            onClick={() => void navigate({ to: '/', search: { baby: id } })}
+            onClick={() =>
+              void navigate({ to: '/', search: { baby: id }, replace: true })
+            }
             className="flex h-11 max-w-48 shrink-0 items-center rounded-full"
           >
             <span

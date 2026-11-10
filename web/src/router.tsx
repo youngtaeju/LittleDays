@@ -23,6 +23,7 @@ import { OfflineScreen } from '@/pwa/OfflineBanner'
 import { RouteError, RoutePending } from '@/pages/RouteError'
 import { AppShell } from '@/shell/AppShell'
 import { FeedPage } from '@/feed/FeedPage'
+import { isCalendarDate } from '@/lib/dates'
 
 // 홈 피드·로그인·셸만 메인 번들. 나머지 화면은 첫 진입 때 청크 로드.
 const InvitePage = lazyRouteComponent(
@@ -49,6 +50,7 @@ const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
   'TrashPage',
 )
+const DayPage = lazyRouteComponent(() => import('@/feed/DayPage'), 'DayPage')
 const ViewerPage = lazyRouteComponent(
   () => import('@/viewer/ViewerPage'),
   'ViewerPage',
@@ -176,6 +178,13 @@ const dayRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/days/$date',
   validateSearch: babySearch,
+  // 형식·실존 날짜가 아니면 홈. 서버 요청 전에 차단.
+  beforeLoad: ({ params, search }) => {
+    if (!isCalendarDate(params.date)) {
+      throw redirect({ to: '/', search, replace: true })
+    }
+  },
+  component: DayPage,
 })
 
 const babiesRoute = createRoute({

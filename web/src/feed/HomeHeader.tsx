@@ -23,7 +23,8 @@ function DayBadge({ birthDate, today }: { birthDate: string; today: string }) {
 // 아기 1명: 이름 + D 배지. 2명 이상: 우리 집 이름 + 아기 칩, 고른 아기만 배지.
 export function HomeHeader({ instanceName }: { instanceName?: string }) {
   const { baby } = route.useSearch()
-  const babies = useBabies().data
+  const babiesQuery = useBabies()
+  const babies = babiesQuery.data
   const today = useToday()
   const single = babies?.length === 1 ? babies[0] : undefined
   const target = single ?? babies?.find((b) => b.id === baby)
@@ -31,14 +32,18 @@ export function HomeHeader({ instanceName }: { instanceName?: string }) {
     <div className="px-4">
       <div className="flex h-14 items-center gap-2">
         <p className="min-w-0 truncate text-lg font-bold">
-          {/* 아기 조회 전은 비움. 우리 집 이름 → 아기 이름 깜빡임 방지. */}
-          {single ? single.name : babies && instanceName}
+          {/* 조회 전은 비움(우리 집 이름 → 아기 이름 깜빡임 방지). 조회 실패(오프라인 첫 진입)는 우리 집 이름. */}
+          {single
+            ? single.name
+            : (babies || babiesQuery.isError) && instanceName}
         </p>
         {target && <DayBadge birthDate={target.birth_date} today={today} />}
       </div>
-      {babies && babies.length >= 2 && (
-        <BabyChips babies={babies} selected={baby} />
-      )}
+      {babies &&
+        (babies.length >= 2 ||
+          (baby && !babies.some((b) => b.id === baby))) && (
+          <BabyChips babies={babies} selected={baby} />
+        )}
     </div>
   )
 }

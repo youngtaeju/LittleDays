@@ -1,5 +1,6 @@
 import { Outlet, useMatch } from '@tanstack/react-router'
 import { useSyncExternalStore } from 'react'
+import { DayHeader } from '@/feed/DayHeader'
 import { HomeHeader } from '@/feed/HomeHeader'
 import { cn } from '@/lib/utils'
 import { OfflineBanner } from '@/pwa/OfflineBanner'
@@ -25,6 +26,10 @@ function useScrolled(): boolean {
 export function AppShell() {
   const settings = useSettings()
   const home = useMatch({ from: '/authed/shell/', shouldThrow: false })
+  const day = useMatch({
+    from: '/authed/shell/days/$date',
+    shouldThrow: false,
+  })
   const scrolled = useScrolled()
 
   return (
@@ -37,12 +42,14 @@ export function AppShell() {
               className={cn(
                 'border-b',
                 scrolled ? 'border-border' : 'border-transparent',
-                // 데스크톱은 사이드바가 우리 집 이름 표시. 홈은 아기 이름·칩이라 유지.
-                !home && 'lg:hidden',
+                // 데스크톱은 사이드바가 우리 집 이름 표시. 홈·그날 화면은 자체 머리글이라 유지.
+                !home && !day && 'lg:hidden',
               )}
             >
               {home ? (
                 <HomeHeader instanceName={settings?.instance_name} />
+              ) : day ? (
+                <DayHeader />
               ) : (
                 <div className="flex h-14 items-center px-4">
                   <p className="truncate text-lg font-semibold">

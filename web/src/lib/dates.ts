@@ -1,4 +1,5 @@
 const dayFormats = new Map<string, Intl.DateTimeFormat>()
+const dayYearFormats = new Map<string, Intl.DateTimeFormat>()
 const monthFormats = new Map<string, Intl.DateTimeFormat>()
 
 function cached(
@@ -24,6 +25,16 @@ export function formatDay(date: string, lng: string): string {
   }).format(new Date(`${date}T00:00:00Z`))
 }
 
+// "2023년 5월 2일 화요일" / "Tuesday, May 2, 2023". 올해가 아닌 날 제목용.
+export function formatDayWithYear(date: string, lng: string): string {
+  return cached(dayYearFormats, lng, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  }).format(new Date(`${date}T00:00:00Z`))
+}
+
 // "2024년 5월" / "May 2024". month 는 YYYY-MM.
 export function formatMonth(month: string, lng: string): string {
   return cached(monthFormats, lng, { year: 'numeric', month: 'long' }).format(
@@ -36,4 +47,11 @@ export function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`)
   d.setUTCDate(d.getUTCDate() + n)
   return d.toISOString().slice(0, 10)
+}
+
+// YYYY-MM-DD 형식이면서 실제 존재하는 달력 날짜.
+export function isCalendarDate(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false
+  const d = new Date(`${v}T00:00:00Z`)
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v
 }

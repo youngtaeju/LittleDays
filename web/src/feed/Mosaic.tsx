@@ -54,7 +54,7 @@ function ProcessingPoll({
   return null
 }
 
-function Cell({
+export function Cell({
   item,
   className,
   style,

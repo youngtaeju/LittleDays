@@ -72,6 +72,28 @@ test('upload_and_process', async ({ ownerPage: page }) => {
   for (const a of await listAssets(page)) expect(a.baby_ids).toHaveLength(1)
 })
 
+test('day_page', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  // 사진 2장인 날의 날짜 머리글 → 그날 화면. 사진 칸 2개, 영상 날은 포함되지 않음.
+  const card = page
+    .getByRole('main')
+    .getByRole('article')
+    .filter({ has: page.getByRole('link', { name: /^사진,/ }) })
+  await card.getByRole('heading').getByRole('link').click()
+  await expect(page).toHaveURL(/\/days\/\d{4}-\d{2}-\d{2}$/)
+  await expect(page.getByRole('banner').getByRole('heading')).toBeVisible()
+  await expect(page.getByRole('banner')).toContainText('사진 2장')
+  await expect(tiles(page)).toHaveCount(2)
+  await expectThumbnailsLoaded(page, 2)
+
+  // 이전 날/다음 날 중 하나는 영상 날로 연결. 뒤로가기는 홈.
+  await expect(
+    page.getByRole('navigation', { name: '이전·다음 날' }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: '뒤로' }).click()
+  await expect(page).toHaveURL(/\/$/)
+})
+
 test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {
   // 홈 피드가 스크롤되도록 낮은 창.
   await page.setViewportSize({ width: 1280, height: 400 })
@@ -226,6 +248,8 @@ test('security_headers_and_no_csp_violations', async ({ ownerPage: page }) => {
   for (const name of [/^영상,/, /^사진,/]) {
     await page.getByRole('link', { name }).first().click()
     await expect(page).toHaveURL(/\/photos\//)
+    // 뷰어는 지연 로드. 닫기 버튼 포커스 = 키 입력 수신 준비 완료.
+    await expect(page.getByRole('button', { name: '닫기' })).toBeFocused()
     await expect(page.locator('main img, main video').first()).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page).toHaveURL(/\/$/)

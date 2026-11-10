@@ -116,7 +116,7 @@
   },
   "notFound": {
     "title": "페이지를 찾을 수 없어요.",
-    "home": "타임라인으로 가기"
+    "home": "홈으로"
   },
   "timeline": {
     "photo": "사진",
@@ -147,6 +147,14 @@
     "videos_other": "영상 {{count}}개",
     "viewAll_one": "{{date}} {{count}}개 모두 보기",
     "viewAll_other": "{{date}} {{count}}개 모두 보기"
+  },
+  "day": {
+    "back": "뒤로",
+    "empty": "이날은 사진이 없어요",
+    "home": "홈으로",
+    "prev": "이전 날",
+    "next": "다음 날",
+    "nav": "이전·다음 날"
   },
   "upload": {
     "queue": "업로드 목록",

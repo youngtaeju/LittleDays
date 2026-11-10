@@ -323,6 +323,19 @@ describe('FeedPage', () => {
   it('plus_n_opens_day', async () => {
     const { router, user } = renderFeed({
       path: `/?baby=${SKY.id}`,
+      extra: {
+        'GET /api/days/2024-05-10': () =>
+          json(200, {
+            date: '2024-05-10',
+            photo_count: 18,
+            video_count: 2,
+            uploader_ids: [],
+            baby_ids: [],
+            prev_date: null,
+            next_date: null,
+          }),
+        'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
+      },
       days: () =>
         page([
           dayFixture('2024-05-10', {
@@ -767,6 +780,26 @@ describe('FeedPage', () => {
       await vi.advanceTimersByTimeAsync(1000)
     })
     expect(requests).toHaveLength(2)
+  })
+
+  it('header_falls_back_to_instance_name_when_babies_fail', async () => {
+    renderFeed({
+      days: () => page([]),
+      extra: { 'GET /api/babies': () => apiError(500, 'server.internal') },
+    })
+    const header = within(await screen.findByRole('banner'))
+    expect(
+      await header.findByText(settingsFixture.instance_name),
+    ).toBeInTheDocument()
+  })
+
+  it('chips_shown_for_stale_baby_filter', async () => {
+    renderFeed({ path: '/?baby=gone', days: () => page([]) })
+
+    const header = within(await screen.findByRole('banner'))
+    expect(
+      await header.findByRole('group', { name: ko.feed.babyFilter }),
+    ).toBeInTheDocument()
   })
 
   it('failed_cell_shows_warning', async () => {

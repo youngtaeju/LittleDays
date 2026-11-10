@@ -208,6 +208,30 @@ describe('ViewerPage', () => {
     expect(cursors).toEqual([null, 'c1'])
   })
 
+  it('finds_neighbors_beyond_first_page', async () => {
+    const first = Array.from({ length: 100 }, (_, i) =>
+      assetSummaryFixture(`p${String(i)}`),
+    )
+    const second = ['z1', 'z2', 'z3'].map((id) => assetSummaryFixture(id))
+    const { router, user } = renderViewer({
+      path: '/photos/z2',
+      ids: ['z1', 'z2', 'z3'],
+      extra: {
+        'GET /api/assets': (req) =>
+          new URL(req.url).searchParams.get('cursor')
+            ? json(200, { items: second, next_cursor: null })
+            : json(200, { items: first, next_cursor: 'c1' }),
+      },
+    })
+
+    const prev = await screen.findByRole('button', { name: ko.viewer.prev })
+    expect(screen.getByRole('button', { name: ko.viewer.next })).toBeVisible()
+    await user.click(prev)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/z1')
+    })
+  })
+
   it('family_sees_no_edit_controls', async () => {
     renderViewer({ path: '/photos/a', ids: ['a'], role: 'family' })
     const info = await openInfo()
