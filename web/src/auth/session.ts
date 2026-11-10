@@ -22,8 +22,9 @@ const meQuery = queryOptions({
     try {
       return (await call(api.GET('/api/auth/me'))).user
     } catch (e) {
-      // 비로그인 상태는 에러가 아님. 세션 만료 포함이라 이전 사용자 오프라인 캐시 삭제.
+      // 비로그인 상태는 에러가 아님. 세션 만료 포함이라 이전 사용자 오프라인 캐시·업로드 목록 삭제.
       if (e instanceof ApiError && e.status === 401) {
+        clearUploads()
         clearOfflineCaches()
         return null
       }

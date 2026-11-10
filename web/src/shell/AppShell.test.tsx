@@ -5,19 +5,9 @@ import { meQueryKey } from '@/auth/session'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
-import {
-  babyFixture,
-  emptyFeedRoutes,
-  settingsFixture,
-  userFixture,
-} from '@/test/fixtures'
+import { emptyFeedRoutes, settingsFixture, userFixture } from '@/test/fixtures'
 import { renderApp } from '@/test/router'
 import { uploadStore } from '@/upload/useUploadStore'
-
-const add = vi.fn()
-vi.mock('@/upload/uploader', () => ({
-  getUploader: () => ({ add, retry: vi.fn() }),
-}))
 
 beforeEach(() => {
   initI18n('ko')
@@ -26,7 +16,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
   uploadStore.reset()
-  add.mockReset()
   vi.restoreAllMocks()
 })
 
@@ -91,48 +80,6 @@ describe('AppShell', () => {
     expect(input).toBeInstanceOf(HTMLInputElement)
     expect(input).toHaveAttribute('type', 'file')
     expect(input).toHaveAttribute('multiple')
-  })
-
-  it('picked_files_upload_with_single_baby', async () => {
-    const { user } = await renderShell('guardian', '/', [babyFixture()])
-    const input = document.querySelector<HTMLInputElement>('input[type=file]')
-    if (!input) throw new Error('파일 입력 없음')
-    const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' })
-    await user.upload(input, file)
-    await waitFor(() => {
-      expect(add).toHaveBeenCalledWith([file], [babyFixture().id])
-    })
-    // 같은 파일 다시 선택 허용.
-    expect(input.value).toBe('')
-  })
-
-  it('picked_files_untagged_with_many_babies', async () => {
-    const { user } = await renderShell('guardian', '/', [
-      babyFixture(),
-      babyFixture({ id: '00000000-0000-4000-8000-0000000000b2', name: '바다' }),
-    ])
-    const input = document.querySelector<HTMLInputElement>('input[type=file]')
-    if (!input) throw new Error('파일 입력 없음')
-    const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' })
-    await user.upload(input, file)
-    await waitFor(() => {
-      expect(add).toHaveBeenCalledWith([file], [])
-    })
-  })
-
-  it('add_badge_counts_active_uploads', async () => {
-    uploadStore.put({
-      id: 'f1',
-      name: 'a.jpg',
-      status: 'uploading',
-      progress: 0,
-    })
-    uploadStore.put({ id: 'f2', name: 'b.jpg', status: 'done', progress: 1 })
-    await renderShell('guardian')
-    const label = `${ko.nav.add}, ${ko.upload.inProgress.replace('{{count}}', '1')}`
-    expect(
-      within(tabBar()).getByRole('button', { name: label }),
-    ).toBeInTheDocument()
   })
 
   it('logout_goes_to_login', async () => {

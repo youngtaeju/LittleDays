@@ -22,6 +22,10 @@ window.matchMedia = (query: string): MediaQueryList =>
     removeEventListener: () => undefined,
   }) as unknown as MediaQueryList
 
+// jsdom 은 createObjectURL 미구현. 업로드 확인 미리보기가 사용.
+URL.createObjectURL = () => 'blob:test'
+URL.revokeObjectURL = () => undefined
+
 // jsdom 은 scrollTo 미구현. 라우터가 이동마다 호출(맨 위 이동 또는 저장 위치 복원). 테스트는 spy 로 확인.
 window.scrollTo = () => undefined
 

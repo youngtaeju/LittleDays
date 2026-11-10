@@ -46,17 +46,33 @@ test('first_signup_and_baby', async ({ page }) => {
 })
 
 test('upload_and_process', async ({ ownerPage: page }) => {
-  // 예전 업로드 주소는 홈으로. (+)·사이드바 버튼이 쓰는 셸의 파일 입력에 바로 선택.
-  await page.goto('/upload')
-  await expect(page).toHaveURL(/\/$/)
-  await page
-    .locator('input[type=file]')
-    .setInputFiles([FILES.jpg, FILES.heic, FILES.mp4])
-
-  // 재시도 시엔 "이미 있는 사진"으로 끝남. 둘 다 완료 집계.
-  await expect(page.getByText('3개 중 3개 완료', { exact: true })).toBeVisible({
-    timeout: 60_000,
+  await page.goto('/')
+  // 사이드바 버튼 → 기기 선택창 → 확인 대화상자 → 올리기.
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: '사진 올리기' }).click()
+  await (await chooser).setFiles([FILES.jpg, FILES.heic, FILES.mp4])
+  const confirm = page.getByRole('dialog', {
+    name: '사진 2장 · 영상 1개 올리기',
   })
+  // 미리보기(blob: 주소, CSP 허용). 브라우저가 못 그리는 HEIC 는 형식 표시.
+  await expect
+    .poll(() =>
+      confirm
+        .locator('img')
+        .evaluate((e) => e instanceof HTMLImageElement && e.naturalWidth > 0),
+    )
+    .toBe(true)
+  await expect(confirm.getByText('HEIC', { exact: true })).toBeVisible()
+  // 아기 1명이면 자동 태그, 고르는 줄 없음.
+  await expect(confirm.getByRole('group', { name: '아기' })).toHaveCount(0)
+  await confirm.getByRole('button', { name: '올리기' }).click()
+  await expect(confirm).toBeHidden()
+
+  // 보던 화면 유지. 진행 알약 → 완료 3초 후 사라짐. 재시도 시엔 "이미 있어요"로 끝나도 완료 집계.
+  await expect(page).toHaveURL(/\/$/)
+  const done = page.getByRole('button', { name: '3개 올렸어요' })
+  await expect(done).toBeVisible({ timeout: 60_000 })
+  await expect(done).toBeHidden({ timeout: 10_000 })
 
   await expect(tiles(page)).toHaveCount(3)
   await expect(page.getByRole('img', { name: '처리 중' })).toHaveCount(0, {
@@ -153,12 +169,23 @@ test('duplicate_in_trash_restore', async ({ ownerPage: page }) => {
   await trashAsset(page, jpg.id)
 
   await page.goto('/')
-  await page.locator('input[type=file]').setInputFiles(FILES.jpg)
+  const chooser = page.waitForEvent('filechooser')
+  await page.getByRole('button', { name: '사진 올리기' }).click()
+  await (await chooser).setFiles(FILES.jpg)
+  await page
+    .getByRole('dialog', { name: '사진 1장 올리기' })
+    .getByRole('button', { name: '올리기' })
+    .click()
+  // 휴지통에 있는 중복은 누를 때까지 알약 유지. 눌러 업로드 목록.
+  await page
+    .getByRole('button', { name: '휴지통에 있는 사진 1개' })
+    .click({ timeout: 30_000 })
   const row = page
+    .getByRole('dialog', { name: '업로드 목록' })
     .getByRole('list', { name: '업로드 목록' })
     .getByRole('listitem')
     .filter({ hasText: 'orient6.jpg' })
-  await expect(row.getByText('휴지통에 있음')).toBeVisible({ timeout: 30_000 })
+  await expect(row.getByText('휴지통에 있어요')).toBeVisible()
   await row.getByRole('button', { name: '복구' }).click()
   await expect(row.getByText('복구했어요')).toBeVisible()
   await expect(row.getByRole('link', { name: '보기' })).toBeVisible()

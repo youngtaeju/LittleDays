@@ -12,6 +12,7 @@ import {
   useLogout,
   useMe,
 } from './session'
+import { uploadStore } from '@/upload/useUploadStore'
 
 function setup() {
   const onLogout = vi.fn()
@@ -35,6 +36,26 @@ describe('session', () => {
     })
     expect(result.current.user).toBeNull()
     expect(onLogout).not.toHaveBeenCalled()
+  })
+
+  // 공용 기기: 세션 만료 후 다음 사용자에게 이전 사용자의 이어올리기 목록(파일 이름) 노출 금지.
+  it('me_401_clears_pending_uploads', async () => {
+    uploadStore.put({
+      id: 'f1',
+      name: 'private.jpg',
+      status: 'resumable',
+      progress: 0,
+      resume: { size: 1, lastModified: 1, babyIds: [] },
+    })
+    expect(localStorage.getItem('ld.upload.pending')).not.toBeNull()
+    mockFetch({
+      'GET /api/auth/me': () =>
+        json(401, { error: 'auth.required', params: {} }),
+    })
+    const { qc } = setup()
+    expect(await loadMe(qc)).toBeNull()
+    expect(uploadStore.getSnapshot()).toEqual([])
+    expect(localStorage.getItem('ld.upload.pending')).toBeNull()
   })
 
   it('apiErrorLogout', async () => {

@@ -160,7 +160,6 @@
     "queue": "Upload queue",
     "summary": "{{done}} of {{total}} finished",
     "summaryFailed": ", {{failed}} failed",
-    "inProgress": "{{count}} in progress",
     "status": {
       "queued": "Waiting",
       "uploading": "Uploading",
@@ -169,12 +168,33 @@
       "duplicate": "Already uploaded",
       "inTrash": "In trash",
       "unsupported": "This file type isn't supported.",
-      "lost": "Couldn't confirm the upload. Please upload it again."
+      "lost": "Couldn't confirm the upload. Please upload it again.",
+      "resumable": "Waiting to resume"
     },
     "view": "View",
     "restore": "Restore",
     "restored": "Restored",
-    "reupload": "Upload again"
+    "reupload": "Upload again",
+    "confirmTitle": "Upload {{items}}",
+    "submit": "Upload",
+    "babies": "Babies",
+    "remove": "Remove {{name}}",
+    "dropHere": "Drop to upload",
+    "resumeHint": "Choose the same files again to resume",
+    "repick": "Choose files again",
+    "discard": "Remove from list",
+    "pill": {
+      "uploading_one": "Uploading {{count}} item",
+      "uploading_other": "Uploading {{count}} items",
+      "done_one": "Uploaded {{count}} item",
+      "done_other": "Uploaded {{count}} items",
+      "failed_one": "Couldn't upload {{count}} item",
+      "failed_other": "Couldn't upload {{count}} items",
+      "resumable_one": "{{count}} item to resume",
+      "resumable_other": "{{count}} items to resume",
+      "trash_one": "{{count}} in trash",
+      "trash_other": "{{count}} in trash"
+    }
   },
   "age": {
     "days": "Day {{days}}",

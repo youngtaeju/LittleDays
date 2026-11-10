@@ -24,6 +24,7 @@ import { RouteError, RoutePending } from '@/pages/RouteError'
 import { AppShell } from '@/shell/AppShell'
 import { FeedPage } from '@/feed/FeedPage'
 import { isCalendarDate } from '@/lib/dates'
+import { uploadStore } from '@/upload/useUploadStore'
 
 // 홈 피드·로그인·셸만 메인 번들. 나머지 화면은 첫 진입 때 청크 로드.
 const InvitePage = lazyRouteComponent(
@@ -231,10 +232,20 @@ const legacyPhotoRoute = createRoute({
   },
 })
 
+// 예전 업로드 화면. 홈으로 가며 큐가 있으면 업로드 목록 시트 열기.
+const legacyUploadRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/upload',
+  beforeLoad: () => {
+    if (uploadStore.getSnapshot().length > 0) uploadStore.openQueue()
+    throw redirect({ to: '/', replace: true })
+  },
+})
+
 // 경로 리터럴 유지(라우터 주소 타입 검사).
 function legacyRoute<P extends string>(
   path: P,
-  to: '/' | '/family' | '/me' | '/me/trash',
+  to: '/family' | '/me' | '/me/trash',
 ) {
   return createRoute({
     getParentRoute: () => rootRoute,
@@ -252,7 +263,7 @@ const routeTree = rootRoute.addChildren([
   legacyPhotoRoute,
   legacyRoute('/members', '/family'),
   legacyRoute('/settings', '/me'),
-  legacyRoute('/upload', '/'),
+  legacyUploadRoute,
   legacyRoute('/trash', '/me/trash'),
   authedRoute.addChildren([
     shellRoute.addChildren([
