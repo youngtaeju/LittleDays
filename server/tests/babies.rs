@@ -443,3 +443,197 @@ async fn stats_baby_not_found(pool: PgPool) {
         .await;
     assert_error(&res, StatusCode::NOT_FOUND, "babies.notFound");
 }
+
+async fn sized_photo(pool: &PgPool, by: Uuid, w: i32, h: i32) -> Uuid {
+    let id = insert_asset(pool, AssetSeed::photo(by)).await;
+    sqlx::query!(
+        "UPDATE assets SET width = $2, height = $3 WHERE id = $1",
+        id,
+        w,
+        h
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    id
+}
+
+fn crop_body(avatar: Option<Uuid>, crop: Value) -> Value {
+    let mut b = replace_body(avatar);
+    b["avatar_crop"] = crop;
+    b
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn crop_roundtrip(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = create_named(&app.server, "하늘").await;
+    let photo = sized_photo(&pool, app.user.id, 4000, 3000).await;
+    let crop = json!({ "x": 0.25, "y": 0.0, "size": 1.0 });
+
+    let res = put(&app.server, id, crop_body(Some(photo), crop.clone())).await;
+    res.assert_status_ok();
+    assert_eq!(res.json::<Value>()["avatar_crop"], crop);
+    let list = app.server.get("/api/babies").await.json::<Value>();
+    assert_eq!(list[0]["avatar_crop"], crop);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn crop_requires_avatar(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = create_named(&app.server, "하늘").await;
+    let res = put(
+        &app.server,
+        id,
+        crop_body(None, json!({ "x": 0, "y": 0, "size": 1 })),
+    )
+    .await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "babies.avatarCropInvalid");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn crop_out_of_bounds(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = create_named(&app.server, "하늘").await;
+    let photo = sized_photo(&pool, app.user.id, 4000, 3000).await;
+    let unknown = insert_asset(&pool, AssetSeed::photo(app.user.id)).await;
+    for (avatar, crop) in [
+        (photo, json!({ "x": 0.8, "y": 0, "size": 0.5 })),
+        (photo, json!({ "x": 0, "y": 0.5, "size": 1 })),
+        (photo, json!({ "x": -0.1, "y": 0, "size": 0.5 })),
+        (photo, json!({ "x": 0, "y": 0, "size": 0 })),
+        (photo, json!({ "x": 0, "y": 0, "size": 1.5 })),
+        (unknown, json!({ "x": 0, "y": 0, "size": 0.5 })),
+    ] {
+        let res = put(&app.server, id, crop_body(Some(avatar), crop)).await;
+        assert_error(&res, StatusCode::BAD_REQUEST, "babies.avatarCropInvalid");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn crop_nan_rejected(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = create_named(&app.server, "하늘").await;
+    let photo = sized_photo(&pool, app.user.id, 4000, 3000).await;
+    // JSON 은 NaN 을 표현 못 함. 서버가 400 으로 거부하는지만 확인.
+    let res = app
+        .server
+        .put(&format!("/api/babies/{id}"))
+        .add_header(XRW, XRW_VALUE)
+        .content_type("application/json")
+        .bytes(
+            format!(
+                r#"{{"name":"하늘","birth_date":"2026-01-15","sex":null,"avatar_asset_id":"{photo}","avatar_crop":{{"x":NaN,"y":0,"size":0.5}}}}"#
+            )
+            .into(),
+        )
+        .await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "request.invalidBody");
+    assert!(crate_fits_rejects_nan());
+}
+
+fn crate_fits_rejects_nan() -> bool {
+    use littledays::babies::AvatarCrop;
+    !AvatarCrop {
+        x: f64::NAN,
+        y: 0.0,
+        size: 0.5,
+    }
+    .fits(4000, 3000)
+        && !AvatarCrop {
+            x: 0.0,
+            y: 0.0,
+            size: f64::INFINITY,
+        }
+        .fits(4000, 3000)
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn put_without_crop_clears(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = create_named(&app.server, "하늘").await;
+    let photo = sized_photo(&pool, app.user.id, 4000, 3000).await;
+    put(
+        &app.server,
+        id,
+        crop_body(Some(photo), json!({ "x": 0, "y": 0, "size": 0.5 })),
+    )
+    .await
+    .assert_status_ok();
+    let res = put(&app.server, id, replace_body(Some(photo))).await;
+    res.assert_status_ok();
+    assert_eq!(res.json::<Value>()["avatar_crop"], Value::Null);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn reorder_keeps_crop(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let a = create_named(&app.server, "하나").await;
+    let b = create_named(&app.server, "둘").await;
+    let photo = sized_photo(&pool, app.user.id, 4000, 3000).await;
+    let crop = json!({ "x": 0.25, "y": 0.0, "size": 1.0 });
+    put(&app.server, a, crop_body(Some(photo), crop.clone()))
+        .await
+        .assert_status_ok();
+    put_order(&app.server, &[b, a])
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    let list = app.server.get("/api/babies").await.json::<Value>();
+    assert_eq!(list[1]["id"], a.to_string());
+    assert_eq!(list[1]["avatar_crop"], crop);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn trash_api_clears_crop(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = create_named(&app.server, "하늘").await;
+    let photo = sized_photo(&pool, app.user.id, 4000, 3000).await;
+    put(
+        &app.server,
+        id,
+        crop_body(Some(photo), json!({ "x": 0, "y": 0, "size": 0.5 })),
+    )
+    .await
+    .assert_status_ok();
+    app.server
+        .delete(&format!("/api/assets/{photo}"))
+        .add_header(XRW, XRW_VALUE)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    let list = app.server.get("/api/babies").await.json::<Value>();
+    assert_eq!(list[0]["avatar_asset_id"], Value::Null);
+    assert_eq!(list[0]["avatar_crop"], Value::Null);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn cover_prefers_ready(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    utc(&pool).await;
+    let b = baby_born(&pool, "2025-09-26").await;
+    let mut ids = Vec::new();
+    for (date, status) in [
+        ("2025-10-01", "ready"),
+        ("2025-10-02", "processing"),
+        ("2025-10-03", "failed"),
+    ] {
+        let mut s = AssetSeed::photo(app.user.id);
+        s.status = status;
+        s.taken_at = format!("{date}T12:00:00Z").parse().unwrap();
+        let id = insert_asset(&pool, s).await;
+        littledays::assets::queries::add_babies(&pool, id, &[b], app.user.id)
+            .await
+            .unwrap();
+        ids.push(id);
+    }
+    let v = stats(&app, b).await;
+    assert_eq!(v["age_months"][0]["cover"]["id"], ids[0].to_string());
+
+    let only = baby_born(&pool, "2025-09-26").await;
+    for id in [ids[1], ids[2]] {
+        littledays::assets::queries::add_babies(&pool, id, &[only], app.user.id)
+            .await
+            .unwrap();
+    }
+    let v = stats(&app, only).await;
+    assert_eq!(v["age_months"][0]["cover"]["id"], ids[2].to_string());
+}

@@ -71,6 +71,14 @@ pub async fn find_by_raw(exec: impl PgExecutor<'_>, raw: &str) -> AppResult<Opti
     Ok(row.map(Into::into))
 }
 
+/// 초대한 사용자 표시 이름.
+pub async fn inviter_display_name(exec: impl PgExecutor<'_>, user_id: Uuid) -> AppResult<String> {
+    let name = sqlx::query_scalar!("SELECT display_name FROM users WHERE id = $1", user_id)
+        .fetch_one(exec)
+        .await?;
+    Ok(name)
+}
+
 /// 행 잠금 조회. 트랜잭션 내 수락 경합 차단용.
 pub async fn find_for_update(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Invite>> {
     let row = sqlx::query_as!(

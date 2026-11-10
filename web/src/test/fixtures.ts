@@ -40,6 +40,7 @@ export function babyFixture(over: Partial<Baby> = {}): Baby {
     birth_date: '2024-01-31',
     sex: null,
     avatar_asset_id: null,
+    avatar_crop: null,
     sort_order: 0,
     ...over,
   }

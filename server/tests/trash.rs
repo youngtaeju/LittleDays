@@ -387,3 +387,40 @@ async fn retention_spares_item_trashed_again_after_restore(pool: PgPool) {
     maintenance::run_once(&app.state).await.unwrap();
     assert!(exists(&pool, id).await);
 }
+
+#[sqlx::test]
+async fn crop_cleared_when_avatar_deleted(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = seed(&pool, app.user.id).await;
+    sqlx::query!(
+        "UPDATE assets SET width = 400, height = 300 WHERE id = $1",
+        id
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let baby = new_baby(&pool).await;
+    app.server
+        .put(&format!("/api/babies/{baby}"))
+        .add_header(XRW, XRW_VALUE)
+        .json(&json!({
+            "name": "하루", "birth_date": "2024-01-01", "avatar_asset_id": id,
+            "avatar_crop": { "x": 0.1, "y": 0.0, "size": 0.5 },
+        }))
+        .await
+        .assert_status_ok();
+    let list = app.server.get("/api/babies").await.json::<Value>();
+    assert_eq!(list[0]["avatar_crop"]["size"], 0.5);
+
+    // 휴지통 이동은 avatar_asset_id 를 먼저 비우므로, 영구 삭제 FK 경로를 직접 검증.
+    sqlx::query!("UPDATE assets SET deleted_at = now() WHERE id = $1", id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    permanent(&app.server, id)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    let list = app.server.get("/api/babies").await.json::<Value>();
+    assert_eq!(list[0]["avatar_asset_id"], Value::Null);
+    assert_eq!(list[0]["avatar_crop"], Value::Null);
+}

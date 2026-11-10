@@ -736,9 +736,22 @@ export interface components {
             /** Format: int32 */
             width: number | null;
         };
+        /**
+         * @description 대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.
+         *     `x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.
+         */
+        AvatarCrop: {
+            /** Format: double */
+            size: number;
+            /** Format: double */
+            x: number;
+            /** Format: double */
+            y: number;
+        };
         Baby: {
             /** Format: uuid */
             avatar_asset_id: string | null;
+            avatar_crop: null | components["schemas"]["AvatarCrop"];
             /** Format: date */
             birth_date: string;
             /** Format: uuid */
@@ -893,6 +906,8 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
             instance_name: string;
+            /** @description 초대한 사용자의 표시 이름. */
+            inviter_display_name: string;
             role: components["schemas"]["Role"];
         };
         /** @enum {string} */
@@ -1032,6 +1047,7 @@ export interface components {
              * @description `ready` 상태의 휴지통 밖 사진만 허용.
              */
             avatar_asset_id: string | null;
+            avatar_crop?: null | components["schemas"]["AvatarCrop"];
             /** Format: date */
             birth_date: string;
             /** @description 앞뒤 공백 제거 후 1~64자. */
@@ -2309,7 +2325,7 @@ export interface operations {
                     "application/json": components["schemas"]["Baby"];
                 };
             };
-            /** @description 본문 형식, 이름, 대표 사진 오류 */
+            /** @description 본문 형식, 이름, 대표 사진, 자르기 영역 오류 */
             400: {
                 headers: {
                     [name: string]: unknown;

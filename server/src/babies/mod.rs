@@ -25,7 +25,34 @@ pub struct Baby {
     pub sex: Option<Sex>,
     #[schema(required = true)]
     pub avatar_asset_id: Option<Uuid>,
+    #[schema(required = true)]
+    pub avatar_crop: Option<AvatarCrop>,
     pub sort_order: i32,
+}
+
+/// 대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.
+/// `x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
+pub struct AvatarCrop {
+    pub x: f64,
+    pub y: f64,
+    pub size: f64,
+}
+
+impl AvatarCrop {
+    /// 유한수, `size` (0, 1], `x`·`y` 비음수, 영역이 `width`×`height` 안.
+    pub fn fits(&self, width: i32, height: i32) -> bool {
+        const EPS: f64 = 1e-6;
+        let (w, h) = (f64::from(width), f64::from(height));
+        let side = self.size * w.min(h);
+        [self.x, self.y, self.size].iter().all(|v| v.is_finite())
+            && self.size > 0.0
+            && self.size <= 1.0
+            && self.x >= 0.0
+            && self.y >= 0.0
+            && self.x * w + side <= w + EPS
+            && self.y * h + side <= h + EPS
+    }
 }
 
 /// 생성·전체 교체 공용 입력. 이름은 검증·정규화 완료 상태.

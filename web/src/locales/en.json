@@ -188,6 +188,7 @@
       "usernameTaken": "This username is already taken."
     },
     "babies": {
+      "avatarCropInvalid": "The avatar crop area is invalid.",
       "avatarInvalid": "This file can't be used as a profile photo.",
       "nameInvalid": "The baby's name is not valid.",
       "notFound": "The baby could not be found.",

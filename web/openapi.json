@@ -1363,7 +1363,7 @@
             }
           },
           "400": {
-            "description": "본문 형식, 이름, 대표 사진 오류",
+            "description": "본문 형식, 이름, 대표 사진, 자르기 영역 오류",
             "content": {
               "application/json": {
                 "schema": {
@@ -3291,6 +3291,29 @@
           }
         }
       },
+      "AvatarCrop": {
+        "type": "object",
+        "description": "대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.\n`x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.",
+        "required": [
+          "x",
+          "y",
+          "size"
+        ],
+        "properties": {
+          "size": {
+            "type": "number",
+            "format": "double"
+          },
+          "x": {
+            "type": "number",
+            "format": "double"
+          },
+          "y": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "Baby": {
         "type": "object",
         "required": [
@@ -3299,6 +3322,7 @@
           "birth_date",
           "sex",
           "avatar_asset_id",
+          "avatar_crop",
           "sort_order"
         ],
         "properties": {
@@ -3308,6 +3332,16 @@
               "null"
             ],
             "format": "uuid"
+          },
+          "avatar_crop": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AvatarCrop"
+              }
+            ]
           },
           "birth_date": {
             "type": "string",
@@ -3758,6 +3792,7 @@
         "required": [
           "role",
           "instance_name",
+          "inviter_display_name",
           "expires_at"
         ],
         "properties": {
@@ -3767,6 +3802,10 @@
           },
           "instance_name": {
             "type": "string"
+          },
+          "inviter_display_name": {
+            "type": "string",
+            "description": "초대한 사용자의 표시 이름."
           },
           "role": {
             "$ref": "#/components/schemas/Role"
@@ -4212,6 +4251,17 @@
             ],
             "format": "uuid",
             "description": "`ready` 상태의 휴지통 밖 사진만 허용."
+          },
+          "avatar_crop": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AvatarCrop",
+                "description": "대표 사진 자르기. 생략 시 `null`. 대표 사진이 있을 때만 허용."
+              }
+            ]
           },
           "birth_date": {
             "type": "string",

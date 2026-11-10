@@ -47,6 +47,7 @@ export function BabyForm({
             birth_date,
             sex,
             avatar_asset_id: clearAvatar ? null : baby.avatar_asset_id,
+            avatar_crop: clearAvatar ? null : baby.avatar_crop,
           },
         }),
       )

@@ -1,21 +1,46 @@
-use sqlx::{PgConnection, PgExecutor};
+use sqlx::{PgConnection, PgExecutor, types::Json};
 use uuid::Uuid;
 
-use super::{AgeMonth, Baby, BabyInput, BabyStats, Sex};
+use super::{AgeMonth, AvatarCrop, Baby, BabyInput, BabyStats, Sex};
 use crate::{
     assets::{AssetKind, AssetStatus, AssetSummary},
     error::{AppError, AppResult},
 };
 
+struct BabyRow {
+    id: Uuid,
+    name: String,
+    birth_date: chrono::NaiveDate,
+    sex: Option<Sex>,
+    avatar_asset_id: Option<Uuid>,
+    avatar_crop: Option<Json<AvatarCrop>>,
+    sort_order: i32,
+}
+
+impl From<BabyRow> for Baby {
+    fn from(r: BabyRow) -> Self {
+        Baby {
+            id: r.id,
+            name: r.name,
+            birth_date: r.birth_date,
+            sex: r.sex,
+            avatar_asset_id: r.avatar_asset_id,
+            avatar_crop: r.avatar_crop.map(|c| c.0),
+            sort_order: r.sort_order,
+        }
+    }
+}
+
 pub async fn list(exec: impl PgExecutor<'_>) -> AppResult<Vec<Baby>> {
     let babies = sqlx::query_as!(
-        Baby,
-        r#"SELECT id, name, birth_date, sex AS "sex: Sex", avatar_asset_id, sort_order
+        BabyRow,
+        r#"SELECT id, name, birth_date, sex AS "sex: Sex", avatar_asset_id,
+                      avatar_crop AS "avatar_crop: Json<AvatarCrop>", sort_order
            FROM babies ORDER BY sort_order, created_at, id"#
     )
     .fetch_all(exec)
     .await?;
-    Ok(babies)
+    Ok(babies.into_iter().map(Baby::from).collect())
 }
 
 /// 태그 검증용 전체 아기 ID.
@@ -29,11 +54,12 @@ pub async fn all_ids(exec: impl PgExecutor<'_>) -> AppResult<Vec<Uuid>> {
 /// `sort_order` 는 현재 최대 + 1.
 pub async fn create(exec: impl PgExecutor<'_>, input: BabyInput) -> AppResult<Baby> {
     let baby = sqlx::query_as!(
-        Baby,
+        BabyRow,
         r#"INSERT INTO babies (id, name, birth_date, sex, sort_order)
            VALUES ($1, $2, $3, $4,
                    (SELECT COALESCE(max(sort_order) + 1, 0) FROM babies))
-           RETURNING id, name, birth_date, sex AS "sex: Sex", avatar_asset_id, sort_order"#,
+           RETURNING id, name, birth_date, sex AS "sex: Sex", avatar_asset_id,
+                      avatar_crop AS "avatar_crop: Json<AvatarCrop>", sort_order"#,
         Uuid::now_v7(),
         input.name,
         input.birth_date,
@@ -41,21 +67,22 @@ pub async fn create(exec: impl PgExecutor<'_>, input: BabyInput) -> AppResult<Ba
     )
     .fetch_one(exec)
     .await?;
-    Ok(baby)
+    Ok(baby.into())
 }
 
-/// 존재·`ready`·`photo`·휴지통 아님을 모두 만족하는 자산인지.
-pub async fn is_valid_avatar(exec: impl PgExecutor<'_>, asset_id: Uuid) -> AppResult<bool> {
-    let ok = sqlx::query_scalar!(
-        r#"SELECT EXISTS (
-               SELECT 1 FROM assets
-               WHERE id = $1 AND status = 'ready' AND kind = 'photo' AND deleted_at IS NULL
-           ) AS "ok!""#,
+/// 존재·`ready`·`photo`·휴지통 아님을 모두 만족하면 `(width, height)`(처리 중 미확정이면 `None`), 아니면 바깥 `None`.
+pub async fn valid_avatar_dims(
+    exec: impl PgExecutor<'_>,
+    asset_id: Uuid,
+) -> AppResult<Option<Option<(i32, i32)>>> {
+    let row = sqlx::query!(
+        "SELECT width, height FROM assets
+         WHERE id = $1 AND status = 'ready' AND kind = 'photo' AND deleted_at IS NULL",
         asset_id
     )
-    .fetch_one(exec)
+    .fetch_optional(exec)
     .await?;
-    Ok(ok)
+    Ok(row.map(|r| r.width.zip(r.height)))
 }
 
 pub async fn replace(
@@ -63,20 +90,25 @@ pub async fn replace(
     id: Uuid,
     input: BabyInput,
     avatar_asset_id: Option<Uuid>,
+    avatar_crop: Option<AvatarCrop>,
 ) -> AppResult<Baby> {
     sqlx::query_as!(
-        Baby,
-        r#"UPDATE babies SET name = $2, birth_date = $3, sex = $4, avatar_asset_id = $5
+        BabyRow,
+        r#"UPDATE babies SET name = $2, birth_date = $3, sex = $4, avatar_asset_id = $5,
+               avatar_crop = $6
            WHERE id = $1
-           RETURNING id, name, birth_date, sex AS "sex: Sex", avatar_asset_id, sort_order"#,
+           RETURNING id, name, birth_date, sex AS "sex: Sex", avatar_asset_id,
+                      avatar_crop AS "avatar_crop: Json<AvatarCrop>", sort_order"#,
         id,
         input.name,
         input.birth_date,
         input.sex as Option<Sex>,
         avatar_asset_id,
+        avatar_crop.map(Json) as Option<Json<AvatarCrop>>,
     )
     .fetch_optional(exec)
     .await?
+    .map(Baby::from)
     .ok_or(AppError::NotFound("babies.notFound"))
 }
 
@@ -161,7 +193,8 @@ pub async fn stats(
                SELECT g.*,
                       count(*) OVER (PARTITION BY g.age_month) AS cnt,
                       row_number() OVER (PARTITION BY g.age_month
-                                         ORDER BY g.taken_at DESC, g.id DESC) AS rn
+                                         ORDER BY (g.status = 'ready') DESC,
+                                                  g.taken_at DESC, g.id DESC) AS rn
                FROM g
            )
            SELECT r.age_month AS "age_month!", r.cnt AS "count!",
