@@ -64,8 +64,8 @@ describe('login', () => {
     expect(body).toEqual({ username: 'mom', password: 'pw123456' })
     expect(csrf).toBe('LittleDays')
     expect(
-      await screen.findByText(settingsFixture.instance_name),
-    ).toBeInTheDocument()
+      (await screen.findAllByText(settingsFixture.instance_name)).length,
+    ).toBeGreaterThan(0)
   })
 
   it.each([
@@ -94,7 +94,7 @@ describe('login', () => {
     await waitFor(() => {
       expect(router.state.location.href).toBe('/')
     })
-    await screen.findByText(settingsFixture.instance_name)
+    await screen.findAllByText(settingsFixture.instance_name)
   })
 
   it('login_disabled_shows_error', async () => {
@@ -138,7 +138,7 @@ describe('login', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/')
     })
-    await screen.findByText(settingsFixture.instance_name)
+    await screen.findAllByText(settingsFixture.instance_name)
   })
 
   it('signup_link_when_open', async () => {
@@ -156,20 +156,20 @@ describe('login', () => {
 describe('guards', () => {
   it('protected_route_redirects_to_login', async () => {
     mockFetch(authRoutes({ me: null }))
-    const { router } = renderApp('/settings')
+    const { router } = renderApp('/me')
     await waitFor(() => {
-      expect(router.state.location.href).toBe('/login?redirect=%2Fsettings')
+      expect(router.state.location.href).toBe('/login?redirect=%2Fme')
     })
     await screen.findByLabelText(ko.auth.username)
   })
 
   it('role_too_low_redirects_home', async () => {
     mockFetch(authRoutes({ me: userFixture('family') }))
-    const { router } = renderApp('/trash')
+    const { router } = renderApp('/me/trash')
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/')
     })
-    await screen.findByText(settingsFixture.instance_name)
+    await screen.findAllByText(settingsFixture.instance_name)
   })
 
   // 오프라인은 로그아웃이 아님. 로그인 화면 대신 오프라인 화면, 경로 유지.
@@ -179,9 +179,9 @@ describe('guards', () => {
         throw new TypeError('Failed to fetch')
       },
     })
-    const { router } = renderApp('/settings')
+    const { router } = renderApp('/me')
     await screen.findByText(ko.offline.screen)
-    expect(router.state.location.href).toBe('/settings')
+    expect(router.state.location.href).toBe('/me')
   })
 
   // 병렬 401 여러 개에도 로그인 이동은 한 번. 캐시는 비우고 me 는 null.
@@ -192,8 +192,8 @@ describe('guards', () => {
       'GET /api/babies': () => apiError(401, 'auth.required'),
       'GET /api/auth/sessions': () => json(200, { sessions: [] }),
     })
-    const { router, queryClient } = renderApp('/settings')
-    await screen.findByText(settingsFixture.instance_name)
+    const { router, queryClient } = renderApp('/me')
+    await screen.findAllByText(settingsFixture.instance_name)
     const before = router.history.length
 
     queryClient.setQueryData(['stale'], 1)
@@ -204,7 +204,7 @@ describe('guards', () => {
     ])
 
     await waitFor(() => {
-      expect(router.state.location.href).toBe('/login?redirect=%2Fsettings')
+      expect(router.state.location.href).toBe('/login?redirect=%2Fme')
     })
     expect(router.history.length).toBe(before + 1)
     expect(queryClient.getQueryData(['stale'])).toBeUndefined()
@@ -219,7 +219,7 @@ describe('guards', () => {
       ...authRoutes({ me: { ...userFixture('family'), locale: 'en' } }),
       'GET /api/assets/x': () => apiError(404, 'asset.notFound'),
     })
-    renderApp('/photo/x')
+    renderApp('/photos/x')
     await screen.findByText(en.errors.asset.notFound)
     expect(document.documentElement.lang).toBe('en')
   })
@@ -298,7 +298,7 @@ describe('signup', () => {
         expect(router.state.location.pathname).toBe('/')
       })
       expect(babies).toEqual([{ name: '하늘', birth_date: '2026-05-01' }])
-      await screen.findByText(settingsFixture.instance_name)
+      await screen.findAllByText(settingsFixture.instance_name)
     })
 
     it('later_skips_baby', async () => {
@@ -313,7 +313,7 @@ describe('signup', () => {
         expect(router.state.location.pathname).toBe('/')
       })
       expect(babies).toEqual([])
-      await screen.findByText(settingsFixture.instance_name)
+      await screen.findAllByText(settingsFixture.instance_name)
     })
   })
 })
@@ -427,6 +427,6 @@ describe('invite', () => {
     expect(queryClient.getQueryData(meQueryKey)).toEqual(
       userFixture('guardian'),
     )
-    await screen.findByText(settingsFixture.instance_name)
+    await screen.findAllByText(settingsFixture.instance_name)
   })
 })

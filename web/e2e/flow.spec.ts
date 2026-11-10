@@ -36,16 +36,18 @@ test('first_signup_and_baby', async ({ page }) => {
   await page.getByRole('button', { name: '아기 추가' }).click()
 
   await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByText(INSTANCE_NAME)).toBeVisible()
+  // 데스크톱은 사이드바, 휴대폰은 머리글.
+  await expect(
+    page.getByText(INSTANCE_NAME).filter({ visible: true }),
+  ).toBeVisible()
   await expect(page.getByText('첫 사진을 올려 보세요')).toBeVisible()
   await expect(tiles(page)).toHaveCount(0)
 })
 
 test('upload_and_process', async ({ ownerPage: page }) => {
+  // 예전 업로드 주소는 홈으로. (+)·사이드바 버튼이 쓰는 셸의 파일 입력에 바로 선택.
   await page.goto('/upload')
-  // 업로더·아기 목록 준비 전 선택은 무시됨. 아기 1명이면 기본 태그.
-  await expect(page.getByRole('button', { name: '파일 선택' })).toBeEnabled()
-  await expect(page.getByRole('checkbox', { name: BABY_NAME })).toBeChecked()
+  await expect(page).toHaveURL(/\/$/)
   await page
     .locator('input[type=file]')
     .setInputFiles([FILES.jpg, FILES.heic, FILES.mp4])
@@ -55,17 +57,13 @@ test('upload_and_process', async ({ ownerPage: page }) => {
     timeout: 60_000,
   })
 
-  await page
-    .getByRole('navigation', { name: '주 메뉴' })
-    .getByRole('link', { name: '타임라인' })
-    .click()
   await expect(tiles(page)).toHaveCount(3)
   await expect(page.getByRole('img', { name: '처리 중' })).toHaveCount(0, {
     timeout: 60_000,
   })
   await expect(page.getByRole('img', { name: '처리 실패' })).toHaveCount(0)
   await expectThumbnailsLoaded(page, 3)
-  // 업로드 화면에서 고른 아기 태그.
+  // 아기 1명이면 자동 태그.
   for (const a of await listAssets(page)) expect(a.baby_ids).toHaveLength(1)
 })
 
@@ -87,7 +85,7 @@ test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {
   expect(scrollY).toBeGreaterThan(0)
 
   await target.click()
-  await expect(page).toHaveURL(/\/photo\//)
+  await expect(page).toHaveURL(/\/photos\//)
   const id = new URL(page.url()).pathname.split('/').at(-1) ?? ''
 
   await page.getByRole('button', { name: '정보' }).click()
@@ -106,7 +104,7 @@ test('viewer_edit_trash_restore', async ({ ownerPage: page }) => {
   // 다음 항목으로 교체 이동.
   await expect(page).not.toHaveURL(new RegExp(id))
   await page.getByRole('button', { name: '실행 취소' }).click()
-  await expect(page.getByText('복구함')).toBeVisible()
+  await expect(page.getByText('복구했어요')).toBeVisible()
 
   const restored = await getAsset(page, id)
   expect(restored.deleted_at).toBeNull()
@@ -127,8 +125,7 @@ test('duplicate_in_trash_restore', async ({ ownerPage: page }) => {
   if (!jpg) throw new Error('orient6.jpg 없음')
   await trashAsset(page, jpg.id)
 
-  await page.goto('/upload')
-  await expect(page.getByRole('button', { name: '파일 선택' })).toBeEnabled()
+  await page.goto('/')
   await page.locator('input[type=file]').setInputFiles(FILES.jpg)
   const row = page
     .getByRole('list', { name: '업로드 목록' })
@@ -136,7 +133,7 @@ test('duplicate_in_trash_restore', async ({ ownerPage: page }) => {
     .filter({ hasText: 'orient6.jpg' })
   await expect(row.getByText('휴지통에 있음')).toBeVisible({ timeout: 30_000 })
   await row.getByRole('button', { name: '복구' }).click()
-  await expect(row.getByText('복구함')).toBeVisible()
+  await expect(row.getByText('복구했어요')).toBeVisible()
   await expect(row.getByRole('link', { name: '보기' })).toBeVisible()
 
   expect((await getAsset(page, jpg.id)).deleted_at).toBeNull()
@@ -149,7 +146,7 @@ test('invite_family_cannot_upload', async ({
   locale,
   timezoneId,
 }) => {
-  await page.goto('/members')
+  await page.goto('/family')
   // 기본 역할 가족.
   await page.getByRole('button', { name: '초대 링크 만들기' }).click()
   const url = await page.getByLabel('초대 링크', { exact: true }).inputValue()
@@ -172,9 +169,11 @@ test('invite_family_cannot_upload', async ({
     await expect(tiles(guest)).toHaveCount(3)
     await expectThumbnailsLoaded(guest, 3)
     const nav = guest.getByRole('navigation', { name: '주 메뉴' })
-    await expect(nav.getByRole('link', { name: '타임라인' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: '업로드' })).toHaveCount(0)
-    await expect(nav.getByRole('link', { name: '휴지통' })).toHaveCount(0)
+    await expect(nav.getByRole('link', { name: '홈' })).toBeVisible()
+    await expect(nav.getByRole('link', { name: '가족' })).toBeVisible()
+    await expect(
+      guest.getByRole('button', { name: '사진 올리기' }),
+    ).toHaveCount(0)
 
     // 주소 직접 입력도 타임라인으로.
     await guest.goto('/upload')
@@ -221,28 +220,31 @@ test('security_headers_and_no_csp_violations', async ({ ownerPage: page }) => {
   // 사진·영상 뷰어(이미지·영상 요소 로드).
   for (const name of [/^영상,/, /^사진,/]) {
     await page.getByRole('link', { name }).first().click()
-    await expect(page).toHaveURL(/\/photo\//)
+    await expect(page).toHaveURL(/\/photos\//)
     await expect(page.locator('main img, main video').first()).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page).toHaveURL(/\/$/)
   }
   const nav = page.getByRole('navigation', { name: '주 메뉴' })
   for (const [name, heading] of [
-    ['업로드', '업로드'],
     ['아기', '아기'],
-    ['휴지통', '휴지통'],
-    ['멤버', '멤버'],
-    ['설정', '설정'],
+    ['가족', '멤버'],
+    ['나', '설정'],
   ] as const) {
     await nav.getByRole('link', { name }).click()
     await expect(
       page.getByRole('heading', { name: heading }).first(),
     ).toBeVisible()
   }
+  // 휴지통은 나 화면에서.
+  await page.getByRole('main').getByRole('link', { name: '휴지통' }).click()
+  await expect(
+    page.getByRole('heading', { name: '휴지통' }).first(),
+  ).toBeVisible()
   // 첫 화면 전체 로드(테마 스크립트·매니페스트 포함).
   await page.reload()
   await expect(
-    page.getByRole('heading', { name: '설정' }).first(),
+    page.getByRole('heading', { name: '휴지통' }).first(),
   ).toBeVisible()
 
   expect(violations).toEqual([])

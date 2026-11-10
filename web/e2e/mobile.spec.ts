@@ -19,15 +19,15 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
   await expect(page.getByText(BABY_NAME).first()).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
-  await page.goto('/trash')
+  await page.goto('/me/trash')
   await expect(page.getByRole('heading', { name: '휴지통' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
-  await page.goto('/members')
+  await page.goto('/family')
   await expect(page.getByText(OWNER.displayName).first()).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
-  await page.goto('/settings')
+  await page.goto('/me')
   await expect(page.getByRole('heading', { name: '설정' })).toBeVisible()
   await expect(page.getByLabel('시간대')).toBeVisible()
   await expectNoHorizontalOverflow(page)

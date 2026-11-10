@@ -1,4 +1,4 @@
-import { getRouteApi, Link } from '@tanstack/react-router'
+import { getRouteApi } from '@tanstack/react-router'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AssetSummary, Baby } from '@/api/types'
@@ -6,6 +6,7 @@ import { hasRole, useMe } from '@/auth/session'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
 import { useSettings } from '@/settings/useSettings'
+import { useUploadPicker } from '@/upload/picker'
 import { ageAt, formatAge } from './age'
 import { BabyFilter } from './BabyFilter'
 import {
@@ -117,6 +118,7 @@ export function TimelinePage() {
   const { baby } = route.useSearch()
   const timezone = useSettings()?.timezone
   const { user } = useMe()
+  const picker = useUploadPicker()
   const babies = useBabies().data ?? []
   const {
     items,
@@ -160,7 +162,7 @@ export function TimelinePage() {
 
   return (
     <>
-      <h1 className="sr-only">{t('nav.timeline')}</h1>
+      <h1 className="sr-only">{t('nav.home')}</h1>
       <BabyFilter babies={babies} selected={baby} />
       {loading && (
         <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
@@ -183,9 +185,7 @@ export function TimelinePage() {
               {baby ? t('timeline.emptyFiltered') : t('timeline.empty')}
             </p>
             {!baby && hasRole(user, 'guardian') && (
-              <Button asChild>
-                <Link to="/upload">{t('timeline.upload')}</Link>
-              </Button>
+              <Button onClick={picker.open}>{t('timeline.upload')}</Button>
             )}
           </div>
         )}

@@ -45,7 +45,7 @@ export function InvitePage() {
       <PlainLayout title={errorMessage(t, preview.error)}>
         <Link
           to="/login"
-          className="text-sm font-semibold text-primary underline"
+          className="text-sm font-semibold text-accent-ink underline"
         >
           {t('auth.toLogin')}
         </Link>

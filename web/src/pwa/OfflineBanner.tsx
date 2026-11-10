@@ -1,4 +1,4 @@
-import { WifiOffIcon } from 'lucide-react'
+import IconWifiOff from '~icons/material-symbols/wifi-off-rounded'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isNetworkDown, subscribeNetworkDown } from '@/api/client'
@@ -35,7 +35,7 @@ export function OfflineBanner() {
     <div role="status">
       {(!online || networkDown) && (
         <div className="flex items-center justify-center gap-2 bg-secondary px-4 py-1.5 text-[13px] text-secondary-foreground">
-          <WifiOffIcon className="size-4 shrink-0" aria-hidden />
+          <IconWifiOff className="size-4 shrink-0" aria-hidden />
           {t('offline.banner')}
         </div>
       )}

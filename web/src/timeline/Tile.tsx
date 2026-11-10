@@ -1,5 +1,7 @@
 import { Link } from '@tanstack/react-router'
-import { LoaderCircle, Play, TriangleAlert } from 'lucide-react'
+import IconPlay from '~icons/material-symbols/play-arrow-rounded'
+import IconProgress from '~icons/material-symbols/progress-activity-rounded'
+import IconWarning from '~icons/material-symbols/warning-outline-rounded'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AssetSummary } from '@/api/types'
@@ -70,7 +72,7 @@ export const Tile = memo(function Tile({
       )}
       {item.status === 'processing' && (
         <span className="absolute top-1 right-1 rounded-full bg-black/50 p-1 text-white">
-          <LoaderCircle
+          <IconProgress
             role="img"
             aria-label={t('timeline.processing')}
             className="size-4 animate-spin motion-reduce:animate-none"
@@ -78,7 +80,7 @@ export const Tile = memo(function Tile({
         </span>
       )}
       {item.status === 'failed' && (
-        <TriangleAlert
+        <IconWarning
           role="img"
           aria-label={t('timeline.failed')}
           className="absolute inset-0 m-auto size-6 text-muted-foreground"
@@ -86,7 +88,7 @@ export const Tile = memo(function Tile({
       )}
       {video && (
         <span className="absolute right-0 bottom-0 flex items-center bg-black/50 px-1 text-xs text-white tabular-nums">
-          {duration ?? <Play aria-hidden className="my-0.5 size-3.5" />}
+          {duration ?? <IconPlay aria-hidden className="my-0.5 size-3.5" />}
         </span>
       )}
     </>
@@ -109,7 +111,7 @@ export const Tile = memo(function Tile({
   }
   return (
     <Link
-      to="/photo/$id"
+      to="/photos/$id"
       params={{ id: item.id }}
       search={{ baby }}
       aria-label={label}

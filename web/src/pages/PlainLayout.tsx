@@ -14,7 +14,7 @@ export function PlainLayout({
   const { t } = useTranslation()
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center gap-6 px-4 py-12">
-      <p className="text-sm font-semibold text-primary">{t('app.name')}</p>
+      <p className="text-sm font-semibold text-accent-ink">{t('app.name')}</p>
       <div className="grid gap-1">
         <h1 className="text-xl font-semibold">{title}</h1>
         {description && (

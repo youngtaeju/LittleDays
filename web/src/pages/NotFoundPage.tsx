@@ -6,7 +6,7 @@ export function NotFoundPage() {
   const { t } = useTranslation()
   return (
     <PlainLayout title={t('notFound.title')}>
-      <Link to="/" className="text-sm font-semibold text-primary underline">
+      <Link to="/" className="text-sm font-semibold text-accent-ink underline">
         {t('notFound.home')}
       </Link>
     </PlainLayout>

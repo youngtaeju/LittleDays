@@ -82,6 +82,46 @@ describe('i18n', () => {
     expect(document.documentElement.lang).toBe('ko')
   })
 
+  // 스펙 §3.6. toast() 로 띄우는 완료 문구 전부.
+  it('toast_copy_is_haeyo', () => {
+    const toastKeys = [
+      'common.copied',
+      'viewer.avatarSet',
+      'viewer.trashed',
+      'viewer.restored',
+      'upload.restored',
+      'trash.restored',
+      'trash.permanentDone',
+      'trash.emptied_one',
+      'trash.emptied_other',
+      'members.roleChanged',
+      'members.suspended',
+      'members.unsuspended',
+      'members.inviteCreated',
+      'members.revoked',
+      'settings.profileSaved',
+      'settings.passwordChanged',
+      'settings.sessionRevoked',
+      'settings.instanceSaved',
+      'pwa.updateAvailable',
+    ]
+    const value = (key: string): unknown =>
+      key
+        .split('.')
+        .reduce<unknown>(
+          (cur, part) =>
+            typeof cur === 'object' && cur !== null
+              ? (cur as Record<string, unknown>)[part]
+              : undefined,
+          ko,
+        )
+    const notHaeyo = toastKeys.filter((k) => {
+      const v = value(k)
+      return typeof v !== 'string' || !v.endsWith('요')
+    })
+    expect(notHaeyo).toEqual([])
+  })
+
   it('ko_en_have_same_keys', () => {
     // 복수형 접미사(_one/_other)는 언어별 카테고리가 달라 기본 키로 합쳐 비교.
     const base = (keys: string[]) =>

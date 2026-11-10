@@ -49,10 +49,6 @@ const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
   'TrashPage',
 )
-const UploadPage = lazyRouteComponent(
-  () => import('@/upload/UploadPage'),
-  'UploadPage',
-)
 const ViewerPage = lazyRouteComponent(
   () => import('@/viewer/ViewerPage'),
   'ViewerPage',
@@ -81,6 +77,11 @@ function safeRedirect(v: unknown): string | undefined {
   } catch {
     return undefined
   }
+}
+
+// 홈·뷰어 공용. baby = 목록·이전/다음 필터.
+function babySearch(s: Record<string, unknown>): { baby?: string } {
+  return { baby: typeof s.baby === 'string' ? s.baby : undefined }
 }
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
@@ -134,7 +135,7 @@ const authedRoute = createRoute({
         search: location.href === '/' ? {} : { redirect: location.href },
       })
     }
-    // 셸 밖 화면(/photo/$id) 직접 진입 포함, 로그인 화면 공통 지점.
+    // 셸 밖 화면(/photos/$id) 직접 진입 포함, 로그인 화면 공통 지점.
     if (me) applyUserLocale(me.locale)
     return { me }
   },
@@ -167,17 +168,8 @@ const shellRoute = createRoute({
 const timelineRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/',
-  validateSearch: (s: Record<string, unknown>): { baby?: string } => ({
-    baby: typeof s.baby === 'string' ? s.baby : undefined,
-  }),
+  validateSearch: babySearch,
   component: TimelinePage,
-})
-
-const uploadRoute = createRoute({
-  getParentRoute: () => shellRoute,
-  path: '/upload',
-  beforeLoad: requireRole('guardian'),
-  component: UploadPage,
 })
 
 const babiesRoute = createRoute({
@@ -186,48 +178,74 @@ const babiesRoute = createRoute({
   component: BabiesPage,
 })
 
+// 모든 멤버. 초대·역할 변경은 화면에서 관리자만.
+const familyRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/family',
+  component: MembersPage,
+})
+
+const meRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/me',
+  component: SettingsPage,
+})
+
 const trashRoute = createRoute({
   getParentRoute: () => shellRoute,
-  path: '/trash',
+  path: '/me/trash',
   beforeLoad: requireRole('guardian'),
   component: TrashPage,
 })
 
-const membersRoute = createRoute({
-  getParentRoute: () => shellRoute,
-  path: '/members',
-  beforeLoad: requireRole('owner'),
-  component: MembersPage,
-})
-
-const settingsRoute = createRoute({
-  getParentRoute: () => shellRoute,
-  path: '/settings',
-  component: SettingsPage,
-})
-
-// 뷰어는 셸 없이 전체 화면. baby 는 이전/다음 목록의 필터.
+// 뷰어는 셸 없이 전체 화면.
 const photoRoute = createRoute({
   getParentRoute: () => authedRoute,
-  path: '/photo/$id',
-  validateSearch: (s: Record<string, unknown>): { baby?: string } => ({
-    baby: typeof s.baby === 'string' ? s.baby : undefined,
-  }),
+  path: '/photos/$id',
+  validateSearch: babySearch,
   component: ViewerPage,
 })
+
+// 예전 주소. 로그인 확인 전 새 주소로 교체 이동(기록에 남지 않음).
+const legacyPhotoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/photo/$id',
+  validateSearch: babySearch,
+  beforeLoad: ({ params, search }) => {
+    throw redirect({ to: '/photos/$id', params, search, replace: true })
+  },
+})
+
+// 경로 리터럴 유지(라우터 주소 타입 검사).
+function legacyRoute<P extends string>(
+  path: P,
+  to: '/' | '/family' | '/me' | '/me/trash',
+) {
+  return createRoute({
+    getParentRoute: () => rootRoute,
+    path,
+    beforeLoad: () => {
+      throw redirect({ to, replace: true })
+    },
+  })
+}
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
   signupRoute,
   inviteRoute,
+  legacyPhotoRoute,
+  legacyRoute('/members', '/family'),
+  legacyRoute('/settings', '/me'),
+  legacyRoute('/upload', '/'),
+  legacyRoute('/trash', '/me/trash'),
   authedRoute.addChildren([
     shellRoute.addChildren([
       timelineRoute,
-      uploadRoute,
       babiesRoute,
+      familyRoute,
+      meRoute,
       trashRoute,
-      membersRoute,
-      settingsRoute,
     ]),
     photoRoute,
   ]),

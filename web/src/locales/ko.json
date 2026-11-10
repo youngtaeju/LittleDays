@@ -10,17 +10,16 @@
     "close": "닫기",
     "loading": "불러오는 중…",
     "copy": "복사",
-    "copied": "복사함"
+    "copied": "복사했어요"
   },
   "nav": {
     "main": "주 메뉴",
-    "timeline": "타임라인",
-    "upload": "업로드",
+    "home": "홈",
     "babies": "아기",
-    "more": "더보기",
+    "family": "가족",
+    "me": "나",
+    "add": "사진 올리기",
     "trash": "휴지통",
-    "members": "멤버",
-    "settings": "설정",
     "logout": "로그아웃"
   },
   "roles": {
@@ -107,13 +106,13 @@
     "download": "원본 다운로드",
     "setAvatar": "대표 사진으로",
     "setAvatarTitle": "어느 아기의 대표 사진으로 할까요?",
-    "avatarSet": "{{name}} 대표 사진으로 지정함",
+    "avatarSet": "{{name}} 대표 사진으로 정했어요",
     "trash": "휴지통으로 이동",
     "trashTitle": "휴지통으로 이동할까요?",
     "trashDescription": "휴지통에서 다시 복구할 수 있어요.",
-    "trashed": "휴지통으로 이동함",
+    "trashed": "휴지통으로 옮겼어요",
     "undo": "실행 취소",
-    "restored": "복구함"
+    "restored": "복구했어요"
   },
   "notFound": {
     "title": "페이지를 찾을 수 없어요.",
@@ -131,10 +130,6 @@
     "upload": "사진 올리기"
   },
   "upload": {
-    "babies": "태그할 아기",
-    "babiesHint": "고른 아기가 이번에 올리는 사진과 영상에 태그돼요.",
-    "choose": "파일 선택",
-    "drop": "사진과 영상을 여기에 끌어 놓아도 돼요.",
     "queue": "업로드 목록",
     "inProgress": "진행 중 {{count}}개",
     "summary": "{{total}}개 중 {{done}}개 완료",
@@ -151,7 +146,7 @@
     },
     "view": "보기",
     "restore": "복구",
-    "restored": "복구함",
+    "restored": "복구했어요",
     "reupload": "다시 올리기"
   },
   "age": {
@@ -253,7 +248,7 @@
     "itemTitle": "휴지통 항목",
     "deletedAt": "삭제 시각 {{time}}",
     "restore": "복구",
-    "restored": "복구함",
+    "restored": "복구했어요",
     "permanent": "영구 삭제",
     "permanentTitle": "영구 삭제할까요?",
     "permanentConfirm": "영구 삭제하면 복구할 수 없어요.",
@@ -261,9 +256,9 @@
     "emptyConfirm_one": "{{count}}개를 영구 삭제해요. 복구할 수 없어요.",
     "emptyConfirm_other": "{{count}}개를 영구 삭제해요. 복구할 수 없어요.",
     "emptyConfirmMore": "{{count}}개 이상을 영구 삭제해요. 복구할 수 없어요.",
-    "permanentDone": "영구 삭제함",
-    "emptied_one": "{{count}}개 영구 삭제함",
-    "emptied_other": "{{count}}개 영구 삭제함"
+    "permanentDone": "영구 삭제했어요",
+    "emptied_one": "{{count}}개를 영구 삭제했어요",
+    "emptied_other": "{{count}}개를 영구 삭제했어요"
   },
   "members": {
     "usersTitle": "멤버",
@@ -276,9 +271,9 @@
     "unsuspend": "정지 해제",
     "suspendTitle": "{{name}} 계정을 정지할까요?",
     "suspendConfirm": "정지하면 이 멤버는 바로 로그아웃되고 다시 로그인할 수 없어요.",
-    "suspended": "정지함",
-    "unsuspended": "정지 해제함",
-    "roleChanged": "역할 바꿈",
+    "suspended": "정지했어요",
+    "unsuspended": "정지를 풀었어요",
+    "roleChanged": "역할을 바꿨어요",
     "invitesTitle": "초대",
     "createInvite": "초대 링크 만들기",
     "inviteRole": "역할",
@@ -288,7 +283,7 @@
       "72": "3일",
       "168": "7일"
     },
-    "inviteCreated": "초대 링크 만듦",
+    "inviteCreated": "초대 링크를 만들었어요",
     "inviteUrl": "초대 링크",
     "inviteUrlHint": "이 링크는 지금만 볼 수 있어요. 복사해서 전달해 주세요.",
     "copyFailed": "복사하지 못했어요. 링크를 직접 선택해서 복사해 주세요.",
@@ -302,7 +297,7 @@
     },
     "revoke": "회수",
     "revokeLabel": "{{role}} 초대 회수",
-    "revoked": "초대 링크 회수함"
+    "revoked": "초대 링크를 회수했어요"
   },
   "settings": {
     "title": "설정",
@@ -313,14 +308,14 @@
     "locale": "언어",
     "localeKo": "한국어",
     "localeEn": "English",
-    "profileSaved": "프로필 저장함",
+    "profileSaved": "프로필을 저장했어요",
     "password": "비밀번호 변경",
     "currentPassword": "현재 비밀번호",
     "newPassword": "새 비밀번호",
-    "newPasswordHint": "8자 이상.",
+    "newPasswordHint": "8자 이상으로 정해 주세요.",
     "currentPasswordWrong": "현재 비밀번호가 맞지 않아요.",
     "changePassword": "비밀번호 변경",
-    "passwordChanged": "비밀번호 바꿈. 다른 기기는 로그아웃함",
+    "passwordChanged": "비밀번호를 바꿨어요. 다른 기기는 로그아웃했어요",
     "appearance": "화면",
     "theme": "테마",
     "themeSystem": "시스템 설정 따르기",
@@ -331,7 +326,7 @@
     "lastSeen": "마지막 사용 {{time}}",
     "currentSession": "현재 기기",
     "revokeSession": "{{device}} 로그아웃",
-    "sessionRevoked": "기기 로그아웃함",
+    "sessionRevoked": "기기를 로그아웃했어요",
     "instance": "인스턴스",
     "instanceName": "인스턴스 이름",
     "timezone": "시간대",
@@ -340,8 +335,8 @@
     "avif": "AVIF 파생물도 만들기",
     "avifHint": "용량은 줄지만 처리 시간이 늘어요.",
     "trashRetention": "휴지통 보관 일수",
-    "trashRetentionHint": "0 은 자동으로 비우지 않아요. 최대 3650일.",
-    "instanceSaved": "인스턴스 설정 저장함"
+    "trashRetentionHint": "0 이면 자동으로 비우지 않아요. 최대 3650일까지 정할 수 있어요.",
+    "instanceSaved": "인스턴스 설정을 저장했어요"
   },
   "offline": {
     "banner": "연결이 없어 저장된 사진만 보여요",
