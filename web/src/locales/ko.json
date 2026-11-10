@@ -38,25 +38,46 @@
     "login": {
       "title": "로그인",
       "submit": "로그인",
+      "subtitle": "가족 계정으로 로그인해 주세요",
       "firstRun": "처음 설치했나요?",
-      "toSignup": "첫 계정 만들기"
-    },
-    "signup": {
-      "title": "첫 계정 만들기",
-      "description": "이 계정이 관리자가 돼요.",
-      "instanceName": "우리 집 이름",
-      "instanceNameHint": "모든 화면 위쪽에 보이는 이름이에요.",
-      "submit": "계정 만들기",
-      "babyTitle": "첫 아기 추가",
-      "babyDescription": "나중에 추가해도 돼요.",
-      "later": "나중에"
+      "toSignup": "첫 계정 만들기",
+      "forgot": "비밀번호를 잊었어요",
+      "forgotTitle": "비밀번호를 잊었어요",
+      "forgotAskAdmin": "관리자에게 비밀번호 재설정을 요청해 주세요.",
+      "forgotAdmin": "관리자 본인이라면 서버에서 아래 명령을 실행해 주세요."
     },
     "invite": {
       "title": "{{instance}}에 초대받았어요",
       "role": "역할: {{role}}",
       "description": "계정을 만들고 참여해 주세요.",
       "submit": "계정 만들기"
-    }
+    },
+    "wizard": {
+      "stepOf": "{{step}} / {{total}} 단계",
+      "back": "뒤로",
+      "next": "다음",
+      "instanceTitle": "우리 집 이름을 정해 주세요",
+      "instanceName": "우리 집 이름",
+      "instancePlaceholder": "하늘이네",
+      "instanceHint": "나중에 바꿀 수 있어요.",
+      "accountTitle": "내 정보를 알려 주세요",
+      "accountHint": "이 계정이 관리자가 돼요.",
+      "usernameHint": "3~32자, 영문 소문자·숫자·밑줄(_)만 쓸 수 있어요.",
+      "createAccount": "계정 만들기",
+      "passwordRuleLength": "8자 이상",
+      "passwordRulesMet": "비밀번호 규칙을 모두 충족했어요.",
+      "passwordRulesUnmet": "비밀번호 규칙을 아직 충족하지 못했어요.",
+      "babyTitle": "첫 아기를 추가해 볼까요?",
+      "babyName": "아기 이름",
+      "babyNameHint": "태명도 괜찮아요.",
+      "babyBirth": "생일 또는 출산 예정일",
+      "skip": "건너뛰기",
+      "doneTitle": "준비됐어요",
+      "doneBody": "{{instance}}에 오신 걸 환영해요.",
+      "babyLater": "아기는 나중에 추가할 수 있어요.",
+      "goHome": "홈으로 가기"
+    },
+    "language": "언어"
   },
   "babies": {
     "name": "이름",

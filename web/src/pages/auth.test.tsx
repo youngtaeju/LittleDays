@@ -236,21 +236,20 @@ describe('signup', () => {
     await screen.findByLabelText(ko.auth.username)
   })
 
-  describe('signup_two_steps', () => {
-    async function signUp(babyRequests: unknown[]) {
-      // 서버 기본 언어(ko)와 같아 언어 맞춤 요청 없음.
-      browserLanguage('ko-KR')
-      let body: unknown
-      mockFetch({
+  describe('wizard', () => {
+    const w = ko.auth.wizard
+
+    function wizardRoutes(babies: unknown[], signups: unknown[] = []) {
+      return {
         ...emptyFeedRoutes,
         'GET /api/auth/status': () => json(200, { signup_open: true }),
         'GET /api/settings': () => json(200, settingsFixture),
-        'POST /api/auth/signup': async (req) => {
-          body = await req.json()
+        'POST /api/auth/signup': async (req: Request) => {
+          signups.push(await req.json())
           return json(201, { user: userFixture('owner') })
         },
-        'POST /api/babies': async (req) => {
-          babyRequests.push(await req.json())
+        'POST /api/babies': async (req: Request) => {
+          babies.push(await req.json())
           return json(201, {
             id: '00000000-0000-4000-8000-0000000000b1',
             name: '하늘',
@@ -260,92 +259,244 @@ describe('signup', () => {
             sort_order: 0,
           })
         },
-      })
+      }
+    }
+
+    async function toStep2(app: ReturnType<typeof renderApp>) {
+      await app.user.type(
+        await screen.findByLabelText(w.instanceName),
+        '하늘이네',
+      )
+      await app.user.keyboard('{Enter}')
+      await screen.findByLabelText(ko.auth.displayName)
+    }
+
+    async function fillAccount(app: ReturnType<typeof renderApp>) {
+      await app.user.type(screen.getByLabelText(ko.auth.displayName), '엄마')
+      await app.user.type(screen.getByLabelText(ko.auth.username), 'owner')
+      await app.user.type(screen.getByLabelText(ko.auth.password), 'pw123456')
+    }
+
+    it('wizard_steps_and_back', async () => {
+      browserLanguage('ko-KR')
+      mockFetch(wizardRoutes([]))
       const app = renderApp('/signup')
       const { user } = app
-      await user.type(await screen.findByLabelText(ko.auth.username), 'owner')
+
+      expect(
+        await screen.findByRole('img', {
+          name: w.stepOf.replace('{{step}}', '1').replace('{{total}}', '4'),
+        }),
+      ).toBeInTheDocument()
+      // 첫 단계는 뒤로 없음.
+      expect(
+        screen.queryByRole('button', { name: w.back }),
+      ).not.toBeInTheDocument()
+
+      await toStep2(app)
+      expect(
+        screen.getByRole('img', {
+          name: w.stepOf.replace('{{step}}', '2').replace('{{total}}', '4'),
+        }),
+      ).toBeInTheDocument()
       await user.type(screen.getByLabelText(ko.auth.displayName), '엄마')
-      await user.type(screen.getByLabelText(ko.auth.password), 'pw123456')
-      await user.type(
-        screen.getByLabelText(ko.auth.signup.instanceName),
-        '우리 가족',
+
+      await user.click(screen.getByRole('button', { name: w.back }))
+      // 뒤로 가도 입력값 유지.
+      expect(screen.getByLabelText(w.instanceName)).toHaveValue('하늘이네')
+      await user.keyboard('{Enter}')
+      expect(await screen.findByLabelText(ko.auth.displayName)).toHaveValue(
+        '엄마',
       )
-      await user.click(
-        screen.getByRole('button', { name: ko.auth.signup.submit }),
-      )
-      await screen.findByRole('heading', { name: ko.auth.signup.babyTitle })
-      expect(screen.getByLabelText(ko.babies.name)).toHaveFocus()
-      expect(body).toEqual({
-        username: 'owner',
-        display_name: '엄마',
-        password: 'pw123456',
-        instance_name: '우리 가족',
-      })
+    })
+
+    it('signup_then_baby_calls', async () => {
+      browserLanguage('ko-KR')
+      const babies: unknown[] = []
+      const signups: unknown[] = []
+      mockFetch(wizardRoutes(babies, signups))
+      const app = renderApp('/signup')
+      const { user } = app
+      await toStep2(app)
+      await fillAccount(app)
+      expect(babies).toEqual([])
+      await user.click(screen.getByRole('button', { name: w.createAccount }))
+
+      await screen.findByLabelText(w.babyName)
+      expect(signups).toEqual([
+        {
+          username: 'owner',
+          display_name: '엄마',
+          password: 'pw123456',
+          instance_name: '하늘이네',
+        },
+      ])
       expect(app.queryClient.getQueryData(meQueryKey)).toEqual(
         userFixture('owner'),
       )
-      return app
-    }
+      // 가입 뒤에는 1~2단계로 돌아갈 수 없음.
+      expect(
+        screen.queryByRole('button', { name: w.back }),
+      ).not.toBeInTheDocument()
 
-    it('creates_baby', async () => {
-      const babies: unknown[] = []
-      const { router, user } = await signUp(babies)
+      await user.type(screen.getByLabelText(w.babyName), '하늘')
+      await user.type(screen.getByLabelText(w.babyBirth), '2026-05-01')
+      await user.keyboard('{Enter}')
 
-      await user.type(screen.getByLabelText(ko.babies.name), '하늘')
-      await user.type(screen.getByLabelText(ko.babies.birthDate), '2026-05-01')
-      await user.click(screen.getByRole('button', { name: ko.babies.add }))
-
-      await waitFor(() => {
-        expect(router.state.location.pathname).toBe('/')
-      })
+      await screen.findByRole('heading', { name: w.doneTitle })
       expect(babies).toEqual([{ name: '하늘', birth_date: '2026-05-01' }])
+      await user.click(screen.getByRole('button', { name: w.goHome }))
+      await waitFor(() => {
+        expect(app.router.state.location.pathname).toBe('/')
+      })
       await screen.findAllByText(settingsFixture.instance_name)
     })
 
-    it('later_skips_baby', async () => {
+    it('skip_baby', async () => {
+      browserLanguage('ko-KR')
       const babies: unknown[] = []
-      const { router, user } = await signUp(babies)
-
-      await user.click(
-        screen.getByRole('button', { name: ko.auth.signup.later }),
+      mockFetch(wizardRoutes(babies))
+      const app = renderApp('/signup')
+      await toStep2(app)
+      await fillAccount(app)
+      await app.user.click(
+        screen.getByRole('button', { name: w.createAccount }),
       )
-
-      await waitFor(() => {
-        expect(router.state.location.pathname).toBe('/')
-      })
+      await app.user.click(await screen.findByRole('button', { name: w.skip }))
+      await screen.findByRole('heading', { name: w.doneTitle })
       expect(babies).toEqual([])
-      await screen.findAllByText(settingsFixture.instance_name)
+      expect(screen.queryByText(w.babyLater)).not.toBeInTheDocument()
+    })
+
+    it('baby_failure_still_completes', async () => {
+      browserLanguage('ko-KR')
+      mockFetch({
+        ...wizardRoutes([]),
+        'POST /api/babies': () => apiError(400, 'babies.nameInvalid'),
+      })
+      const app = renderApp('/signup')
+      await toStep2(app)
+      await fillAccount(app)
+      await app.user.click(
+        screen.getByRole('button', { name: w.createAccount }),
+      )
+      await app.user.type(await screen.findByLabelText(w.babyName), '하늘')
+      await app.user.type(screen.getByLabelText(w.babyBirth), '2026-05-01')
+      await app.user.keyboard('{Enter}')
+      await screen.findByRole('heading', { name: w.doneTitle })
+      expect(screen.getByText(w.babyLater)).toBeInTheDocument()
+    })
+
+    it('signup_error_returns_to_field', async () => {
+      browserLanguage('ko-KR')
+      mockFetch({
+        ...wizardRoutes([]),
+        'POST /api/auth/signup': () => apiError(409, 'auth.usernameTaken'),
+      })
+      const app = renderApp('/signup')
+      await toStep2(app)
+      await fillAccount(app)
+      await app.user.click(
+        screen.getByRole('button', { name: w.createAccount }),
+      )
+      const username = screen.getByLabelText(ko.auth.username)
+      expect(
+        await screen.findByText(ko.errors.auth.usernameTaken),
+      ).toBeInTheDocument()
+      expect(username).toHaveFocus()
+      expect(username).toBeInvalid()
+      // 입력값 유지.
+      expect(screen.getByLabelText(ko.auth.displayName)).toHaveValue('엄마')
+    })
+
+    it('signup_instance_error_returns_to_step1', async () => {
+      browserLanguage('ko-KR')
+      mockFetch({
+        ...wizardRoutes([]),
+        'POST /api/auth/signup': () =>
+          apiError(400, 'settings.instanceNameInvalid'),
+      })
+      const app = renderApp('/signup')
+      await toStep2(app)
+      await fillAccount(app)
+      await app.user.click(
+        screen.getByRole('button', { name: w.createAccount }),
+      )
+      expect(
+        await screen.findByText(ko.errors.settings.instanceNameInvalid),
+      ).toBeInTheDocument()
+      expect(screen.getByLabelText(w.instanceName)).toHaveFocus()
+    })
+
+    it('password_rules_live', async () => {
+      browserLanguage('ko-KR')
+      mockFetch(wizardRoutes([]))
+      const app = renderApp('/signup')
+      await toStep2(app)
+      const rule = screen.getByText(w.passwordRuleLength)
+      expect(rule.closest('li')).toHaveAttribute('data-met', 'false')
+      await app.user.type(screen.getByLabelText(ko.auth.password), 'pw12345')
+      expect(rule.closest('li')).toHaveAttribute('data-met', 'false')
+      await app.user.type(screen.getByLabelText(ko.auth.password), '6')
+      expect(rule.closest('li')).toHaveAttribute('data-met', 'true')
+      expect(screen.getByRole('status')).toHaveTextContent(w.passwordRulesMet)
+    })
+
+    it('signup_applies_selected_language', async () => {
+      browserLanguage('ko-KR')
+      let patch: unknown
+      mockFetch({
+        ...wizardRoutes([]),
+        'PATCH /api/users/me': async (req) => {
+          patch = await req.json()
+          return json(200, { user: { ...userFixture('owner'), locale: 'en' } })
+        },
+      })
+      const app = renderApp('/signup')
+      const { user } = app
+      await user.click(await screen.findByRole('button', { name: 'English' }))
+      await user.type(
+        await screen.findByLabelText(en.auth.wizard.instanceName),
+        'Home',
+      )
+      await user.keyboard('{Enter}')
+      await user.type(await screen.findByLabelText(en.auth.displayName), 'Mom')
+      await user.type(screen.getByLabelText(en.auth.username), 'owner')
+      await user.type(screen.getByLabelText(en.auth.password), 'pw123456')
+      await user.click(
+        screen.getByRole('button', { name: en.auth.wizard.createAccount }),
+      )
+      await screen.findByLabelText(en.auth.wizard.babyName)
+      expect(patch).toEqual({ locale: 'en' })
+      expect(document.documentElement.lang).toBe('en')
     })
   })
 })
 
-describe('signup_locale', () => {
-  it('signup_applies_browser_locale', async () => {
-    browserLanguage('en-US')
-    let patch: unknown
-    mockFetch({
-      'GET /api/auth/status': () => json(200, { signup_open: true }),
-      'POST /api/auth/signup': () => json(201, { user: userFixture('owner') }),
-      'PATCH /api/users/me': async (req) => {
-        patch = await req.json()
-        return json(200, { user: { ...userFixture('owner'), locale: 'en' } })
-      },
-    })
-    const { user, queryClient } = renderApp('/signup')
-    await user.type(await screen.findByLabelText(ko.auth.username), 'owner')
-    await user.type(screen.getByLabelText(ko.auth.displayName), 'Mom')
-    await user.type(screen.getByLabelText(ko.auth.password), 'pw123456')
-    await user.type(screen.getByLabelText(ko.auth.signup.instanceName), 'Home')
+describe('forgot_password', () => {
+  it('forgot_password_sheet', async () => {
+    mockFetch(authRoutes({ me: null }))
+    const { user } = renderApp('/login')
     await user.click(
-      screen.getByRole('button', { name: ko.auth.signup.submit }),
+      await screen.findByRole('button', { name: ko.auth.login.forgot }),
     )
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent(ko.auth.login.forgotAskAdmin)
+    expect(dialog).toHaveTextContent(
+      'docker compose exec app /app/littledays reset-password <아이디>',
+    )
+    expect(
+      screen.getByRole('button', { name: ko.common.copy }),
+    ).toBeInTheDocument()
+  })
 
-    await screen.findByRole('heading', { name: en.auth.signup.babyTitle })
-    expect(patch).toEqual({ locale: 'en' })
-    expect(document.documentElement.lang).toBe('en')
-    expect(queryClient.getQueryData(meQueryKey)).toMatchObject({
-      locale: 'en',
-    })
+  it('login_shows_title_and_subtitle', async () => {
+    mockFetch(authRoutes({ me: null }))
+    renderApp('/login')
+    expect(
+      await screen.findByRole('heading', { name: 'LittleDays' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(ko.auth.login.subtitle)).toBeInTheDocument()
   })
 })
 

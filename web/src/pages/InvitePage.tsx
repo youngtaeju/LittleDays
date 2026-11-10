@@ -6,7 +6,7 @@ import { setSignedIn } from '@/auth/session'
 import { Field, FormError, formText } from '@/components/Field'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
-import { PlainLayout } from './PlainLayout'
+import { AuthLayout } from './AuthLayout'
 
 export function InvitePage() {
   const { t } = useTranslation()
@@ -38,24 +38,24 @@ export function InvitePage() {
     },
   })
 
-  if (preview.isPending) return <PlainLayout title={t('common.loading')} />
+  if (preview.isPending) return <AuthLayout title={t('common.loading')} />
   if (preview.isError) {
     // 만료·사용됨·회수됨(410), 없음(404) 모두 서버 키 문구.
     return (
-      <PlainLayout title={errorMessage(t, preview.error)}>
+      <AuthLayout title={errorMessage(t, preview.error)}>
         <Link
           to="/login"
           className="text-sm font-semibold text-accent-ink underline"
         >
           {t('auth.toLogin')}
         </Link>
-      </PlainLayout>
+      </AuthLayout>
     )
   }
 
   const { instance_name, role } = preview.data
   return (
-    <PlainLayout
+    <AuthLayout
       title={t('auth.invite.title', { instance: instance_name })}
       description={
         <>
@@ -96,6 +96,6 @@ export function InvitePage() {
           {t('auth.invite.submit')}
         </Button>
       </form>
-    </PlainLayout>
+    </AuthLayout>
   )
 }

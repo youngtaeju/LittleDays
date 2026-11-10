@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { PlainLayout } from './PlainLayout'
+import { AuthLayout } from './AuthLayout'
 
 // 지연 청크 404(배포 후 구 해시) 등. 전체 새로고침으로 새 index.html 확보.
 export function RouteError() {
   const { t } = useTranslation()
   return (
-    <PlainLayout
+    <AuthLayout
       title={t('routeError.title')}
       description={t('routeError.hint')}
     >
@@ -17,7 +17,7 @@ export function RouteError() {
       >
         {t('routeError.reload')}
       </Button>
-    </PlainLayout>
+    </AuthLayout>
   )
 }
 

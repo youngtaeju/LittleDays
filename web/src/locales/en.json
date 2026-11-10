@@ -38,25 +38,46 @@
     "login": {
       "title": "Sign in",
       "submit": "Sign in",
+      "subtitle": "Sign in with your family account",
       "firstRun": "Just installed?",
-      "toSignup": "Create the first account"
-    },
-    "signup": {
-      "title": "Create the first account",
-      "description": "This account becomes the owner.",
-      "instanceName": "Home name",
-      "instanceNameHint": "Shown at the top of every page.",
-      "submit": "Create account",
-      "babyTitle": "Add your first baby",
-      "babyDescription": "You can also do this later.",
-      "later": "Later"
+      "toSignup": "Create the first account",
+      "forgot": "I forgot my password",
+      "forgotTitle": "I forgot my password",
+      "forgotAskAdmin": "Ask an administrator to reset your password.",
+      "forgotAdmin": "If you are the administrator, run this command on the server."
     },
     "invite": {
       "title": "You're invited to {{instance}}",
       "role": "Role: {{role}}",
       "description": "Create an account to join.",
       "submit": "Create account"
-    }
+    },
+    "wizard": {
+      "stepOf": "Step {{step}} of {{total}}",
+      "back": "Back",
+      "next": "Next",
+      "instanceTitle": "Name your home",
+      "instanceName": "Home name",
+      "instancePlaceholder": "The Kim family",
+      "instanceHint": "You can change it later.",
+      "accountTitle": "Tell us about you",
+      "accountHint": "This account becomes the administrator.",
+      "usernameHint": "3 to 32 characters: lowercase letters, digits and underscores.",
+      "createAccount": "Create account",
+      "passwordRuleLength": "At least 8 characters",
+      "passwordRulesMet": "All password rules are met.",
+      "passwordRulesUnmet": "Password rules are not met yet.",
+      "babyTitle": "Add your first baby?",
+      "babyName": "Baby's name",
+      "babyNameHint": "A nickname is fine.",
+      "babyBirth": "Birthday or due date",
+      "skip": "Skip",
+      "doneTitle": "You're all set",
+      "doneBody": "Welcome to {{instance}}.",
+      "babyLater": "You can add a baby later.",
+      "goHome": "Go home"
+    },
+    "language": "Language"
   },
   "babies": {
     "name": "Name",
