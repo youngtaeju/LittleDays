@@ -1,6 +1,5 @@
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Baby, Role } from '@/api/types'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
@@ -14,6 +13,11 @@ import {
 import { renderApp } from '@/test/router'
 import { uploadStore } from './useUploadStore'
 
+const retry = vi.fn()
+vi.mock('./uploader', () => ({
+  getUploader: () => ({ add: vi.fn(), retry }),
+}))
+
 beforeEach(() => {
   initI18n('ko')
 })
@@ -22,34 +26,29 @@ afterEach(() => {
   // 구독 컴포넌트 해제 후 초기화. 마운트 중 초기화는 act 밖 갱신.
   cleanup()
   uploadStore.reset()
+  retry.mockReset()
   vi.restoreAllMocks()
 })
 
 type Routes = Parameters<typeof mockFetch>[0]
 
-function renderUpload(
-  opts: { role?: Role; babies?: Baby[]; extra?: Routes; path?: string } = {},
-) {
+// 큐는 셸 위쪽 패널. 홈에서 확인.
+function renderUpload(opts: { extra?: Routes } = {}) {
   mockFetch({
     ...emptyTimelineRoutes,
-    'GET /api/auth/me': () =>
-      json(200, { user: userFixture(opts.role ?? 'guardian') }),
+    'GET /api/auth/me': () => json(200, { user: userFixture('guardian') }),
     'GET /api/settings': () => json(200, settingsFixture),
-    'GET /api/babies': () => json(200, opts.babies ?? [babyFixture()]),
+    'GET /api/babies': () => json(200, [babyFixture()]),
     ...opts.extra,
   })
-  return renderApp(opts.path ?? '/upload')
+  return renderApp('/')
 }
 
-// 파일 선택 버튼 활성 = Uppy 지연 로딩 완료.
 async function waitReady() {
-  const button = await screen.findByRole('button', { name: ko.upload.choose })
-  await waitFor(() => {
-    expect(button).toBeEnabled()
-  })
+  await screen.findByRole('list', { name: ko.upload.queue })
 }
 
-describe('UploadPage', () => {
+describe('UploadQueue', () => {
   it('duplicate_in_trash_offers_restore', async () => {
     uploadStore.put({
       id: 'f1',
@@ -149,7 +148,7 @@ describe('UploadPage', () => {
     expect(screen.getByText(ko.upload.status.duplicate)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: ko.upload.view })).toHaveAttribute(
       'href',
-      '/photo/a1',
+      '/photos/a1',
     )
   })
 
@@ -167,59 +166,13 @@ describe('UploadPage', () => {
     ).toHaveAttribute('aria-valuenow', '42')
   })
 
-  it('single_baby_preselected', async () => {
-    renderUpload({ babies: [babyFixture({ name: '하늘' })] })
+  it('retry_loads_uploader', async () => {
+    uploadStore.put({ id: 'f1', name: 'a.jpg', status: 'error', progress: 0 })
+    const { user } = renderUpload()
     await waitReady()
-    expect(screen.getByRole('checkbox', { name: '하늘' })).toBeChecked()
-    cleanup()
-
-    renderUpload({
-      babies: [
-        babyFixture({ name: '하늘' }),
-        babyFixture({
-          id: '00000000-0000-4000-8000-0000000000b2',
-          name: '바다',
-        }),
-      ],
-    })
-    await waitReady()
-    expect(screen.getByRole('checkbox', { name: '하늘' })).not.toBeChecked()
-    expect(screen.getByRole('checkbox', { name: '바다' })).not.toBeChecked()
-  })
-
-  it('stray_drop_does_not_leave_page', async () => {
-    const drop = () => {
-      const e = new Event('drop', { bubbles: true, cancelable: true })
-      document.body.dispatchEvent(e)
-      return e.defaultPrevented
-    }
-    renderUpload()
-    await waitReady()
-    expect(drop()).toBe(true)
-    cleanup()
-    expect(drop()).toBe(false)
-  })
-
-  it('family_cannot_open_upload', async () => {
-    const { router } = renderUpload({ role: 'family' })
+    await user.click(screen.getByRole('button', { name: ko.common.retry }))
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/')
+      expect(retry).toHaveBeenCalledWith('f1')
     })
-  })
-
-  it('nav_badge_counts_active_uploads', async () => {
-    uploadStore.put({
-      id: 'f1',
-      name: 'a.jpg',
-      status: 'uploading',
-      progress: 0,
-    })
-    uploadStore.put({ id: 'f2', name: 'b.jpg', status: 'done', progress: 1 })
-    renderUpload({ path: '/' })
-    await screen.findByText(settingsFixture.instance_name)
-    const label = `${ko.nav.upload}, ${ko.upload.inProgress.replace('{{count}}', '1')}`
-    expect(screen.getAllByRole('link', { name: label }).length).toBeGreaterThan(
-      0,
-    )
   })
 })

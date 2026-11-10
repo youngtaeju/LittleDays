@@ -40,7 +40,7 @@ import { neighbors } from './neighbors'
 import { applyAsset, useAsset } from './useAsset'
 import { useSwipe } from './useSwipe'
 
-const route = getRouteApi('/authed/photo/$id')
+const route = getRouteApi('/authed/photos/$id')
 
 const FADE_MS = 150
 
@@ -157,7 +157,7 @@ export function ViewerPage() {
   function go(target: string | undefined) {
     if (!target) return
     void navigate({
-      to: '/photo/$id',
+      to: '/photos/$id',
       params: { id: target },
       search: { baby },
       replace: true,

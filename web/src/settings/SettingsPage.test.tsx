@@ -49,7 +49,7 @@ function renderSettings(
     ...emptyTimelineRoutes,
     ...extra,
   })
-  return renderApp('/settings')
+  return renderApp('/me')
 }
 
 describe('SettingsPage', () => {
@@ -65,7 +65,7 @@ describe('SettingsPage', () => {
     expect(
       await screen.findByText('현재 비밀번호가 맞지 않아요.'),
     ).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/settings')
+    expect(router.state.location.pathname).toBe('/me')
   })
 
   it('password_change_refetches_sessions', async () => {

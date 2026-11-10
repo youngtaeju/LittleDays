@@ -1,4 +1,4 @@
-import { act, cleanup, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import i18next from 'i18next'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AssetPage, Baby, Role } from '@/api/types'
@@ -392,14 +392,24 @@ describe('TimelinePage', () => {
 
     expect(await screen.findByText(ko.timeline.empty)).toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: ko.timeline.upload }),
+      within(screen.getByRole('main')).queryByRole('button', {
+        name: ko.timeline.upload,
+      }),
     ).not.toBeInTheDocument()
     cleanup()
 
-    renderTimeline({ role: 'guardian', assets: () => page([]) })
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click')
+    const { user } = renderTimeline({
+      role: 'guardian',
+      assets: () => page([]),
+    })
     expect(await screen.findByText(ko.timeline.empty)).toBeInTheDocument()
-    expect(
-      await screen.findByRole('link', { name: ko.timeline.upload }),
-    ).toHaveAttribute('href', '/upload')
+    await user.click(
+      within(screen.getByRole('main')).getByRole('button', {
+        name: ko.timeline.upload,
+      }),
+    )
+    // 셸의 사진 선택창.
+    expect(click.mock.contexts[0]).toHaveAttribute('type', 'file')
   })
 })

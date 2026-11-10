@@ -64,7 +64,7 @@ function renderMembers(
     ...emptyTimelineRoutes,
     ...extra,
   })
-  return renderApp('/members')
+  return renderApp('/family')
 }
 
 describe('MembersPage', () => {
@@ -176,10 +176,17 @@ describe('MembersPage', () => {
     expect(names[0]).toContain('1월 4일')
   })
 
-  it('non_owner_redirected', async () => {
-    const { router } = renderMembers({}, { role: 'guardian' })
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/')
-    })
+  it('non_owner_sees_list_only', async () => {
+    renderMembers({}, { role: 'guardian', users: [OWNER, DAD] })
+    expect(await screen.findByText('아빠')).toBeInTheDocument()
+    // 역할 변경·정지·초대·타인 이메일 없음.
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '정지' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: '초대' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('a@x.test')).not.toBeInTheDocument()
   })
 })

@@ -9,7 +9,12 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { applyAsset } from '@/viewer/useAsset'
-import { isActive, uploadStore, type UploadItem } from './useUploadStore'
+import {
+  isActive,
+  uploadStore,
+  useUploadStore,
+  type UploadItem,
+} from './useUploadStore'
 
 function statusText(
   t: ReturnType<typeof useTranslation>['t'],
@@ -32,7 +37,7 @@ function ViewLink({ assetId, nameId }: { assetId: string; nameId: string }) {
   const { t } = useTranslation()
   return (
     <Link
-      to="/photo/$id"
+      to="/photos/$id"
       params={{ id: assetId }}
       aria-describedby={nameId}
       className={buttonVariants({ variant: 'outline', size: 'sm' })}
@@ -193,6 +198,29 @@ export function UploadQueue({
           <Row key={item.id} item={item} retry={retry} />
         ))}
       </ul>
+    </div>
+  )
+}
+
+// 셸 위쪽 임시 업로드 목록. 항목 있을 때만. 다시 시도는 업로더 지연 로딩 후 실행.
+export function UploadQueuePanel() {
+  const { t } = useTranslation()
+  const qc = useQueryClient()
+  const items = useUploadStore()
+  if (items.length === 0) return null
+  const retry = (id: string) => {
+    import('./uploader').then(
+      (m) => {
+        m.getUploader(qc).retry(id)
+      },
+      () => {
+        toast.error(t('errors.unknown'))
+      },
+    )
+  }
+  return (
+    <div className="mb-4 max-h-64 overflow-y-auto rounded-lg border border-border p-3">
+      <UploadQueue items={items} retry={retry} />
     </div>
   )
 }

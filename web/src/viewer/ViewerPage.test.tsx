@@ -74,7 +74,7 @@ async function openInfo() {
 describe('ViewerPage', () => {
   it('shows_avif_source_only_when_listed', async () => {
     renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       list: () => [
         assetSummaryFixture('a', {
@@ -101,7 +101,7 @@ describe('ViewerPage', () => {
     cleanup()
 
     renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       assets: {
         a: assetFixture('a', {
@@ -119,7 +119,7 @@ describe('ViewerPage', () => {
   })
 
   it('swipe_and_keys_navigate', async () => {
-    const { router, user } = renderViewer({ path: '/photo/b' })
+    const { router, user } = renderViewer({ path: '/photos/b' })
     const stage = await screen.findByRole('main')
     await waitFor(() => {
       expect(
@@ -129,30 +129,30 @@ describe('ViewerPage', () => {
 
     await user.keyboard('{ArrowRight}')
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/c')
+      expect(router.state.location.pathname).toBe('/photos/c')
     })
 
     await user.keyboard('{ArrowLeft}')
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/b')
+      expect(router.state.location.pathname).toBe('/photos/b')
     })
     await user.keyboard('{ArrowLeft}')
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/a')
+      expect(router.state.location.pathname).toBe('/photos/a')
     })
 
     // 왼쪽으로 밀기 → 다음.
     fireEvent.pointerDown(stage, { pointerId: 1, clientX: 300, clientY: 200 })
     fireEvent.pointerUp(stage, { pointerId: 1, clientX: 200, clientY: 210 })
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/b')
+      expect(router.state.location.pathname).toBe('/photos/b')
     })
 
     // 오른쪽으로 밀기 → 이전.
     fireEvent.pointerDown(stage, { pointerId: 1, clientX: 100, clientY: 200 })
     fireEvent.pointerUp(stage, { pointerId: 1, clientX: 200, clientY: 200 })
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/a')
+      expect(router.state.location.pathname).toBe('/photos/a')
     })
 
     // 60px 미만 또는 세로가 더 큰 이동은 무시.
@@ -161,13 +161,13 @@ describe('ViewerPage', () => {
     fireEvent.pointerDown(stage, { pointerId: 1, clientX: 300, clientY: 100 })
     fireEvent.pointerUp(stage, { pointerId: 1, clientX: 200, clientY: 300 })
     await new Promise((r) => setTimeout(r, 50))
-    expect(router.state.location.pathname).toBe('/photo/a')
+    expect(router.state.location.pathname).toBe('/photos/a')
   })
 
   it('loads_next_page_at_list_end', async () => {
     const cursors: (string | null)[] = []
     const { router, user } = renderViewer({
-      path: '/photo/b',
+      path: '/photos/b',
       extra: {
         'GET /api/assets': (req) => {
           const cursor = new URL(req.url).searchParams.get('cursor')
@@ -190,13 +190,13 @@ describe('ViewerPage', () => {
     })
     await user.keyboard('{ArrowRight}')
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/c')
+      expect(router.state.location.pathname).toBe('/photos/c')
     })
     expect(cursors).toEqual([null, 'c1'])
   })
 
   it('family_sees_no_edit_controls', async () => {
-    renderViewer({ path: '/photo/a', ids: ['a'], role: 'family' })
+    renderViewer({ path: '/photos/a', ids: ['a'], role: 'family' })
     const info = await openInfo()
 
     expect(
@@ -224,7 +224,7 @@ describe('ViewerPage', () => {
 
   it('shows_taken_at_in_instance_zone_with_source', async () => {
     renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       assets: {
         a: assetFixture('a', {
@@ -249,7 +249,7 @@ describe('ViewerPage', () => {
   it('trash_then_undo', async () => {
     const calls: string[] = []
     const { router, user } = renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a', 'b'],
       extra: {
         'DELETE /api/assets/a': () => {
@@ -275,7 +275,7 @@ describe('ViewerPage', () => {
     )
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/b')
+      expect(router.state.location.pathname).toBe('/photos/b')
     })
     expect(await screen.findByText(ko.viewer.trashed)).toBeInTheDocument()
     // sonner 의 pointerdown 이 jsdom 미구현 setPointerCapture 호출. click 만 발생.
@@ -290,7 +290,7 @@ describe('ViewerPage', () => {
   it('caption_edit_sends_patch', async () => {
     let body: unknown
     const { user } = renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       extra: {
         'PATCH /api/assets/a': async (req) => {
@@ -319,7 +319,7 @@ describe('ViewerPage', () => {
   it('taken_at_edit_sends_utc', async () => {
     let body: unknown
     const { user } = renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       assets: { a: assetFixture('a', { taken_at: '2024-05-10T03:00:00Z' }) },
       extra: {
@@ -356,7 +356,7 @@ describe('ViewerPage', () => {
     })
     let body: unknown
     const { user } = renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       babies: [first, second],
       assets: { a: assetFixture('a', { baby_ids: [second.id] }) },
@@ -393,7 +393,7 @@ describe('ViewerPage', () => {
     })
     let retried = 0
     const { user } = renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       list: () => [
         assetSummaryFixture('a', { status: state.status, derivatives: {} }),
@@ -419,7 +419,7 @@ describe('ViewerPage', () => {
 
   it('family_sees_no_retry', async () => {
     renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       role: 'family',
       assets: {
@@ -446,7 +446,7 @@ describe('ViewerPage', () => {
     })
     let body: unknown
     const { user } = renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       babies: [baby],
       extra: {
@@ -491,7 +491,7 @@ describe('ViewerPage', () => {
     if (!tile) throw new Error('타일 없음')
     await user.click(tile)
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/b')
+      expect(router.state.location.pathname).toBe('/photos/b')
     })
     await screen.findByRole('button', { name: ko.viewer.info })
     scrollTo.mockClear()
@@ -516,7 +516,7 @@ describe('ViewerPage', () => {
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(360)
     const video = { kind: 'video' as const, duration_ms: 65_000 }
     const { router, user } = renderViewer({
-      path: '/photo/b',
+      path: '/photos/b',
       list: () => ['a', 'b', 'c'].map((id) => assetSummaryFixture(id, video)),
       assets: { b: assetFixture('b', video) },
     })
@@ -529,14 +529,14 @@ describe('ViewerPage', () => {
     ).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: ko.viewer.next }))
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/photo/c')
+      expect(router.state.location.pathname).toBe('/photos/c')
     })
   })
 
   it('caption_edit_keeps_list_taken_at_edit_refetches', async () => {
     let listCalls = 0
     const { user } = renderViewer({
-      path: '/photo/a',
+      path: '/photos/a',
       ids: ['a'],
       extra: {
         'GET /api/assets': () => {
@@ -584,7 +584,7 @@ describe('ViewerPage', () => {
   })
 
   it('escape_closes_to_timeline_on_direct_entry', async () => {
-    const { router, user } = renderViewer({ path: '/photo/b?baby=x' })
+    const { router, user } = renderViewer({ path: '/photos/b?baby=x' })
     await screen.findByRole('button', { name: ko.viewer.info })
 
     await user.keyboard('{Escape}')

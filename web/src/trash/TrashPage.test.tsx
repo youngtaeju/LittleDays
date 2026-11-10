@@ -42,7 +42,7 @@ function renderTrash(
     ...emptyTimelineRoutes,
     ...extra,
   })
-  return renderApp('/trash')
+  return renderApp('/me/trash')
 }
 
 describe('TrashPage', () => {
@@ -77,13 +77,13 @@ describe('TrashPage', () => {
         return json(200, assetFixture(ID))
       },
     })
-    await user.click(await screen.findByRole('button', { name: /^사진/ }))
+    await user.click(await screen.findByRole('button', { name: /^사진,/ }))
     const sheet = await screen.findByRole('dialog')
     expect(within(sheet).getByText(/삭제 시각/)).toBeInTheDocument()
     await user.click(within(sheet).getByRole('button', { name: '복구' }))
 
     await waitFor(() => {
-      expect(screen.queryByRole('button', { name: /^사진/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /^사진,/ })).toBeNull()
     })
     expect(posts).toEqual([ID])
     expect(await screen.findByText('휴지통이 비어 있어요.')).toBeInTheDocument()
@@ -98,7 +98,7 @@ describe('TrashPage', () => {
       },
       'GET /api/babies': () => json(200, []),
     })
-    await user.click(await screen.findByRole('button', { name: /^사진/ }))
+    await user.click(await screen.findByRole('button', { name: /^사진,/ }))
     const sheet = await screen.findByRole('dialog')
     await user.click(within(sheet).getByRole('button', { name: '영구 삭제' }))
 

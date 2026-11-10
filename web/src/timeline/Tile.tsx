@@ -111,7 +111,7 @@ export const Tile = memo(function Tile({
   }
   return (
     <Link
-      to="/photo/$id"
+      to="/photos/$id"
       params={{ id: item.id }}
       search={{ baby }}
       aria-label={label}

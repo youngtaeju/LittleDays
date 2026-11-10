@@ -72,7 +72,7 @@ describe('OfflineBanner', () => {
 
     me = () => json(200, { user: userFixture('guardian') })
     await user.click(retry)
-    await screen.findByText(settingsFixture.instance_name)
+    await screen.findAllByText(settingsFixture.instance_name)
     expect(screen.queryByText(ko.offline.screen)).not.toBeInTheDocument()
   })
 
@@ -97,7 +97,7 @@ describe('OfflineBanner', () => {
     expect(await screen.findByText(ko.offline.banner)).toBeInTheDocument()
     expect(screen.queryByText(ko.offline.screen)).not.toBeInTheDocument()
     expect(
-      screen.getAllByRole('link', { name: ko.nav.timeline }).length,
+      screen.getAllByRole('link', { name: ko.nav.home }).length,
     ).toBeGreaterThan(0)
   })
 })

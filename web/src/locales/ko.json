@@ -14,13 +14,12 @@
   },
   "nav": {
     "main": "주 메뉴",
-    "timeline": "타임라인",
-    "upload": "업로드",
+    "home": "홈",
     "babies": "아기",
-    "more": "더보기",
+    "family": "가족",
+    "me": "나",
+    "add": "사진 올리기",
     "trash": "휴지통",
-    "members": "멤버",
-    "settings": "설정",
     "logout": "로그아웃"
   },
   "roles": {
@@ -131,10 +130,6 @@
     "upload": "사진 올리기"
   },
   "upload": {
-    "babies": "태그할 아기",
-    "babiesHint": "고른 아기가 이번에 올리는 사진과 영상에 태그돼요.",
-    "choose": "파일 선택",
-    "drop": "사진과 영상을 여기에 끌어 놓아도 돼요.",
     "queue": "업로드 목록",
     "inProgress": "진행 중 {{count}}개",
     "summary": "{{total}}개 중 {{done}}개 완료",

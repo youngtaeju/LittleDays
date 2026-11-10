@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, call } from '@/api/client'
 import type { Role, User } from '@/api/types'
-import { useMe } from '@/auth/session'
+import { hasRole, useMe } from '@/auth/session'
 import { FormError } from '@/components/Field'
 import { NativeSelect, SelectField } from '@/components/NativeSelect'
 import { Button } from '@/components/ui/button'
@@ -29,11 +29,20 @@ function isInviteRole(v: string): v is (typeof INVITE_ROLES)[number] {
   return v === 'guardian' || v === 'family'
 }
 
-function UserRow({ user, self }: { user: User; self: boolean }) {
+function UserRow({
+  user,
+  self,
+  manage,
+}: {
+  user: User
+  self: boolean
+  // 관리자 화면. 역할 변경·정지·이메일.
+  manage: boolean
+}) {
   const { t } = useTranslation()
   const qc = useQueryClient()
   const [confirming, setConfirming] = useState(false)
-  const editable = user.role !== 'owner' && !self
+  const editable = manage && user.role !== 'owner' && !self
   const suspended = user.disabled_at !== null
 
   const patch = useMutation({
@@ -117,9 +126,12 @@ function UserRow({ user, self }: { user: User; self: boolean }) {
             </Button>
           ))}
       </div>
-      <p className="text-sm text-muted-foreground">
-        {user.email ?? t('members.noEmail')}
-      </p>
+      {/* 관리자가 아니면 서버가 본인 외 이메일을 숨김. */}
+      {(manage || self) && (
+        <p className="text-sm text-muted-foreground">
+          {user.email ?? t('members.noEmail')}
+        </p>
+      )}
       <FormError error={confirming ? null : patch.error} />
       <Dialog
         open={confirming}
@@ -350,6 +362,7 @@ function InviteList() {
 export function MembersPage() {
   const { t } = useTranslation()
   const { user: me } = useMe()
+  const manage = hasRole(me, 'owner')
   const users = useQuery({
     queryKey: usersKey,
     queryFn: () => call(api.GET('/api/users')),
@@ -364,17 +377,24 @@ export function MembersPage() {
         <FormError error={users.error} />
         <ul className="grid gap-2">
           {users.data?.users.map((u) => (
-            <UserRow key={u.id} user={u} self={u.id === me?.id} />
+            <UserRow
+              key={u.id}
+              user={u}
+              self={u.id === me?.id}
+              manage={manage}
+            />
           ))}
         </ul>
       </section>
-      <section aria-labelledby="members-invites" className="grid gap-3">
-        <h2 id="members-invites" className="text-lg font-semibold">
-          {t('members.invitesTitle')}
-        </h2>
-        <InviteCreator />
-        <InviteList />
-      </section>
+      {manage && (
+        <section aria-labelledby="members-invites" className="grid gap-3">
+          <h2 id="members-invites" className="text-lg font-semibold">
+            {t('members.invitesTitle')}
+          </h2>
+          <InviteCreator />
+          <InviteList />
+        </section>
+      )}
     </div>
   )
 }

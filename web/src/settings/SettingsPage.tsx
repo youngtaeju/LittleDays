@@ -1,10 +1,11 @@
+import { Link } from '@tanstack/react-router'
 import { useId, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { hasRole, useMe } from '@/auth/session'
 import { NativeSelect } from '@/components/NativeSelect'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { useSignOut } from '@/shell/NavTabs'
+import { useSignOut } from '@/auth/useSignOut'
 import { useTheme, type ThemePref } from '@/theme/theme'
 import { InstanceSection } from './InstanceSection'
 import { PasswordSection } from './PasswordSection'
@@ -80,7 +81,15 @@ export function SettingsPage() {
           <InstanceSection settings={settings} />
         </Section>
       )}
-      <div>
+      <div className="flex flex-wrap gap-2">
+        {hasRole(user, 'guardian') && (
+          <Link
+            to="/me/trash"
+            className={buttonVariants({ variant: 'outline' })}
+          >
+            {t('nav.trash')}
+          </Link>
+        )}
         <Button
           variant="outline"
           onClick={() => {

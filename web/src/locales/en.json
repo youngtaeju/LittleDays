@@ -14,13 +14,12 @@
   },
   "nav": {
     "main": "Main menu",
-    "timeline": "Timeline",
-    "upload": "Upload",
+    "home": "Home",
     "babies": "Babies",
-    "more": "More",
+    "family": "Family",
+    "me": "Me",
+    "add": "Upload photos",
     "trash": "Trash",
-    "members": "Members",
-    "settings": "Settings",
     "logout": "Sign out"
   },
   "roles": {
@@ -131,10 +130,6 @@
     "upload": "Upload photos"
   },
   "upload": {
-    "babies": "Tag babies",
-    "babiesHint": "Selected babies are tagged on the photos and videos you upload now.",
-    "choose": "Choose files",
-    "drop": "You can also drop photos and videos here.",
     "queue": "Upload queue",
     "summary": "{{done}} of {{total}} finished",
     "summaryFailed": ", {{failed}} failed",
