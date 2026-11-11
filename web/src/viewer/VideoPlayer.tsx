@@ -54,16 +54,21 @@ export function VideoPlayer({
   useEffect(() => {
     scrubRef.current = onScrubbingChange
   })
-  // 넘김·언마운트 시 재생 정지. 끄는 도중 사라지면 뷰어 제스처 복구.
+  // src 연결·해제를 effect 한 곳에서. JSX src 와 섞으면 StrictMode 재실행 후 src 유실.
   useEffect(() => {
     const el = video.current
+    if (!el) return
+    el.src = src
     return () => {
-      if (el) {
-        el.pause()
-        // 버퍼·디코더 해제.
-        el.removeAttribute('src')
-        el.load()
-      }
+      // 넘김·언마운트 시 재생 정지, 버퍼·디코더 해제.
+      el.pause()
+      el.removeAttribute('src')
+      el.load()
+    }
+  }, [src])
+  // 끄는 도중 사라지면 뷰어 제스처 복구.
+  useEffect(() => {
+    return () => {
       if (scrubbing.current) scrubRef.current(false)
     }
   }, [])
@@ -155,7 +160,6 @@ export function VideoPlayer({
         playsInline
         aria-label={label}
         poster={poster}
-        src={src}
         className="absolute inset-0 size-full"
         onError={() => {
           setFailed(true)

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
@@ -149,9 +150,24 @@ describe('VideoPlayer', () => {
   })
 
   it('pauses_on_unmount', () => {
-    const { unmount } = setup()
+    const { unmount, video } = setup()
     unmount()
     expect(pause).toHaveBeenCalled()
+    expect(video.getAttribute('src')).toBeNull()
+  })
+
+  // 개발 모드 effect 재실행(mount → cleanup → mount) 후에도 src 유지.
+  it('keeps_src_under_strict_mode', () => {
+    render(
+      <StrictMode>
+        <VideoPlayer
+          src="/v.mp4"
+          poster="/p.webp"
+          onScrubbingChange={vi.fn()}
+        />
+      </StrictMode>,
+    )
+    expect(document.querySelector('video')?.getAttribute('src')).toBe('/v.mp4')
   })
 
   it('space_toggles_play', () => {
