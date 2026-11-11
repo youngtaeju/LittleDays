@@ -68,6 +68,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assets/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_comments"];
+        put?: never;
+        post: operations["create_comment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assets/{id}/favorite": {
         parameters: {
             query?: never;
@@ -402,6 +418,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_comment"];
+        options?: never;
+        head?: never;
+        patch: operations["update_comment"];
         trace?: never;
     };
     "/api/days": {
@@ -858,6 +890,26 @@ export interface components {
             /** @description 8자 이상. */
             new_password: string;
         };
+        Comment: {
+            /** Format: uuid */
+            asset_id: string;
+            /** Format: uuid */
+            author_id: string;
+            body: string;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description 고친 적 없으면 `null`.
+             */
+            edited_at: string | null;
+            /** Format: uuid */
+            id: string;
+        };
+        CommentRequest: {
+            /** @description 앞뒤 공백 제거 후 1~1000자. 멘션은 `<@사용자id>`. */
+            body: string;
+        };
         CreateBabyRequest: {
             /** Format: date */
             birth_date: string;
@@ -1058,6 +1110,27 @@ export interface components {
                 uploaded_by: string;
                 /** Format: int32 */
                 width: number | null;
+            }[];
+            /** @description 다음 페이지가 없으면 `null`. */
+            next_cursor: string | null;
+        };
+        /** @description 커서 페이지. */
+        Page_Comment: {
+            items: {
+                /** Format: uuid */
+                asset_id: string;
+                /** Format: uuid */
+                author_id: string;
+                body: string;
+                /** Format: date-time */
+                created_at: string;
+                /**
+                 * Format: date-time
+                 * @description 고친 적 없으면 `null`.
+                 */
+                edited_at: string | null;
+                /** Format: uuid */
+                id: string;
             }[];
             /** @description 다음 페이지가 없으면 `null`. */
             next_cursor: string | null;
@@ -1566,6 +1639,124 @@ export interface operations {
                 };
             };
             /** @description 자산 없음 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_comments: {
+        parameters: {
+            query?: {
+                /** @description 이전 응답의 `next_cursor`. */
+                cursor?: string;
+                /** @description 1~100, 기본 100. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description 자산 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 오래된 순 댓글 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_Comment"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 자산 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 자산 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentRequest"];
+            };
+        };
+        responses: {
+            /** @description 작성됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description 본문 오류 (`comment.bodyInvalid`, `comment.mentionInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 자산 없음 또는 휴지통 (`asset.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2847,6 +3038,126 @@ export interface operations {
                 };
             };
             /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 댓글 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 (`request.invalidPath`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 작성자나 owner, guardian 아님 (`comment.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 댓글 없음 또는 사진이 휴지통 (`comment.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 댓글 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description 본문 오류 (`comment.bodyInvalid`, `comment.mentionInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 작성자 아님 (`comment.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 댓글 없음 또는 사진이 휴지통 (`comment.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;

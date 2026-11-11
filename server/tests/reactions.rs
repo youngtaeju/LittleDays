@@ -5,7 +5,7 @@ use axum_test::{TestResponse, TestServer};
 use chrono::{DateTime, Duration, TimeZone, Utc};
 use common::{AssetSeed, XRW, XRW_VALUE, assert_error, insert_asset, media_app};
 use littledays::users::Role;
-use serde_json::Value;
+use serde_json::{Value, json};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -253,6 +253,12 @@ async fn permanent_delete_cascades(pool: PgPool) {
             .await
             .assert_status(StatusCode::NO_CONTENT);
     }
+    app.server
+        .post(&format!("/api/assets/{id}/comments"))
+        .add_header(XRW, XRW_VALUE)
+        .json(&json!({ "body": "x" }))
+        .await
+        .assert_status(StatusCode::CREATED);
 
     trash(&app.server, id).await;
     app.server
@@ -275,7 +281,14 @@ async fn permanent_delete_cascades(pool: PgPool) {
     .fetch_one(&pool)
     .await
     .unwrap();
-    assert_eq!((likes, favorites), (0, 0));
+    let comments = sqlx::query_scalar!(
+        r#"SELECT count(*) AS "n!" FROM asset_comments WHERE asset_id = $1"#,
+        id
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!((likes, favorites, comments), (0, 0, 0));
 }
 
 #[sqlx::test]

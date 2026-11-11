@@ -2,6 +2,7 @@ pub mod app;
 pub mod assets;
 pub mod auth;
 pub mod babies;
+pub mod comments;
 pub mod config;
 pub mod days;
 pub mod db;
