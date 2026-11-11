@@ -57,7 +57,13 @@ pub async fn sweep(state: &AppState, older_than: Duration) -> AppResult<SweepRep
         .fetch_one(&state.pool)
         .await?;
     if !any_asset {
-        tracing::warn!("assets table is empty, skipping derivatives and originals sweep");
+        // 원본 파일이 있는데 행이 없으면 DB 연결 오류 의심. 새 설치(원본 없음)는 조용히 생략.
+        if !list_originals(data_dir, &data_dir.join("originals"))
+            .await
+            .is_empty()
+        {
+            tracing::warn!("assets table is empty, skipping derivatives and originals sweep");
+        }
         return Ok(report);
     }
 

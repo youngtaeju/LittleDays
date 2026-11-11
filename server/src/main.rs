@@ -42,7 +42,8 @@ enum LogFormat {
 
 fn parse_log_format(value: Option<&str>) -> anyhow::Result<LogFormat> {
     match value {
-        None | Some("text") => Ok(LogFormat::Text),
+        // 빈 값(`LOG_FORMAT=`)은 미지정과 동일.
+        None | Some("" | "text") => Ok(LogFormat::Text),
         Some("json") => Ok(LogFormat::Json),
         Some(_) => anyhow::bail!("LOG_FORMAT must be json or text"),
     }
@@ -144,6 +145,7 @@ mod tests {
     #[test]
     fn log_format_parsing() {
         assert_eq!(parse_log_format(None).unwrap(), LogFormat::Text);
+        assert_eq!(parse_log_format(Some("")).unwrap(), LogFormat::Text);
         assert_eq!(parse_log_format(Some("text")).unwrap(), LogFormat::Text);
         assert_eq!(parse_log_format(Some("json")).unwrap(), LogFormat::Json);
         let err = parse_log_format(Some("xml")).unwrap_err();
