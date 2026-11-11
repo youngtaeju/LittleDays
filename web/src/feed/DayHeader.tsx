@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { formatDay, formatDayWithYear } from '@/lib/dates'
 import { useToday } from '@/settings/useSettings'
 import { useBabies } from '@/timeline/useBabies'
-import { AgeLine, ageParts } from './dayMeta'
+import { AgeLine, ageParts, ReactionCounts } from './dayMeta'
 import { useDay } from './useDay'
 
 const route = getRouteApi('/authed/shell/days/$date')
@@ -54,7 +54,16 @@ export function DayHeader() {
             ? formatDay(date, i18n.language)
             : formatDayWithYear(date, i18n.language)}
         </h1>
-        <AgeLine parts={ages} suffix={counts} className="text-sm" />
+        <div className="flex flex-wrap items-center gap-x-3">
+          <AgeLine parts={ages} suffix={counts} className="text-sm" />
+          {day && (
+            <ReactionCounts
+              likes={day.like_count}
+              comments={day.comment_count}
+              className="text-sm"
+            />
+          )}
+        </div>
       </div>
     </div>
   )

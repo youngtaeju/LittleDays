@@ -245,6 +245,10 @@
     "photos_other": "{{count}} photos",
     "videos_one": "{{count}} video",
     "videos_other": "{{count}} videos",
+    "likeCount_one": "{{count}} heart",
+    "likeCount_other": "{{count}} hearts",
+    "commentCount_one": "{{count}} comment",
+    "commentCount_other": "{{count}} comments",
     "viewAll_one": "View {{count}} item from {{date}}",
     "viewAll_other": "View all {{count}} from {{date}}"
   },

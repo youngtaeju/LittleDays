@@ -1,5 +1,6 @@
 import {
   BABY_NAME,
+  createFamilyPage,
   FILES,
   INSTANCE_NAME,
   OWNER,
@@ -12,7 +13,8 @@ import {
   tiles,
   trashAsset,
 } from './fixtures'
-import type { Baby } from '@/api/types'
+import type { Page } from '@playwright/test'
+import type { Baby, Comment } from '@/api/types'
 
 // 선언 순서대로 실행(워커 1개). 앞 테스트가 만든 계정·사진 사용.
 // 첫 테스트 외에는 재시도해도 최종 상태가 같도록 작성(복구까지 한 테스트 안에서).
@@ -285,30 +287,14 @@ test('invite_family_cannot_upload', async ({
   locale,
   timezoneId,
 }) => {
-  await page.goto('/family')
-  // 기본 역할 가족.
-  await page.getByRole('button', { name: '가족 초대하기' }).click()
-  await page.getByRole('button', { name: '초대 링크 만들기' }).click()
-  const url = await page.getByLabel('초대 링크', { exact: true }).inputValue()
-  expect(url).toContain('/invite/')
-
-  const context = await browser.newContext({ baseURL, locale, timezoneId })
+  const { guest, close } = await createFamilyPage(page, browser, {
+    baseURL,
+    locale,
+    timezoneId,
+    displayName: '할머니',
+    username: `family${String(test.info().retry)}`,
+  })
   try {
-    const guest = await context.newPage()
-    await guest.goto(url)
-    await expect(
-      guest.getByRole('heading', {
-        name: `${OWNER.displayName}님이 ${INSTANCE_NAME}에 초대했어요`,
-      }),
-    ).toBeVisible()
-    await expect(guest.getByText('사진을 보고 기록을 함께 봐요')).toBeVisible()
-    await guest.getByLabel('표시 이름').fill('할머니')
-    await guest.getByRole('button', { name: '다음' }).click()
-    await guest.getByLabel('아이디').fill(`family${String(test.info().retry)}`)
-    await guest.getByLabel('비밀번호').fill('e2e-family-password')
-    await guest.getByRole('button', { name: '계정 만들기' }).click()
-
-    await expect(guest).toHaveURL(/\/$/)
     await expect(tiles(guest)).toHaveCount(3)
     await expectThumbnailsLoaded(guest, 3)
     const nav = guest.getByRole('navigation', { name: '주 메뉴' })
@@ -322,7 +308,105 @@ test('invite_family_cannot_upload', async ({
     await guest.goto('/upload')
     await expect(guest).toHaveURL(/\/$/)
   } finally {
-    await context.close()
+    await close()
+  }
+})
+
+// 이전 시도가 남긴 하트와 소유자 댓글 제거. 재시도해도 같은 상태에서 시작.
+async function resetReactions(page: Page, assetId: string): Promise<void> {
+  const headers = { 'X-Requested-With': 'LittleDays' }
+  const unlike = await page.request.delete(`/api/assets/${assetId}/like`, {
+    headers,
+  })
+  expect(unlike.status()).toBeLessThan(300)
+  const res = await page.request.get(
+    `/api/assets/${assetId}/comments?limit=100`,
+  )
+  expect(res.status()).toBe(200)
+  const { items } = (await res.json()) as { items: Comment[] }
+  for (const c of items) {
+    const del = await page.request.delete(`/api/comments/${c.id}`, { headers })
+    expect(del.status()).toBeLessThan(300)
+  }
+}
+
+test('reactions_round_trip', async ({
+  ownerPage: page,
+  browser,
+  baseURL,
+  locale,
+  timezoneId,
+}) => {
+  // 재시도마다 가족이 늘어 이름이 겹치면 멘션 목록 선택이 모호.
+  const aunt = `이모${String(test.info().retry)}`
+  const { guest, close } = await createFamilyPage(page, browser, {
+    baseURL,
+    locale,
+    timezoneId,
+    displayName: aunt,
+    username: `aunt${String(test.info().retry)}`,
+  })
+  try {
+    await page.goto('/')
+    await expectThumbnailsLoaded(page, 3)
+    const photo = tiles(page).first()
+    const href = (await photo.getAttribute('href')) ?? ''
+    await resetReactions(page, href.split('/').at(-1) ?? '')
+    await photo.click()
+    await expect(page).toHaveURL(/\/photos\//)
+    const photoUrl = page.url()
+
+    const like = page.getByRole('button', { name: '하트', exact: true })
+    await expect(like).toHaveAttribute('aria-pressed', 'false')
+    await like.click()
+    await expect(like).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      page.getByRole('button', { name: '하트 누른 가족 보기, 1명' }),
+    ).toHaveText('1')
+
+    // 1024px 이상은 오른쪽 댓글 탭. `@` 로 가족 이름 고르기.
+    await page.getByRole('button', { name: '댓글 보기, 0개' }).click()
+    const panel = page.getByRole('complementary', { name: '댓글' })
+    const input = panel.getByRole('textbox', { name: '댓글 입력' })
+    await input.click()
+    await input.pressSequentially('@')
+    await panel
+      .getByRole('listbox')
+      .getByRole('option', { name: aunt, exact: true })
+      .click()
+    await input.pressSequentially('고마워요')
+    await panel.getByRole('button', { name: '올리기' }).click()
+    await expect(panel.getByText(`@${aunt}`, { exact: true })).toBeVisible()
+    await expect(panel.getByText(/고마워요/)).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: '댓글 보기, 1개' }),
+    ).toBeVisible()
+    // 작성자 본인에게는 메뉴가 있음. 아래 가족 쪽 부재 확인의 양성 대조.
+    await expect(panel.getByRole('button', { name: '댓글 메뉴' })).toHaveCount(
+      1,
+    )
+
+    // 홈 하루 묶음 합계.
+    await page.goto('/')
+    await expectThumbnailsLoaded(page, 3)
+    await expect(
+      page
+        .getByRole('main')
+        .getByRole('article')
+        .getByRole('img', { name: '하트 1개, 댓글 1개' }),
+    ).toBeVisible()
+
+    // 가족은 남의 댓글을 지울 수 없음(메뉴 자체가 없음).
+    await guest.goto(photoUrl)
+    await guest.getByRole('button', { name: '댓글 보기, 1개' }).click()
+    const guestPanel = guest.getByRole('complementary', { name: '댓글' })
+    await expect(guestPanel.getByText(/고마워요/)).toBeVisible()
+    await expect(
+      guestPanel.getByRole('button', { name: '댓글 메뉴' }),
+    ).toHaveCount(0)
+    await expect(guest.getByRole('menuitem', { name: '지우기' })).toHaveCount(0)
+  } finally {
+    await close()
   }
 })
 

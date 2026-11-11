@@ -3,7 +3,13 @@ import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Baby, DaySummary, User } from '@/api/types'
 import { addDays, formatDay } from '@/lib/dates'
-import { AgeLine, ageParts, uploaderNames, uploaderText } from './dayMeta'
+import {
+  AgeLine,
+  ageParts,
+  ReactionCounts,
+  uploaderNames,
+  uploaderText,
+} from './dayMeta'
 import { Mosaic } from './Mosaic'
 
 // 날짜 머리글(오늘·어제), 나이 줄, 모자이크, 올린 사람·개수 줄.
@@ -61,9 +67,10 @@ export const DayCard = memo(function DayCard({
       </div>
       <Link
         {...dayLink}
-        className="flex min-h-11 items-center text-xs wrap-anywhere text-muted-foreground tabular-nums"
+        className="flex min-h-11 items-center justify-between gap-3 text-xs text-muted-foreground tabular-nums"
       >
-        {meta}
+        <span className="min-w-0 wrap-anywhere">{meta}</span>
+        <ReactionCounts likes={day.like_count} comments={day.comment_count} />
       </Link>
     </article>
   )

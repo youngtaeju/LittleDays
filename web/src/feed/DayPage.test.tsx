@@ -105,6 +105,18 @@ describe('DayPage', () => {
     expect(assetRequests[0]?.searchParams.get('date')).toBe('2024-05-09')
   })
 
+  it('day_header_shows_reaction_counts', async () => {
+    renderDay({
+      day: () => json(200, detail({ like_count: 4, comment_count: 2 })),
+    })
+
+    await screen.findByRole('heading', { name: '2024년 5월 9일 목요일' })
+    const header = within(screen.getByRole('banner'))
+    expect(
+      await header.findByRole('img', { name: '하트 4개, 댓글 2개' }),
+    ).toHaveTextContent('42')
+  })
+
   it('title_omits_year_in_current_year', async () => {
     vi.useFakeTimers({
       shouldAdvanceTime: true,

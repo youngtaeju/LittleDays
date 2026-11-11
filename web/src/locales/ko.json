@@ -245,6 +245,10 @@
     "photos_other": "사진 {{count}}장",
     "videos_one": "영상 {{count}}개",
     "videos_other": "영상 {{count}}개",
+    "likeCount_one": "하트 {{count}}개",
+    "likeCount_other": "하트 {{count}}개",
+    "commentCount_one": "댓글 {{count}}개",
+    "commentCount_other": "댓글 {{count}}개",
     "viewAll_one": "{{date}} {{count}}개 모두 보기",
     "viewAll_other": "{{date}} {{count}}개 모두 보기"
   },
