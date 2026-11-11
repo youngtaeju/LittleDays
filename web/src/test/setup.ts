@@ -38,6 +38,8 @@ window.ResizeObserver = class {
   disconnect = () => undefined
 }
 
-// jsdom 은 미디어 재생 미구현(호출 시 경고). 영상 뷰어가 언마운트에서 pause 호출.
+// jsdom 은 미디어 재생 미구현(호출 시 경고). 영상 뷰어가 언마운트에서 pause, load 호출.
+// 테스트 파일의 spy 는 RTL 자동 cleanup(언마운트)보다 먼저 복원되어 여기서 대체.
 HTMLMediaElement.prototype.pause = () => undefined
 HTMLMediaElement.prototype.play = () => Promise.resolve()
+HTMLMediaElement.prototype.load = () => undefined
