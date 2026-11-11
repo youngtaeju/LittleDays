@@ -605,6 +605,29 @@ describe('ViewerPage', () => {
     })
   })
 
+  it('space_plays_video_instead_of_closing', async () => {
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(
+      () => undefined,
+    )
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(
+      () => undefined,
+    )
+    const { router, user } = renderViewer({
+      path: '/photos/v',
+      ids: ['v'],
+      list: () => [assetSummaryFixture('v', { kind: 'video' })],
+      assets: { v: assetFixture('v', { kind: 'video', mime: 'video/mp4' }) },
+    })
+
+    await screen.findByRole('group', { name: ko.timeline.video })
+    await user.keyboard(' ')
+    expect(play).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/photos/v')
+  })
+
   it('video_tap_toggles_bars_once', async () => {
     const video = { kind: 'video' as const, duration_ms: 65_000 }
     renderViewer({

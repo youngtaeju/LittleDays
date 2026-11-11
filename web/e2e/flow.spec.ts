@@ -361,11 +361,14 @@ test('security_headers_and_no_csp_violations', async ({ ownerPage: page }) => {
 
   await expectThumbnailsLoaded(page, 3)
   // 사진·영상 뷰어(이미지·영상 요소 로드).
-  for (const name of [/^영상,/, /^사진,/]) {
+  for (const [name, ready] of [
+    // 뷰어는 지연 로드. 진입 포커스 = 키 입력 수신 준비 완료(영상은 플레이어, 사진은 닫기 버튼).
+    [/^영상,/, page.locator('main [role="group"]')],
+    [/^사진,/, page.getByRole('button', { name: '닫기' })],
+  ] as const) {
     await page.getByRole('link', { name }).first().click()
     await expect(page).toHaveURL(/\/photos\//)
-    // 뷰어는 지연 로드. 닫기 버튼 포커스 = 키 입력 수신 준비 완료.
-    await expect(page.getByRole('button', { name: '닫기' })).toBeFocused()
+    await expect(ready).toBeFocused()
     await expect(page.locator('main img, main video').first()).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page).toHaveURL(/\/$/)
