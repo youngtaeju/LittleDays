@@ -41,7 +41,7 @@ import {
 import { babiesKey, useBabies } from '@/timeline/useBabies'
 import { assetKey, useTimeline } from '@/timeline/useTimeline'
 import { InfoPanel, type Editing } from './InfoPanel'
-import { neighbors } from './neighbors'
+import { neighbors, outsideTimeline } from './neighbors'
 import { applyAsset, useAsset } from './useAsset'
 import { useDismissDrag } from './useDismissDrag'
 import { useSwipe } from './useSwipe'
@@ -175,8 +175,12 @@ export function ViewerPage() {
   }
 
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
-  const atEnd =
-    ids.length > 0 && (ids[ids.length - 1] === id || !ids.includes(id))
+  // 상세 도착 후 판단. 휴지통·다른 아기·이미 지나친 시각처럼 목록에 나올 수 없으면 순회 안 함.
+  const unlisted =
+    !ids.includes(id) &&
+    detail !== undefined &&
+    !outsideTimeline(detail, items[items.length - 1], baby)
+  const atEnd = ids.length > 0 && (ids[ids.length - 1] === id || unlisted)
   useEffect(() => {
     if (atEnd && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
       void fetchNextPage()

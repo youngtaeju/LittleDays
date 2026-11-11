@@ -208,6 +208,28 @@ describe('ViewerPage', () => {
     expect(cursors).toEqual([null, 'c1'])
   })
 
+  it('trashed_asset_does_not_walk_timeline', async () => {
+    const cursors: (string | null)[] = []
+    renderViewer({
+      path: '/photos/x',
+      ids: ['x'],
+      assets: { x: assetFixture('x', { deleted_at: '2024-06-01T00:00:00Z' }) },
+      extra: {
+        'GET /api/assets': (req) => {
+          cursors.push(new URL(req.url).searchParams.get('cursor'))
+          return json(200, {
+            items: [assetSummaryFixture('a'), assetSummaryFixture('b')],
+            next_cursor: 'c1',
+          })
+        },
+      },
+    })
+
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(cursors).toEqual([null])
+  })
+
   it('finds_neighbors_beyond_first_page', async () => {
     const first = Array.from({ length: 100 }, (_, i) =>
       assetSummaryFixture(`p${String(i)}`),
