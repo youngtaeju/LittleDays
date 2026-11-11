@@ -128,6 +128,19 @@ test('auth_screens_fit_width', async ({ page, request }) => {
   await expectNoHorizontalOverflow(page)
 })
 
+// 데스크톱 reactions_round_trip 이 남긴 댓글이 보이는 시트.
+test('comment_sheet_fits_width', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  await expectThumbnailsLoaded(page, 3)
+  await tiles(page).first().click()
+  await expect(page).toHaveURL(/\/photos\//)
+  await page.getByRole('button', { name: /^댓글 보기/ }).click()
+  const sheet = page.getByRole('dialog', { name: /^댓글/ })
+  await expect(sheet.getByRole('textbox', { name: '댓글 입력' })).toBeVisible()
+  await expect(sheet.getByText(/고마워요/)).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+})
+
 test('viewer_nav_buttons_visible', async ({ ownerPage: page }) => {
   await page.goto('/')
   await expect(tiles(page)).toHaveCount(3)

@@ -667,6 +667,31 @@ describe('FeedPage', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('day_card_shows_reaction_counts', async () => {
+    renderFeed({
+      days: () =>
+        page([
+          dayFixture('2024-05-10', { like_count: 12, comment_count: 5 }),
+          dayFixture('2024-05-09'),
+          dayFixture('2024-05-08', { like_count: 3 }),
+        ]),
+    })
+    await screen.findByRole('heading', { name: '5월 10일 금요일' })
+
+    const both = within(day('5월 10일 금요일')).getByRole('img', {
+      name: '하트 12개, 댓글 5개',
+    })
+    expect(both).toHaveTextContent('12')
+    expect(both).toHaveTextContent('5')
+    expect(
+      within(day('5월 9일 목요일')).queryByRole('img', { name: /하트|댓글/ }),
+    ).toBeNull()
+    const likesOnly = within(day('5월 8일 수요일')).getByRole('img', {
+      name: '하트 3개',
+    })
+    expect(likesOnly).toHaveTextContent('3')
+  })
+
   // 처리 전 촬영 시각은 파일 수정 시각 등. EXIF·영상 메타로 바뀌면 다른 날로 이동.
   it('processed_item_moves_day', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })

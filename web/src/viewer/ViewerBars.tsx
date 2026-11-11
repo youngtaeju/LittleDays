@@ -1,8 +1,13 @@
+import IconComment from '~icons/material-symbols/chat-bubble-outline-rounded'
 import IconClose from '~icons/material-symbols/close-rounded'
 import IconDelete from '~icons/material-symbols/delete-outline-rounded'
 import IconDownload from '~icons/material-symbols/download-rounded'
+import IconLike from '~icons/material-symbols/favorite-outline-rounded'
+import IconLiked from '~icons/material-symbols/favorite-rounded'
 import IconInfo from '~icons/material-symbols/info-outline-rounded'
 import IconMore from '~icons/material-symbols/more-vert-rounded'
+import IconStar from '~icons/material-symbols/star-outline-rounded'
+import IconStarred from '~icons/material-symbols/star-rounded'
 import IconZoomIn from '~icons/material-symbols/zoom-in-rounded'
 import IconZoomOut from '~icons/material-symbols/zoom-out-rounded'
 import { DropdownMenu } from 'radix-ui'
@@ -19,19 +24,26 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { useBrowserOnline } from '@/pwa/OfflineBanner'
 
 // 사진 위에 겹치는 막대. 밝은 사진 위에서도 흰 글자 대비 유지(검정 70%).
 const BAR =
   'absolute inset-x-0 z-10 bg-black/70 px-2 transition-opacity duration-200'
 
+// 360px 폭에 아래 버튼 5개.
 const BAR_BUTTON =
-  "h-14 min-w-16 flex-col gap-0.5 px-2 text-2xs font-normal [&_svg:not([class*='size-'])]:size-6"
+  "h-14 min-w-13 flex-col gap-0.5 px-2 text-2xs font-normal [&_svg:not([class*='size-'])]:size-6"
+
+// 오프라인이면 포커스는 유지하고 동작만 막음.
+const OFFLINE = 'aria-disabled:opacity-50'
+
+const COUNT_BUTTON = 'h-14 min-w-11 px-2 text-sm font-semibold tabular-nums'
 
 const MENU_ITEM =
   'flex min-h-11 cursor-default items-center gap-3 rounded-lg px-3 text-sm outline-none select-none data-[highlighted]:bg-accent'
 
-// 위: 닫기 / 시각·나이 / 확대(데스크톱)·더 보기. 아래: 정보·내려받기·휴지통(왼쪽은 2차 좋아요·댓글 자리).
-// 숨김 중엔 inert 로 포커스·클릭 제외.
+// 위: 닫기 / 시각, 나이 / 확대(데스크톱), 즐겨찾기, 더 보기. 아래 왼쪽: 하트, 댓글. 아래 오른쪽: 정보, 내려받기, 휴지통.
+// 숨김 중엔 inert 로 포커스, 클릭 제외.
 export function ViewerBars({
   visible,
   title,
@@ -42,6 +54,7 @@ export function ViewerBars({
   info,
   onEditTakenAt,
   trash,
+  reactions,
 }: {
   visible: boolean
   title: string | null
@@ -58,8 +71,18 @@ export function ViewerBars({
     pending: boolean
     error: unknown
   } | null
+  reactions: {
+    liked: boolean
+    likeCount: number
+    favorited: boolean
+    onLike: () => void
+    onLikers: () => void
+    onFavorite: () => void
+    comments?: { count: number; open: boolean; onOpen: () => void }
+  } | null
 }) {
   const { t } = useTranslation()
+  const online = useBrowserOnline()
   const hidden = !visible && 'opacity-0'
   const downloadAttr = download.filename ?? true
 
@@ -105,6 +128,23 @@ export function ViewerBars({
                 <IconZoomOut className="size-6" />
               ) : (
                 <IconZoomIn className="size-6" />
+              )}
+            </Button>
+          )}
+          {reactions && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={OFFLINE}
+              aria-label={t('reactions.favorite')}
+              aria-pressed={reactions.favorited}
+              aria-disabled={!online}
+              onClick={online ? reactions.onFavorite : undefined}
+            >
+              {reactions.favorited ? (
+                <IconStarred className="size-6 text-primary" />
+              ) : (
+                <IconStar className="size-6" />
               )}
             </Button>
           )}
@@ -154,39 +194,91 @@ export function ViewerBars({
         inert={!visible}
         className={cn(
           BAR,
-          'bottom-0 flex justify-end pb-[env(safe-area-inset-bottom)]',
+          'bottom-0 flex justify-between pb-[env(safe-area-inset-bottom)]',
           hidden,
         )}
       >
-        {info && (
-          <Button
-            variant="ghost"
-            className={BAR_BUTTON}
-            aria-pressed={info.open}
-            onClick={info.onToggle}
-          >
-            <IconInfo aria-hidden />
-            {t('viewer.info')}
+        <div className="flex">
+          {reactions && (
+            <>
+              <Button
+                variant="ghost"
+                className={cn(BAR_BUTTON, OFFLINE)}
+                aria-label={t('reactions.like')}
+                aria-pressed={reactions.liked}
+                aria-disabled={!online}
+                onClick={online ? reactions.onLike : undefined}
+              >
+                {reactions.liked ? (
+                  <IconLiked aria-hidden className="text-primary" />
+                ) : (
+                  <IconLike aria-hidden />
+                )}
+              </Button>
+              {/* 0 이면 볼 사람 없음. 오프라인에도 캐시 목록은 열림. */}
+              {reactions.likeCount > 0 && (
+                <Button
+                  variant="ghost"
+                  className={COUNT_BUTTON}
+                  aria-label={t('reactions.likers', {
+                    count: reactions.likeCount,
+                  })}
+                  onClick={reactions.onLikers}
+                >
+                  {reactions.likeCount}
+                </Button>
+              )}
+              {reactions.comments && (
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    BAR_BUTTON,
+                    'flex-row gap-1 text-sm font-semibold tabular-nums',
+                  )}
+                  aria-label={t('reactions.comments', {
+                    count: reactions.comments.count,
+                  })}
+                  aria-pressed={reactions.comments.open}
+                  onClick={reactions.comments.onOpen}
+                >
+                  <IconComment aria-hidden />
+                  {reactions.comments.count > 0 && reactions.comments.count}
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+        <div className="flex">
+          {info && (
+            <Button
+              variant="ghost"
+              className={BAR_BUTTON}
+              aria-pressed={info.open}
+              onClick={info.onToggle}
+            >
+              <IconInfo aria-hidden />
+              {t('viewer.info')}
+            </Button>
+          )}
+          <Button asChild variant="ghost" className={BAR_BUTTON}>
+            <a href={download.href} download={downloadAttr}>
+              <IconDownload aria-hidden />
+              {t('viewer.download')}
+            </a>
           </Button>
-        )}
-        <Button asChild variant="ghost" className={BAR_BUTTON}>
-          <a href={download.href} download={downloadAttr}>
-            <IconDownload aria-hidden />
-            {t('viewer.download')}
-          </a>
-        </Button>
-        {trash && (
-          <Button
-            variant="ghost"
-            className={BAR_BUTTON}
-            onClick={() => {
-              trash.onOpenChange(true)
-            }}
-          >
-            <IconDelete aria-hidden />
-            {t('viewer.trashShort')}
-          </Button>
-        )}
+          {trash && (
+            <Button
+              variant="ghost"
+              className={BAR_BUTTON}
+              onClick={() => {
+                trash.onOpenChange(true)
+              }}
+            >
+              <IconDelete aria-hidden />
+              {t('viewer.trashShort')}
+            </Button>
+          )}
+        </div>
       </div>
 
       {trash && (

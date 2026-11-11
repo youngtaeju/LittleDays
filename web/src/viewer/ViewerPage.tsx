@@ -10,13 +10,21 @@ import IconChevronRight from '~icons/material-symbols/chevron-right-rounded'
 import IconClose from '~icons/material-symbols/close-rounded'
 import IconProgress from '~icons/material-symbols/progress-activity-rounded'
 import IconWarning from '~icons/material-symbols/warning-outline-rounded'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, call } from '@/api/client'
 import { isLogoutError } from '@/api/errors'
 import type { Asset, AssetSummary } from '@/api/types'
 import { hasRole, useMe } from '@/auth/session'
+import { CommentSheet, CommentThread } from '@/comments/Comments'
 import { FormError } from '@/components/Field'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,6 +37,8 @@ import { ageParts } from '@/feed/dayMeta'
 import { errorMessage } from '@/i18n'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
+import { LikersSheet } from '@/reactions/LikersSheet'
+import { useToggleFavorite, useToggleLike } from '@/reactions/useReactions'
 import { useSettings } from '@/settings/useSettings'
 import { Blurhash } from '@/timeline/Blurhash'
 import {
@@ -51,6 +61,8 @@ import { ViewerBars } from './ViewerBars'
 import { formatMoment, todayInZone } from './zoned'
 
 const route = getRouteApi('/authed/photos/$id')
+
+type Panel = 'info' | 'comments'
 
 const FADE_MS = 200
 // 이만큼 끌면 바탕이 가장 옅어짐.
@@ -118,6 +130,40 @@ function FailedView({
   )
 }
 
+// 데스크톱 옆 패널 탭. 화살표 키는 뷰어 넘김에 양보해 둘 다 Tab 순서에 둠.
+function PanelTab({
+  id,
+  panelId,
+  selected,
+  onSelect,
+  children,
+}: {
+  id: string
+  panelId: string
+  selected: boolean
+  onSelect: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={id}
+      aria-selected={selected}
+      aria-controls={selected ? panelId : undefined}
+      className={cn(
+        'h-full border-b-2 px-3 text-[15px] font-semibold tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        selected
+          ? 'border-accent-ink text-accent-ink'
+          : 'border-transparent text-muted-foreground hover:text-foreground',
+      )}
+      onClick={onSelect}
+    >
+      {children}
+    </button>
+  )
+}
+
 export function ViewerPage() {
   const { t, i18n } = useTranslation()
   const { id } = route.useParams()
@@ -161,18 +207,23 @@ export function ViewerPage() {
     },
   })
 
-  // 정보 패널은 넘겨도 유지(데스크톱 옆 패널). 확대·편집·휴지통 확인은 항목마다 초기화.
+  // 정보/댓글 패널은 넘겨도 같은 탭 유지(데스크톱 옆 패널). 확대, 편집, 휴지통 확인은 항목마다 초기화.
   const [shownId, setShownId] = useState(id)
-  const [infoOpen, setInfoOpen] = useState(false)
+  const [panel, setPanel] = useState<Panel | null>(null)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [trashOpen, setTrashOpen] = useState(false)
+  const [likersOpen, setLikersOpen] = useState(false)
   const [scrubbing, setScrubbing] = useState(false)
   if (shownId !== id) {
     setShownId(id)
     zoom.reset()
     setEditing(null)
     setTrashOpen(false)
+    setLikersOpen(false)
   }
+
+  const like = useToggleLike(id)
+  const favorite = useToggleFavorite(id)
 
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
   // 상세 도착 후 판단. 휴지통·다른 아기·이미 지나친 시각처럼 목록에 나올 수 없으면 순회 안 함.
@@ -333,6 +384,14 @@ export function ViewerPage() {
     }
   })
 
+  // 휴지통 사진은 반응 404. 처리 실패 사진은 같은 파일 재업로드 시 휴지통 없이 지워져 반응도 유실.
+  const reactable =
+    detail && !detail.deleted_at && detail.status !== 'failed' ? detail : null
+  // 반응 없는 사진이면 데스크톱은 정보 탭, 휴대폰은 시트 없음. 상태는 유지해 다음 사진에서 다시 댓글.
+  const shown: Panel | null =
+    panel === 'comments' && !reactable ? (wide ? 'info' : null) : panel
+  const tabsId = useId()
+
   const label =
     detail?.caption ||
     (media?.kind === 'video' ? t('timeline.video') : t('timeline.photo'))
@@ -398,7 +457,7 @@ export function ViewerPage() {
     )
   }
 
-  const panel = detail && (
+  const infoPanel = detail && (
     <InfoPanel
       asset={detail}
       canEdit={canEdit}
@@ -470,9 +529,9 @@ export function ViewerPage() {
           info={
             detail
               ? {
-                  open: infoOpen,
+                  open: shown === 'info',
                   onToggle: () => {
-                    setInfoOpen((o) => !o)
+                    setPanel(shown === 'info' ? null : 'info')
                   },
                 }
               : null
@@ -480,7 +539,7 @@ export function ViewerPage() {
           onEditTakenAt={
             canEdit && tz && detail
               ? () => {
-                  setInfoOpen(true)
+                  setPanel('info')
                   setEditing('takenAt')
                 }
               : null
@@ -495,6 +554,35 @@ export function ViewerPage() {
                   },
                   pending: trash.isPending,
                   error: trash.variables === media.id ? trash.error : null,
+                }
+              : null
+          }
+          reactions={
+            reactable
+              ? {
+                  liked: reactable.liked,
+                  likeCount: reactable.like_count,
+                  favorited: reactable.favorited,
+                  onLike: () => {
+                    like.mutate(!reactable.liked)
+                  },
+                  onLikers: () => {
+                    setLikersOpen(true)
+                  },
+                  onFavorite: () => {
+                    const next = !reactable.favorited
+                    favorite.mutate(next)
+                    if (next)
+                      toast(t('reactions.favorited'), { duration: 2000 })
+                  },
+                  comments: {
+                    count: reactable.comment_count,
+                    open: shown === 'comments',
+                    // 데스크톱은 탭 전환 겸 닫기, 휴대폰은 시트 열기.
+                    onOpen: () => {
+                      setPanel(wide && shown === 'comments' ? null : 'comments')
+                    },
+                  },
                 }
               : null
           }
@@ -530,42 +618,110 @@ export function ViewerPage() {
         )}
       </div>
       {wide ? (
-        infoOpen &&
-        panel && (
+        shown &&
+        infoPanel && (
           <aside
-            aria-label={t('viewer.info')}
-            className="w-[360px] shrink-0 overflow-y-auto border-l bg-background text-foreground"
+            aria-label={
+              shown === 'info' ? t('viewer.info') : t('comments.label')
+            }
+            className="flex w-[360px] shrink-0 flex-col border-l bg-background text-foreground"
           >
-            <div className="flex h-14 items-center justify-between pr-2 pl-4">
-              <h2 className="text-base font-semibold">{t('viewer.info')}</h2>
+            <div className="flex h-14 shrink-0 items-center justify-between pr-2 pl-2">
+              <div
+                role="tablist"
+                aria-label={t('viewer.panelTabs')}
+                className="flex h-full"
+              >
+                <PanelTab
+                  id={`${tabsId}-info`}
+                  panelId={`${tabsId}-panel`}
+                  selected={shown === 'info'}
+                  onSelect={() => {
+                    setPanel('info')
+                  }}
+                >
+                  {t('viewer.info')}
+                </PanelTab>
+                {reactable && (
+                  <PanelTab
+                    id={`${tabsId}-comments`}
+                    panelId={`${tabsId}-panel`}
+                    selected={shown === 'comments'}
+                    onSelect={() => {
+                      setPanel('comments')
+                    }}
+                  >
+                    {t('comments.title', { count: reactable.comment_count })}
+                  </PanelTab>
+                )}
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label={t('viewer.closeInfo')}
+                aria-label={
+                  shown === 'info' ? t('viewer.closeInfo') : t('comments.close')
+                }
                 onClick={() => {
-                  setInfoOpen(false)
+                  setPanel(null)
                 }}
               >
                 <IconClose className="size-6" />
               </Button>
             </div>
-            {panel}
+            <div
+              role="tabpanel"
+              id={`${tabsId}-panel`}
+              aria-labelledby={`${tabsId}-${shown}`}
+              className={cn(
+                'min-h-0 flex-1',
+                shown === 'info' ? 'overflow-y-auto' : 'flex flex-col',
+              )}
+            >
+              {shown === 'info' ? (
+                infoPanel
+              ) : (
+                <CommentThread key={id} assetId={id} />
+              )}
+            </div>
           </aside>
         )
       ) : (
-        <Sheet open={infoOpen && !!panel} onOpenChange={setInfoOpen}>
-          <SheetContent
-            side="bottom"
-            aria-describedby={undefined}
-            className="dark max-h-[85dvh] overflow-y-auto text-foreground"
+        <>
+          <Sheet
+            open={shown === 'info' && !!infoPanel}
+            onOpenChange={(open) => {
+              setPanel(open ? 'info' : null)
+            }}
           >
-            <SheetHeader>
-              <SheetTitle>{t('viewer.info')}</SheetTitle>
-            </SheetHeader>
-            {panel}
-          </SheetContent>
-        </Sheet>
+            <SheetContent
+              side="bottom"
+              aria-describedby={undefined}
+              className="dark max-h-[85dvh] overflow-y-auto text-foreground"
+            >
+              <SheetHeader>
+                <SheetTitle>{t('viewer.info')}</SheetTitle>
+              </SheetHeader>
+              {infoPanel}
+            </SheetContent>
+          </Sheet>
+          {reactable && (
+            <CommentSheet
+              assetId={id}
+              open={shown === 'comments'}
+              onOpenChange={(open) => {
+                setPanel(open ? 'comments' : null)
+              }}
+              count={reactable.comment_count}
+              likeCount={reactable.like_count}
+            />
+          )}
+        </>
       )}
+      <LikersSheet
+        assetId={id}
+        open={likersOpen}
+        onOpenChange={setLikersOpen}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@ import {
   test as base,
   expect,
   type APIRequestContext,
+  type Browser,
   type Page,
 } from '@playwright/test'
 import type { Asset, AssetPage, TrashItem } from '@/api/types'
@@ -58,6 +59,48 @@ export async function createInvitePath(
   expect(created.status(), await created.text()).toBeLessThan(300)
   const { url } = (await created.json()) as { url: string }
   return new URL(url).pathname
+}
+
+// 가족 역할 초대로 가입한 별도 브라우저 컨텍스트. 소유자 페이지의 /family 에서 초대 링크 생성.
+// 호출자가 close() 로 컨텍스트를 닫음.
+export async function createFamilyPage(
+  owner: Page,
+  browser: Browser,
+  options: {
+    baseURL: string | undefined
+    locale: string | undefined
+    timezoneId: string | undefined
+    displayName: string
+    username: string
+  },
+): Promise<{ guest: Page; close: () => Promise<void> }> {
+  await owner.goto('/family')
+  // 기본 역할 가족.
+  await owner.getByRole('button', { name: '가족 초대하기' }).click()
+  await owner.getByRole('button', { name: '초대 링크 만들기' }).click()
+  const url = await owner.getByLabel('초대 링크', { exact: true }).inputValue()
+  expect(url).toContain('/invite/')
+
+  const context = await browser.newContext({
+    baseURL: options.baseURL,
+    locale: options.locale,
+    timezoneId: options.timezoneId,
+  })
+  const guest = await context.newPage()
+  await guest.goto(url)
+  await expect(
+    guest.getByRole('heading', {
+      name: `${OWNER.displayName}님이 ${INSTANCE_NAME}에 초대했어요`,
+    }),
+  ).toBeVisible()
+  await expect(guest.getByText('사진을 보고 기록을 함께 봐요')).toBeVisible()
+  await guest.getByLabel('표시 이름').fill(options.displayName)
+  await guest.getByRole('button', { name: '다음' }).click()
+  await guest.getByLabel('아이디').fill(options.username)
+  await guest.getByLabel('비밀번호').fill('e2e-family-password')
+  await guest.getByRole('button', { name: '계정 만들기' }).click()
+  await expect(guest).toHaveURL(/\/$/)
+  return { guest, close: () => context.close() }
 }
 
 export async function listAssets(page: Page): Promise<AssetPage['items']> {

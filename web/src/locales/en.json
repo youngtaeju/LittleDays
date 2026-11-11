@@ -208,6 +208,7 @@
     "trashShort": "Trash",
     "more": "More",
     "closeInfo": "Close info",
+    "panelTabs": "Info and comments",
     "uploadedBy": "Uploaded by",
     "file": "File",
     "am": "AM",
@@ -244,6 +245,10 @@
     "photos_other": "{{count}} photos",
     "videos_one": "{{count}} video",
     "videos_other": "{{count}} videos",
+    "likeCount_one": "{{count}} heart",
+    "likeCount_other": "{{count}} hearts",
+    "commentCount_one": "{{count}} comment",
+    "commentCount_other": "{{count}} comments",
     "viewAll_one": "View {{count}} item from {{date}}",
     "viewAll_other": "View all {{count}} from {{date}}"
   },
@@ -350,6 +355,12 @@
       "nameInvalid": "The baby's name is not valid.",
       "notFound": "The baby could not be found.",
       "orderMismatch": "The order doesn't match the current list. Please refresh."
+    },
+    "comment": {
+      "bodyInvalid": "Comments must be 1 to 1000 characters.",
+      "mentionInvalid": "Someone you mentioned can't be mentioned.",
+      "notFound": "The comment could not be found.",
+      "forbidden": "You can't edit or delete this comment."
     },
     "day": {
       "notFound": "No photos on this day."
@@ -536,5 +547,46 @@
     "logout": "Sign out",
     "version": "App version {{version}}",
     "back": "Back"
+  },
+  "reactions": {
+    "like": "Heart",
+    "likers_one": "See who hearted, {{count}} person",
+    "likers_other": "See who hearted, {{count}} people",
+    "likersTitle": "Hearted by",
+    "favorite": "Favorite",
+    "favorited": "Added to favorites",
+    "saveFailed": "Couldn't save that. Please try again",
+    "pair": "{{a}} and {{b}}",
+    "many_one": "{{a}}, {{b}} and {{count}} other",
+    "many_other": "{{a}}, {{b}} and {{count}} others",
+    "comments_one": "Comments, {{count}}",
+    "comments_other": "Comments, {{count}}"
+  },
+  "comments": {
+    "label": "Comments",
+    "title": "Comments {{count}}",
+    "empty": "Be the first to comment",
+    "input": "Comment",
+    "placeholder": "Add a comment…",
+    "post": "Post",
+    "counter": "{{count}}/1000",
+    "offline": "You can comment once you're back online",
+    "edited": "Edited",
+    "editing": "Editing",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete this comment?",
+    "deleteDescription": "Deleted comments can't be restored.",
+    "menu": "Comment options",
+    "mentionList": "Mention someone",
+    "unknownUser": "Unknown member",
+    "justNow": "Just now",
+    "minutesAgo_one": "{{count}} minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo_one": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "expand": "Expand comments",
+    "collapse": "Shrink comments",
+    "close": "Close comments"
   }
 }

@@ -1,5 +1,8 @@
 import type { TFunction } from 'i18next'
 import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
+import IconComment from '~icons/material-symbols/chat-bubble-rounded'
+import IconLike from '~icons/material-symbols/favorite-rounded'
 import type { Baby, DaySummary, User } from '@/api/types'
 import { formatAgeLine, formatSpecialDay, specialDay } from '@/lib/age'
 
@@ -91,5 +94,45 @@ export function AgeLine({
       ))}
       {suffix && `${parts.length > 0 ? ' · ' : ''}${suffix}`}
     </p>
+  )
+}
+
+// 하루 하트와 댓글 합계(읽기 전용). 0 인 항목은 생략, 둘 다 0 이면 그리지 않음.
+export function ReactionCounts({
+  likes,
+  comments,
+  className = 'text-xs',
+}: {
+  likes: number
+  comments: number
+  className?: string
+}) {
+  const { t } = useTranslation()
+  if (likes === 0 && comments === 0) return null
+  const label = [
+    likes > 0 ? t('feed.likeCount', { count: likes }) : null,
+    comments > 0 ? t('feed.commentCount', { count: comments }) : null,
+  ]
+    .filter((v) => v != null)
+    .join(', ')
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      className={`${className} flex shrink-0 items-center gap-2.5 font-semibold text-accent-ink tabular-nums`}
+    >
+      {likes > 0 && (
+        <span aria-hidden className="flex items-center gap-0.5">
+          <IconLike className="size-4" />
+          {likes}
+        </span>
+      )}
+      {comments > 0 && (
+        <span aria-hidden className="flex items-center gap-0.5">
+          <IconComment className="size-4" />
+          {comments}
+        </span>
+      )}
+    </span>
   )
 }
