@@ -535,5 +535,19 @@
     "logout": "로그아웃",
     "version": "앱 버전 {{version}}",
     "back": "뒤로"
+  },
+  "reactions": {
+    "like": "하트",
+    "likers_one": "하트 누른 가족 보기, {{count}}명",
+    "likers_other": "하트 누른 가족 보기, {{count}}명",
+    "likersTitle": "하트를 누른 가족",
+    "favorite": "즐겨찾기",
+    "favorited": "즐겨찾기에 담았어요",
+    "saveFailed": "반영하지 못했어요. 다시 해 주세요",
+    "pair": "{{a}}, {{b}}",
+    "many_one": "{{a}}, {{b}} 외 {{count}}명",
+    "many_other": "{{a}}, {{b}} 외 {{count}}명",
+    "comments_one": "댓글 보기, {{count}}개",
+    "comments_other": "댓글 보기, {{count}}개"
   }
 }

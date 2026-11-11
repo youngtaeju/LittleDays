@@ -536,5 +536,19 @@
     "logout": "Sign out",
     "version": "App version {{version}}",
     "back": "Back"
+  },
+  "reactions": {
+    "like": "Heart",
+    "likers_one": "See who hearted, {{count}} person",
+    "likers_other": "See who hearted, {{count}} people",
+    "likersTitle": "Hearted by",
+    "favorite": "Favorite",
+    "favorited": "Added to favorites",
+    "saveFailed": "Couldn't save that. Please try again",
+    "pair": "{{a}} and {{b}}",
+    "many_one": "{{a}}, {{b}} and {{count}} other",
+    "many_other": "{{a}}, {{b}} and {{count}} others",
+    "comments_one": "Comments, {{count}}",
+    "comments_other": "Comments, {{count}}"
   }
 }

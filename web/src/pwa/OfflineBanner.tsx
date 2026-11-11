@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { AuthLayout } from '@/pages/AuthLayout'
 
 // 브라우저 online/offline 이벤트 기준. 이벤트 시점의 값만 신뢰.
-function useBrowserOnline(): boolean {
+export function useBrowserOnline(): boolean {
   const [online, setOnline] = useState(() => navigator.onLine)
   useEffect(() => {
     const on = () => {

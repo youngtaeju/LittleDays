@@ -29,6 +29,8 @@ import { ageParts } from '@/feed/dayMeta'
 import { errorMessage } from '@/i18n'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
+import { LikersSheet } from '@/reactions/LikersSheet'
+import { useToggleFavorite, useToggleLike } from '@/reactions/useReactions'
 import { useSettings } from '@/settings/useSettings'
 import { Blurhash } from '@/timeline/Blurhash'
 import {
@@ -166,13 +168,18 @@ export function ViewerPage() {
   const [infoOpen, setInfoOpen] = useState(false)
   const [editing, setEditing] = useState<Editing | null>(null)
   const [trashOpen, setTrashOpen] = useState(false)
+  const [likersOpen, setLikersOpen] = useState(false)
   const [scrubbing, setScrubbing] = useState(false)
   if (shownId !== id) {
     setShownId(id)
     zoom.reset()
     setEditing(null)
     setTrashOpen(false)
+    setLikersOpen(false)
   }
+
+  const like = useToggleLike(id)
+  const favorite = useToggleFavorite(id)
 
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
   // 상세 도착 후 판단. 휴지통·다른 아기·이미 지나친 시각처럼 목록에 나올 수 없으면 순회 안 함.
@@ -498,6 +505,28 @@ export function ViewerPage() {
                 }
               : null
           }
+          // 휴지통 사진은 반응 404. 처리 실패 사진은 같은 파일 재업로드 시 휴지통 없이 지워져 반응도 유실.
+          reactions={
+            detail && !detail.deleted_at && detail.status !== 'failed'
+              ? {
+                  liked: detail.liked,
+                  likeCount: detail.like_count,
+                  favorited: detail.favorited,
+                  onLike: () => {
+                    like.mutate(!detail.liked)
+                  },
+                  onLikers: () => {
+                    setLikersOpen(true)
+                  },
+                  onFavorite: () => {
+                    const next = !detail.favorited
+                    favorite.mutate(next)
+                    if (next)
+                      toast(t('reactions.favorited'), { duration: 2000 })
+                  },
+                }
+              : null
+          }
         />
         {/* 막대와 함께 숨김. */}
         {prev && (
@@ -566,6 +595,11 @@ export function ViewerPage() {
           </SheetContent>
         </Sheet>
       )}
+      <LikersSheet
+        assetId={id}
+        open={likersOpen}
+        onOpenChange={setLikersOpen}
+      />
     </div>
   )
 }

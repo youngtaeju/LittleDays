@@ -1008,6 +1008,185 @@ describe('ViewerPage', () => {
       within(first).getByRole('button', { name: ko.viewer.retry }),
     ).toBeInTheDocument()
   })
+
+  it('reaction_buttons_in_bars', async () => {
+    renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: { a: assetFixture('a', { like_count: 4, comment_count: 2 }) },
+    })
+    const like = await screen.findByRole('button', {
+      name: ko.reactions.like,
+    })
+    expect(like).toHaveAttribute('aria-pressed', 'false')
+    const count = screen.getByRole('button', {
+      name: '하트 누른 가족 보기, 4명',
+    })
+    expect(count).toHaveTextContent('4')
+    const star = screen.getByRole('button', { name: ko.reactions.favorite })
+    expect(star).toHaveAttribute('aria-pressed', 'false')
+
+    // ★ 는 위 막대(⋮ 옆), ♥ 는 아래 막대.
+    const topGroup = screen.getByRole('button', {
+      name: ko.viewer.more,
+    }).parentElement
+    expect(topGroup).toContainElement(star)
+    expect(topGroup).not.toContainElement(like)
+    const bottomBar = screen
+      .getByRole('link', { name: ko.viewer.download })
+      .closest('[class*="bottom-0"]')
+    expect(bottomBar).toContainElement(like)
+    expect(bottomBar).toContainElement(count)
+    // 💬 는 댓글 화면과 함께.
+    expect(screen.queryByRole('button', { name: /댓글/ })).toBeNull()
+  })
+
+  it('no_likers_button_at_zero', async () => {
+    renderViewer({ path: '/photos/a', ids: ['a'] })
+    await screen.findByRole('button', { name: ko.reactions.like })
+    expect(
+      screen.queryByRole('button', { name: /하트 누른 가족 보기/ }),
+    ).toBeNull()
+  })
+
+  it('trashed_detail_hides_reactions', async () => {
+    renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: {
+        a: assetFixture('a', {
+          deleted_at: '2024-06-01T00:00:00Z',
+          like_count: 3,
+        }),
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    expect(screen.queryByRole('button', { name: ko.reactions.like })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: ko.reactions.favorite }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /하트 누른 가족 보기/ }),
+    ).toBeNull()
+  })
+
+  it('failed_asset_hides_reactions', async () => {
+    renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      list: () => [assetSummaryFixture('a', { status: 'failed' })],
+      assets: {
+        a: assetFixture('a', {
+          status: 'failed',
+          derivatives: {},
+          like_count: 1,
+        }),
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    expect(screen.queryByRole('button', { name: ko.reactions.like })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: ko.reactions.favorite }),
+    ).toBeNull()
+  })
+
+  it('likers_sheet_lists_names', async () => {
+    const { user } = renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: { a: assetFixture('a', { like_count: 2 }) },
+      extra: {
+        'GET /api/users': () =>
+          json(200, {
+            users: [
+              userFixture('guardian'),
+              { ...userFixture('family'), id: 'u2', display_name: '할머니' },
+            ],
+          }),
+        'GET /api/assets/a/likes': () =>
+          json(200, [
+            { user_id: 'u2', created_at: '2024-05-11T02:00:00Z' },
+            {
+              user_id: userFixture('guardian').id,
+              created_at: '2024-05-11T01:00:00Z',
+            },
+          ]),
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: '하트 누른 가족 보기, 2명' }),
+    )
+    const sheet = await screen.findByRole('dialog', {
+      name: ko.reactions.likersTitle,
+    })
+    // 최신순.
+    const items = await within(sheet).findAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(items[0]).toHaveTextContent('할머니')
+    expect(items[1]).toHaveTextContent('guardian')
+  })
+
+  it('favorite_toast', async () => {
+    let favorited = false
+    const { user } = renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      extra: {
+        'GET /api/assets/a': () => json(200, assetFixture('a', { favorited })),
+        'PUT /api/assets/a/favorite': () => {
+          favorited = true
+          return json(204, null)
+        },
+      },
+    })
+    const star = await screen.findByRole('button', {
+      name: ko.reactions.favorite,
+    })
+    await user.click(star)
+    expect(star).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByText(ko.reactions.favorited)).toBeInTheDocument()
+    await waitFor(() => {
+      expect(favorited).toBe(true)
+    })
+    expect(star).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('offline_disables_reactions', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    const { user } = renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: { a: assetFixture('a', { like_count: 1 }) },
+      extra: {
+        'GET /api/assets/a/likes': () =>
+          json(200, [
+            {
+              user_id: userFixture('guardian').id,
+              created_at: '2024-05-11T01:00:00Z',
+            },
+          ]),
+      },
+    })
+    const like = await screen.findByRole('button', {
+      name: ko.reactions.like,
+    })
+    const star = screen.getByRole('button', { name: ko.reactions.favorite })
+    expect(like).toHaveAttribute('aria-disabled', 'true')
+    expect(star).toHaveAttribute('aria-disabled', 'true')
+    // 등록 안 된 PUT 이 나가면 테스트 실패.
+    await user.click(like)
+    await user.click(star)
+    expect(like).toHaveAttribute('aria-pressed', 'false')
+    expect(star).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(
+      screen.getByRole('button', { name: '하트 누른 가족 보기, 1명' }),
+    )
+    const sheet = await screen.findByRole('dialog', {
+      name: ko.reactions.likersTitle,
+    })
+    expect(await within(sheet).findByText('guardian')).toBeInTheDocument()
+  })
 })
 
 function at(x: number, y: number) {
