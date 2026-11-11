@@ -23,9 +23,10 @@ export function extension(name: string): string {
   return dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
 }
 
-// 브라우저 MIME 우선. 없으면 확장자, 모르면 빈 문자열.
+// 브라우저 MIME 우선. 없거나 형식 미상(octet-stream, HEIC 미지원 OS)이면 확장자, 모르면 빈 문자열.
 export function fileMime(file: File): string {
-  return file.type || (EXT_MIME[extension(file.name)] ?? '')
+  if (file.type && file.type !== 'application/octet-stream') return file.type
+  return EXT_MIME[extension(file.name)] ?? ''
 }
 
 export function isHeif(file: File): boolean {

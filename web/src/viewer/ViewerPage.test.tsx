@@ -208,6 +208,28 @@ describe('ViewerPage', () => {
     expect(cursors).toEqual([null, 'c1'])
   })
 
+  it('trashed_asset_does_not_walk_timeline', async () => {
+    const cursors: (string | null)[] = []
+    renderViewer({
+      path: '/photos/x',
+      ids: ['x'],
+      assets: { x: assetFixture('x', { deleted_at: '2024-06-01T00:00:00Z' }) },
+      extra: {
+        'GET /api/assets': (req) => {
+          cursors.push(new URL(req.url).searchParams.get('cursor'))
+          return json(200, {
+            items: [assetSummaryFixture('a'), assetSummaryFixture('b')],
+            next_cursor: 'c1',
+          })
+        },
+      },
+    })
+
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(cursors).toEqual([null])
+  })
+
   it('finds_neighbors_beyond_first_page', async () => {
     const first = Array.from({ length: 100 }, (_, i) =>
       assetSummaryFixture(`p${String(i)}`),
@@ -581,6 +603,29 @@ describe('ViewerPage', () => {
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/photos/c')
     })
+  })
+
+  it('space_plays_video_instead_of_closing', async () => {
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, 'play')
+      .mockImplementation(() => Promise.resolve())
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(
+      () => undefined,
+    )
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(
+      () => undefined,
+    )
+    const { router, user } = renderViewer({
+      path: '/photos/v',
+      ids: ['v'],
+      list: () => [assetSummaryFixture('v', { kind: 'video' })],
+      assets: { v: assetFixture('v', { kind: 'video', mime: 'video/mp4' }) },
+    })
+
+    await screen.findByRole('group', { name: ko.timeline.video })
+    await user.keyboard(' ')
+    expect(play).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/photos/v')
   })
 
   it('video_tap_toggles_bars_once', async () => {

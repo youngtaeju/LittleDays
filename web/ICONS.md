@@ -8,8 +8,8 @@ docker run --rm -v "$PWD":/w -w /w debian:trixie-slim sh -c '
   rsvg-convert -w 192 -h 192 icon.svg -o icon-192.png &&
   rsvg-convert -w 512 -h 512 icon.svg -o icon-512.png &&
   rsvg-convert -w 410 -h 410 --page-width 512 --page-height 512 --left 51 --top 51 \
-    --background-color "#A85E12" icon.svg -o icon-maskable-512.png &&
-  rsvg-convert -w 180 -h 180 --background-color "#A85E12" icon.svg -o apple-touch-icon.png &&
+    --background-color "#FF9E57" icon.svg -o icon-maskable-512.png &&
+  rsvg-convert -w 180 -h 180 --background-color "#FF9E57" icon.svg -o apple-touch-icon.png &&
   chown '"$(id -u):$(id -g)"' *.png'
 ```
 

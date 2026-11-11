@@ -66,6 +66,10 @@ export function VideoPlayer({
       el.load()
     }
   }, [src])
+  // 표시 시 플레이어로 포커스. 뷰어 닫기 버튼 autoFocus 보다 뒤라 Space 가 재생으로 동작.
+  useEffect(() => {
+    box.current?.focus({ preventScroll: true })
+  }, [])
   // 끄는 도중 사라지면 뷰어 제스처 복구.
   useEffect(() => {
     return () => {

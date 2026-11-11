@@ -156,6 +156,11 @@ describe('VideoPlayer', () => {
     expect(video.getAttribute('src')).toBeNull()
   })
 
+  it('focuses_player_on_mount', () => {
+    const { video } = setup()
+    expect(document.activeElement).toBe(video.parentElement)
+  })
+
   // 개발 모드 effect 재실행(mount → cleanup → mount) 후에도 src 유지.
   it('keeps_src_under_strict_mode', () => {
     render(

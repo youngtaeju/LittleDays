@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { api, call } from '@/api/client'
 import type { Settings } from '@/api/types'
 import { todayInZone } from '@/viewer/zoned'
@@ -40,8 +41,23 @@ export function useSettings(): Settings | undefined {
   return useSettingsQuery().data
 }
 
-// 인스턴스 시간대 오늘(YYYY-MM-DD). 설정 조회 전은 브라우저 시간대.
+// 날짜 바뀜 확인 주기(ms). 백그라운드 탭 타이머 지연에도 복귀 직후 갱신.
+const TODAY_CHECK_MS = 60_000
+
+// 인스턴스 시간대 오늘(YYYY-MM-DD). 설정 조회 전은 브라우저 시간대. 자정 넘으면 갱신.
 export function useToday(): string {
-  const tz = useSettings()?.timezone
-  return todayInZone(tz ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const tz =
+    useSettings()?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  const today = todayInZone(tz)
+  // 같은 값이면 리렌더 없음. 날짜가 바뀔 때만 다시 그림.
+  const [, setChecked] = useState(today)
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setChecked(todayInZone(tz))
+    }, TODAY_CHECK_MS)
+    return () => {
+      window.clearInterval(id)
+    }
+  }, [tz])
+  return today
 }

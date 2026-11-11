@@ -29,4 +29,11 @@ describe('fileKind', () => {
     expect(fileMime(file('a.3gp'))).toBe('video/3gpp')
     expect(fileMime(file('a.jpg', 'image/png'))).toBe('image/png')
   })
+
+  it('octet_stream_by_extension', () => {
+    const heic = file('IMG_0001.HEIC', 'application/octet-stream')
+    expect(fileMime(heic)).toBe('image/heic')
+    expect(mediaKind(heic)).toBe('photo')
+    expect(mediaKind(file('a.bin', 'application/octet-stream'))).toBeNull()
+  })
 })
