@@ -6,7 +6,8 @@ use crate::{
     assets::trash, auth::session, error::AppResult, media::orphans, state::AppState, uploads,
 };
 
-const INTERVAL: Duration = Duration::from_secs(3600);
+// 하루 1회. 데이터 디스크(HDD) 순회 빈도 최소화. 만료 판정은 조회 시점에도 적용.
+const INTERVAL: Duration = Duration::from_secs(24 * 3600);
 /// 고아 파일 판정 유예. 진행 중 업로드·finalize 와의 경합 방지.
 const ORPHAN_GRACE: Duration = Duration::from_secs(24 * 3600);
 
@@ -52,7 +53,7 @@ pub async fn run_once(state: &AppState) -> AppResult<()> {
     first_err.map_or(Ok(()), Err)
 }
 
-/// 기동 직후 1회, 이후 1시간마다 `run_once`. 종료 신호 시 즉시 반환.
+/// 기동 직후 1회, 이후 하루마다 `run_once`. 종료 신호 시 즉시 반환.
 pub fn spawn(state: AppState, mut shutdown: watch::Receiver<bool>) -> JoinHandle<()> {
     tokio::spawn(async move {
         loop {

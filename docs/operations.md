@@ -70,7 +70,7 @@ Cloudflare Tunnel 은 요청당 응답 대기 시간이 100초로 제한됩니�
 
 ### 고아 원본(`orphans/`)
 
-서버는 한 시간마다 정리 작업을 수행합니다. 이때 DB 에 행이 없는 원본 파일 중 24시간이 지난 것을 `DATA_DIR/orphans/originals/YYYY/MM/` 으로 옮깁니다. 크래시 등으로 업로드가 중단되었을 때, 또는 파일보다 오래된 DB 를 복원했을 때 생길 수 있습니다. 파일을 삭제하지는 않으며, assets 테이블이 비어 있으면 이 작업을 건너뜁니다. 사진이 아직 없는 새 설치에서는 정리 작업이 `assets table is empty, skipping derivatives and originals sweep` WARN 로그를 남기는데, 정상입니다.
+서버는 기동 직후와 이후 하루마다 정리 작업을 수행합니다. 이때 DB 에 행이 없는 원본 파일 중 24시간이 지난 것을 `DATA_DIR/orphans/originals/YYYY/MM/` 으로 옮깁니다. 크래시 등으로 업로드가 중단되었을 때, 또는 파일보다 오래된 DB 를 복원했을 때 생길 수 있습니다. 파일을 삭제하지는 않으며, assets 테이블이 비어 있으면 이 작업을 건너뜁니다. 이때 원본 파일이 남아 있으면 다른 DB 에 연결된 것일 수 있어 `assets table is empty, skipping derivatives and originals sweep` WARN 로그를 남깁니다.
 
 `orphans/` 의 파일은 직접 확인한 뒤 필요 없으면 삭제하십시오. 소중한 사진이 있다면 다시 업로드해 복구할 수 있습니다.
 
