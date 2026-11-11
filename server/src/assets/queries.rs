@@ -5,7 +5,8 @@ use uuid::Uuid;
 use super::{Asset, AssetKind, AssetStatus, AssetSummary, MonthCount, TakenAtSource, TrashItem};
 use crate::error::AppResult;
 
-pub async fn get(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Asset>> {
+/// `liked`, `favorited` 는 `viewer` 기준.
+pub async fn get(exec: impl PgExecutor<'_>, id: Uuid, viewer: Uuid) -> AppResult<Option<Asset>> {
     let asset = sqlx::query_as!(
         Asset,
         r#"SELECT a.id, a.kind AS "kind: AssetKind", a.status AS "status: AssetStatus",
@@ -17,9 +18,17 @@ pub async fn get(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Asset>
                   COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
                             FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
                             WHERE ab.asset_id = a.id), '{}') AS "baby_ids!",
-                  a.derivatives, a.processing_error, a.created_at, a.deleted_at
+                  a.derivatives, a.processing_error, a.created_at, a.deleted_at,
+                  (SELECT count(*) FROM asset_likes l WHERE l.asset_id = a.id) AS "like_count!",
+                  (SELECT count(*) FROM asset_comments c WHERE c.asset_id = a.id)
+                    AS "comment_count!",
+                  EXISTS (SELECT 1 FROM asset_likes l
+                          WHERE l.asset_id = a.id AND l.user_id = $2) AS "liked!",
+                  EXISTS (SELECT 1 FROM asset_favorites f
+                          WHERE f.asset_id = a.id AND f.user_id = $2) AS "favorited!"
            FROM assets a WHERE a.id = $1"#,
-        id
+        id,
+        viewer
     )
     .fetch_optional(exec)
     .await?;

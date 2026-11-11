@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT a.id, a.kind AS \"kind: AssetKind\", a.status AS \"status: AssetStatus\",\n                  a.taken_at, a.taken_at_source AS \"taken_at_source: TakenAtSource\",\n                  a.file_modified_at, a.original_filename, a.mime, a.size_bytes,\n                  a.width, a.height, a.duration_ms, a.gps_lat, a.gps_lon,\n                  a.camera_make, a.camera_model, a.blurhash, a.dominant_color, a.caption,\n                  a.uploaded_by,\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id\n                            WHERE ab.asset_id = a.id), '{}') AS \"baby_ids!\",\n                  a.derivatives, a.processing_error, a.created_at, a.deleted_at\n           FROM assets a WHERE a.id = $1",
+  "query": "SELECT a.id, a.kind AS \"kind: AssetKind\", a.status AS \"status: AssetStatus\",\n                  a.taken_at, a.taken_at_source AS \"taken_at_source: TakenAtSource\",\n                  a.file_modified_at, a.original_filename, a.mime, a.size_bytes,\n                  a.width, a.height, a.duration_ms, a.gps_lat, a.gps_lon,\n                  a.camera_make, a.camera_model, a.blurhash, a.dominant_color, a.caption,\n                  a.uploaded_by,\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id\n                            WHERE ab.asset_id = a.id), '{}') AS \"baby_ids!\",\n                  a.derivatives, a.processing_error, a.created_at, a.deleted_at,\n                  (SELECT count(*) FROM asset_likes l WHERE l.asset_id = a.id) AS \"like_count!\",\n                  (SELECT count(*) FROM asset_comments c WHERE c.asset_id = a.id)\n                    AS \"comment_count!\",\n                  EXISTS (SELECT 1 FROM asset_likes l\n                          WHERE l.asset_id = a.id AND l.user_id = $2) AS \"liked!\",\n                  EXISTS (SELECT 1 FROM asset_favorites f\n                          WHERE f.asset_id = a.id AND f.user_id = $2) AS \"favorited!\"\n           FROM assets a WHERE a.id = $1",
   "describe": {
     "columns": [
       {
@@ -162,10 +162,31 @@
         "ordinal": 24,
         "name": "deleted_at",
         "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 25,
+        "name": "like_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 26,
+        "name": "comment_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 27,
+        "name": "liked!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 28,
+        "name": "favorited!",
+        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Left": [
+        "Uuid",
         "Uuid"
       ]
     },
@@ -194,8 +215,12 @@
       false,
       true,
       false,
-      true
+      true,
+      null,
+      null,
+      null,
+      null
     ]
   },
-  "hash": "711fe511b1ba65bcfa539bdab047a5ed699d1f9ad04854089f9ad4d43bddbc84"
+  "hash": "28e2ae352bb051cfb9f1de1d170f2b3f0dcecd7e9dc5fbd3c274f35100b23c55"
 }

@@ -21,6 +21,10 @@ pub struct DaySummary {
     pub uploader_ids: Vec<Uuid>,
     /// 그날 태그된 아기. 아기 표시 순서.
     pub baby_ids: Vec<Uuid>,
+    /// 그날 자산 하트 합계.
+    pub like_count: i64,
+    /// 그날 자산 댓글 합계.
+    pub comment_count: i64,
     /// 그날 최신 3장. 촬영 시각 최신순.
     pub preview: Vec<AssetSummary>,
 }
@@ -36,6 +40,10 @@ pub struct DayDetail {
     pub uploader_ids: Vec<Uuid>,
     /// 그날 태그된 아기. 아기 표시 순서.
     pub baby_ids: Vec<Uuid>,
+    /// 그날 자산 하트 합계.
+    pub like_count: i64,
+    /// 그날 자산 댓글 합계.
+    pub comment_count: i64,
     /// 더 과거의 사진 있는 날.
     #[schema(required = true)]
     pub prev_date: Option<NaiveDate>,

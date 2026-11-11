@@ -42,7 +42,11 @@ pub async fn list(
                   ARRAY(SELECT b.id FROM babies b
                         WHERE EXISTS (SELECT 1 FROM asset_babies ab
                                       WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
-                        ORDER BY b.sort_order, b.created_at, b.id) AS "baby_ids!"
+                        ORDER BY b.sort_order, b.created_at, b.id) AS "baby_ids!",
+                  (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
+                    AS "like_count!",
+                  (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
+                    AS "comment_count!"
            FROM days d
            ORDER BY d.date DESC"#,
         timezone,
@@ -62,6 +66,8 @@ pub async fn list(
             video_count: r.video_count,
             uploader_ids: r.uploader_ids,
             baby_ids: r.baby_ids,
+            like_count: r.like_count,
+            comment_count: r.comment_count,
             preview: Vec::new(),
         })
         .collect())
@@ -121,6 +127,10 @@ pub async fn detail(
                         WHERE EXISTS (SELECT 1 FROM asset_babies ab
                                       WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
                         ORDER BY b.sort_order, b.created_at, b.id) AS "baby_ids!",
+                  (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
+                    AS "like_count!",
+                  (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
+                    AS "comment_count!",
                   d.prev_date AS "prev_date?", d.next_date AS "next_date?"
            FROM (
                SELECT count(*) FILTER (WHERE f.date = $2 AND f.kind = 'photo') AS photo_count,
@@ -153,6 +163,8 @@ pub async fn detail(
         video_count: r.video_count,
         uploader_ids: r.uploader_ids,
         baby_ids: r.baby_ids,
+        like_count: r.like_count,
+        comment_count: r.comment_count,
         prev_date: r.prev_date,
         next_date: r.next_date,
     }))

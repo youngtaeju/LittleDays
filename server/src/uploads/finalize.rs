@@ -189,7 +189,7 @@ async fn store_asset(
     assets::queries::add_babies(&mut *tx, asset_id, &req.baby_ids, user_id).await?;
     jobs::enqueue(&mut *tx, &Job::ProcessAsset { asset_id }).await?;
     queries::delete(&mut *tx, id).await?;
-    let asset = assets::queries::get(&mut *tx, asset_id)
+    let asset = assets::queries::get(&mut *tx, asset_id, user_id)
         .await?
         .context("inserted asset missing")?;
 

@@ -157,7 +157,7 @@ async fn get_asset(
     current: CurrentUser,
     Path(id): Path<Uuid>,
 ) -> AppResult<Json<Asset>> {
-    let asset = queries::get(&state.pool, id)
+    let asset = queries::get(&state.pool, id, current.user.id)
         .await?
         .filter(|a| a.deleted_at.is_none() || current.require(Role::Guardian).is_ok())
         .ok_or(AppError::NotFound("asset.notFound"))?;
@@ -196,7 +196,7 @@ async fn patch_asset(
     if !queries::update_meta(&mut *tx, id, caption, body.taken_at).await? {
         return Err(AppError::NotFound("asset.notFound"));
     }
-    let asset = queries::get(&mut *tx, id)
+    let asset = queries::get(&mut *tx, id, current.user.id)
         .await?
         .ok_or(AppError::NotFound("asset.notFound"))?;
     tx.commit().await?;
@@ -228,12 +228,12 @@ async fn put_asset_babies(
     if body.baby_ids.iter().any(|b| !known.contains(b)) {
         return Err(AppError::bad_request("asset.babyInvalid"));
     }
-    if queries::get(&mut *tx, id).await?.is_none() {
+    if queries::get(&mut *tx, id, current.user.id).await?.is_none() {
         return Err(AppError::NotFound("asset.notFound"));
     }
     queries::remove_babies_except(&mut *tx, id, &body.baby_ids).await?;
     queries::add_babies(&mut *tx, id, &body.baby_ids, current.user.id).await?;
-    let asset = queries::get(&mut *tx, id)
+    let asset = queries::get(&mut *tx, id, current.user.id)
         .await?
         .ok_or(AppError::NotFound("asset.notFound"))?;
     tx.commit().await?;
@@ -261,7 +261,7 @@ async fn retry_asset(
     current.require(Role::Guardian)?;
     let mut tx = state.pool.begin().await?;
     if !queries::mark_retry(&mut *tx, id).await? {
-        return Err(match queries::get(&mut *tx, id).await? {
+        return Err(match queries::get(&mut *tx, id, current.user.id).await? {
             Some(_) => AppError::conflict("asset.notFailed"),
             None => AppError::NotFound("asset.notFound"),
         });
@@ -269,7 +269,7 @@ async fn retry_asset(
     // failed 자산의 작업은 failed 행뿐(워커가 자산과 함께 기록). 이전 행 대체.
     jobs::delete_for_asset(&mut *tx, id).await?;
     jobs::enqueue(&mut *tx, &Job::ProcessAsset { asset_id: id }).await?;
-    let asset = queries::get(&mut *tx, id)
+    let asset = queries::get(&mut *tx, id, current.user.id)
         .await?
         .ok_or(AppError::NotFound("asset.notFound"))?;
     tx.commit().await?;
@@ -324,12 +324,12 @@ async fn restore_asset(
     current.require(Role::Guardian)?;
     let mut tx = state.pool.begin().await?;
     if !queries::restore(&mut *tx, id).await? {
-        return Err(match queries::get(&mut *tx, id).await? {
+        return Err(match queries::get(&mut *tx, id, current.user.id).await? {
             Some(_) => AppError::conflict("asset.notInTrash"),
             None => AppError::NotFound("asset.notFound"),
         });
     }
-    let asset = queries::get(&mut *tx, id)
+    let asset = queries::get(&mut *tx, id, current.user.id)
         .await?
         .ok_or(AppError::NotFound("asset.notFound"))?;
     tx.commit().await?;
@@ -358,10 +358,12 @@ async fn delete_asset_permanently(
     if trash::purge(&state, &[id]).await? == 1 {
         return Ok(StatusCode::NO_CONTENT);
     }
-    Err(match queries::get(&state.pool, id).await? {
-        Some(_) => AppError::conflict("asset.notInTrash"),
-        None => AppError::NotFound("asset.notFound"),
-    })
+    Err(
+        match queries::get(&state.pool, id, current.user.id).await? {
+            Some(_) => AppError::conflict("asset.notInTrash"),
+            None => AppError::NotFound("asset.notFound"),
+        },
+    )
 }
 
 #[utoipa::path(

@@ -35,6 +35,8 @@ function detail(over: Partial<DayDetail> = {}): DayDetail {
     video_count: 1,
     uploader_ids: [userFixture('guardian').id],
     baby_ids: [SKY.id],
+    like_count: 0,
+    comment_count: 0,
     prev_date: '2024-05-07',
     next_date: '2024-05-10',
     ...over,
