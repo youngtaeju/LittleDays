@@ -415,6 +415,312 @@
         }
       }
     },
+    "/api/assets/{id}/favorite": {
+      "put": {
+        "operationId": "put_favorite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "자산 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "즐겨찾기 켬. 이미 켠 상태면 그대로"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "자산 없음 또는 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_favorite",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "자산 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "즐겨찾기 끔. 이미 끈 상태면 그대로"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "자산 없음 또는 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/{id}/like": {
+      "put": {
+        "operationId": "put_like",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "자산 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "하트 켬. 이미 켠 상태면 그대로"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "자산 없음 또는 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_like",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "자산 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "하트 끔. 이미 끈 상태면 그대로"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "자산 없음 또는 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/assets/{id}/likes": {
+      "get": {
+        "operationId": "list_likes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "자산 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "하트 누른 사람. 최신순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Like"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "자산 없음 또는 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/assets/{id}/original": {
       "get": {
         "operationId": "get_original",
@@ -1671,6 +1977,64 @@
           },
           "404": {
             "description": "그날 휴지통 밖 자산 없음 (`day.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/favorites": {
+      "get": {
+        "operationId": "list_favorites",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "이전 응답의 `next_cursor`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1~500, 기본 100.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "내 즐겨찾기. 휴지통 제외, 즐겨찾기 시각 최신순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AssetSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
             "content": {
               "application/json": {
                 "schema": {
@@ -3049,7 +3413,11 @@
           "derivatives",
           "processing_error",
           "created_at",
-          "deleted_at"
+          "deleted_at",
+          "like_count",
+          "comment_count",
+          "liked",
+          "favorited"
         ],
         "properties": {
           "baby_ids": {
@@ -3084,6 +3452,10 @@
               "null"
             ]
           },
+          "comment_count": {
+            "type": "integer",
+            "format": "int64"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -3112,6 +3484,10 @@
               "null"
             ],
             "format": "int32"
+          },
+          "favorited": {
+            "type": "boolean",
+            "description": "요청자의 즐겨찾기 여부."
           },
           "file_modified_at": {
             "type": [
@@ -3147,6 +3523,14 @@
           },
           "kind": {
             "$ref": "#/components/schemas/AssetKind"
+          },
+          "like_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "liked": {
+            "type": "boolean",
+            "description": "요청자의 하트 여부."
           },
           "mime": {
             "type": "string"
@@ -3512,6 +3896,8 @@
           "video_count",
           "uploader_ids",
           "baby_ids",
+          "like_count",
+          "comment_count",
           "prev_date",
           "next_date"
         ],
@@ -3524,10 +3910,20 @@
             },
             "description": "그날 태그된 아기. 아기 표시 순서."
           },
+          "comment_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "그날 자산 댓글 합계."
+          },
           "date": {
             "type": "string",
             "format": "date",
             "description": "인스턴스 시간대 기준 촬영 날짜."
+          },
+          "like_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "그날 자산 하트 합계."
           },
           "next_date": {
             "type": [
@@ -3572,6 +3968,8 @@
           "video_count",
           "uploader_ids",
           "baby_ids",
+          "like_count",
+          "comment_count",
           "preview"
         ],
         "properties": {
@@ -3583,10 +3981,20 @@
             },
             "description": "그날 태그된 아기. 아기 표시 순서."
           },
+          "comment_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "그날 자산 댓글 합계."
+          },
           "date": {
             "type": "string",
             "format": "date",
             "description": "인스턴스 시간대 기준 촬영 날짜."
+          },
+          "like_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "그날 자산 하트 합계."
           },
           "photo_count": {
             "type": "integer",
@@ -3835,6 +4243,24 @@
           }
         }
       },
+      "Like": {
+        "type": "object",
+        "description": "하트 누른 사람.",
+        "required": [
+          "user_id",
+          "created_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
       "LoginRequest": {
         "type": "object",
         "required": [
@@ -4012,6 +4438,8 @@
                 "video_count",
                 "uploader_ids",
                 "baby_ids",
+                "like_count",
+                "comment_count",
                 "preview"
               ],
               "properties": {
@@ -4023,10 +4451,20 @@
                   },
                   "description": "그날 태그된 아기. 아기 표시 순서."
                 },
+                "comment_count": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "그날 자산 댓글 합계."
+                },
                 "date": {
                   "type": "string",
                   "format": "date",
                   "description": "인스턴스 시간대 기준 촬영 날짜."
+                },
+                "like_count": {
+                  "type": "integer",
+                  "format": "int64",
+                  "description": "그날 자산 하트 합계."
                 },
                 "photo_count": {
                   "type": "integer",

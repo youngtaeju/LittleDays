@@ -1,0 +1,125 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.id, a.kind AS \"kind: AssetKind\", a.status AS \"status: AssetStatus\",\n                  a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS \"local_date!\",\n                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id\n                            WHERE ab.asset_id = a.id), '{}') AS \"baby_ids!\",\n                  a.derivatives, f.created_at AS favorited_at\n           FROM asset_favorites f JOIN assets a ON a.id = f.asset_id\n           WHERE f.user_id = $2\n             AND a.deleted_at IS NULL\n             AND ($3::timestamptz IS NULL OR (f.created_at, f.asset_id) < ($3, $4::uuid))\n           ORDER BY f.created_at DESC, f.asset_id DESC\n           LIMIT $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind: AssetKind",
+        "type_info": {
+          "Custom": {
+            "name": "asset_kind",
+            "kind": {
+              "Enum": [
+                "photo",
+                "video"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status: AssetStatus",
+        "type_info": {
+          "Custom": {
+            "name": "asset_status",
+            "kind": {
+              "Enum": [
+                "processing",
+                "ready",
+                "failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "taken_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "local_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "width",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "height",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "duration_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "blurhash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "dominant_color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "uploaded_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "baby_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 12,
+        "name": "derivatives",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 13,
+        "name": "favorited_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "e7caef97eb52a536a0436e2185ea5bd74792c469f00b50cc77eb3841c22db350"
+}

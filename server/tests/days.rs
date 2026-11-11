@@ -329,6 +329,87 @@ async fn day_detail_prev_next(pool: PgPool) {
     assert_error(&empty, StatusCode::NOT_FOUND, "day.notFound");
 }
 
+async fn like(pool: &PgPool, asset: Uuid, user: Uuid) {
+    sqlx::query!(
+        "INSERT INTO asset_likes (asset_id, user_id) VALUES ($1, $2)",
+        asset,
+        user
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn comment(pool: &PgPool, asset: Uuid, author: Uuid) {
+    sqlx::query!(
+        "INSERT INTO asset_comments (id, asset_id, author_id, body) VALUES ($1, $2, $3, 'hi')",
+        Uuid::now_v7(),
+        asset,
+        author
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+fn reaction_counts(day: &Value) -> (i64, i64) {
+    (
+        day["like_count"].as_i64().unwrap(),
+        day["comment_count"].as_i64().unwrap(),
+    )
+}
+
+#[sqlx::test]
+async fn day_counts_reactions(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    set_timezone(&pool, "UTC").await;
+    let (_, dad) = app.login_as("dad", Role::Guardian).await;
+    let a = baby(&pool, "a").await;
+    let me = app.user.id;
+    // 05-02: 아기 a 사진(하트 2, 댓글 1), 태그 없는 사진(하트 1), 휴지통 사진(하트 1, 댓글 1)
+    let tagged = photo(&pool, me, at(2, 10)).await;
+    let untagged = photo(&pool, me, at(2, 11)).await;
+    let mut s = AssetSeed::photo(me);
+    s.taken_at = at(2, 12);
+    s.deleted_at = Some(Utc::now());
+    let trashed = insert_asset(&pool, s).await;
+    // 05-01: 반응 없음
+    photo(&pool, me, at(1, 10)).await;
+    assets::queries::add_babies(&pool, tagged, &[a], me)
+        .await
+        .unwrap();
+    like(&pool, tagged, me).await;
+    like(&pool, tagged, dad.id).await;
+    comment(&pool, tagged, dad.id).await;
+    like(&pool, untagged, me).await;
+    like(&pool, trashed, me).await;
+    comment(&pool, trashed, me).await;
+
+    let all: Value = app.server.get("/api/days").await.json();
+    assert_eq!(dates(&all), ["2024-05-02", "2024-05-01"]);
+    assert_eq!(reaction_counts(&all["items"][0]), (3, 1));
+    assert_eq!(reaction_counts(&all["items"][1]), (0, 0));
+    let detail: Value = app.server.get("/api/days/2024-05-02").await.json();
+    assert_eq!(reaction_counts(&detail), (3, 1));
+    let detail: Value = app.server.get("/api/days/2024-05-01").await.json();
+    assert_eq!(reaction_counts(&detail), (0, 0));
+
+    let filtered: Value = app
+        .server
+        .get("/api/days")
+        .add_query_param("baby_id", a)
+        .await
+        .json();
+    assert_eq!(reaction_counts(&filtered["items"][0]), (2, 1));
+    let detail: Value = app
+        .server
+        .get("/api/days/2024-05-02")
+        .add_query_param("baby_id", a)
+        .await
+        .json();
+    assert_eq!(reaction_counts(&detail), (2, 1));
+}
+
 #[sqlx::test]
 async fn days_invalid_query(pool: PgPool) {
     let app = media_app(&pool, Role::Family).await;

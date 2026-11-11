@@ -68,6 +68,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assets/{id}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["put_favorite"];
+        post?: never;
+        delete: operations["delete_favorite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/{id}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["put_like"];
+        post?: never;
+        delete: operations["delete_like"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/{id}/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_likes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assets/{id}/original": {
         parameters: {
             query?: never;
@@ -388,6 +436,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_favorites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -667,6 +731,8 @@ export interface components {
             camera_make: string | null;
             camera_model: string | null;
             caption: string | null;
+            /** Format: int64 */
+            comment_count: number;
             /** Format: date-time */
             created_at: string;
             /**
@@ -679,6 +745,8 @@ export interface components {
             dominant_color: string | null;
             /** Format: int32 */
             duration_ms: number | null;
+            /** @description 요청자의 즐겨찾기 여부. */
+            favorited: boolean;
             /** Format: date-time */
             file_modified_at: string | null;
             /** Format: double */
@@ -690,6 +758,10 @@ export interface components {
             /** Format: uuid */
             id: string;
             kind: components["schemas"]["AssetKind"];
+            /** Format: int64 */
+            like_count: number;
+            /** @description 요청자의 하트 여부. */
+            liked: boolean;
             mime: string;
             original_filename: string;
             processing_error: string | null;
@@ -812,10 +884,20 @@ export interface components {
             /** @description 그날 태그된 아기. 아기 표시 순서. */
             baby_ids: string[];
             /**
+             * Format: int64
+             * @description 그날 자산 댓글 합계.
+             */
+            comment_count: number;
+            /**
              * Format: date
              * @description 인스턴스 시간대 기준 촬영 날짜.
              */
             date: string;
+            /**
+             * Format: int64
+             * @description 그날 자산 하트 합계.
+             */
+            like_count: number;
             /**
              * Format: date
              * @description 더 최근의 사진 있는 날.
@@ -838,10 +920,20 @@ export interface components {
             /** @description 그날 태그된 아기. 아기 표시 순서. */
             baby_ids: string[];
             /**
+             * Format: int64
+             * @description 그날 자산 댓글 합계.
+             */
+            comment_count: number;
+            /**
              * Format: date
              * @description 인스턴스 시간대 기준 촬영 날짜.
              */
             date: string;
+            /**
+             * Format: int64
+             * @description 그날 자산 하트 합계.
+             */
+            like_count: number;
             /** Format: int64 */
             photo_count: number;
             /** @description 그날 최신 3장. 촬영 시각 최신순. */
@@ -915,6 +1007,13 @@ export interface components {
         InvitesResponse: {
             invites: components["schemas"]["Invite"][];
         };
+        /** @description 하트 누른 사람. */
+        Like: {
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            user_id: string;
+        };
         LoginRequest: {
             password: string;
             username: string;
@@ -969,10 +1068,20 @@ export interface components {
                 /** @description 그날 태그된 아기. 아기 표시 순서. */
                 baby_ids: string[];
                 /**
+                 * Format: int64
+                 * @description 그날 자산 댓글 합계.
+                 */
+                comment_count: number;
+                /**
                  * Format: date
                  * @description 인스턴스 시간대 기준 촬영 날짜.
                  */
                 date: string;
+                /**
+                 * Format: int64
+                 * @description 그날 자산 하트 합계.
+                 */
+                like_count: number;
                 /** Format: int64 */
                 photo_count: number;
                 /** @description 그날 최신 3장. 촬영 시각 최신순. */
@@ -1457,6 +1566,284 @@ export interface operations {
                 };
             };
             /** @description 자산 없음 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_favorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 자산 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 즐겨찾기 켬. 이미 켠 상태면 그대로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 자산 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_favorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 자산 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 즐겨찾기 끔. 이미 끈 상태면 그대로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 자산 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_like: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 자산 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 하트 켬. 이미 켠 상태면 그대로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 자산 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_like: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 자산 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 하트 끔. 이미 끈 상태면 그대로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 자산 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_likes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 자산 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 하트 누른 사람. 최신순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Like"][];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 자산 없음 또는 휴지통 (`asset.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -2563,6 +2950,49 @@ export interface operations {
             };
             /** @description 그날 휴지통 밖 자산 없음 (`day.notFound`) */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_favorites: {
+        parameters: {
+            query?: {
+                /** @description 이전 응답의 `next_cursor`. */
+                cursor?: string;
+                /** @description 1~500, 기본 100. */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 내 즐겨찾기. 휴지통 제외, 즐겨찾기 시각 최신순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AssetSummary"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

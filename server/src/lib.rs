@@ -11,6 +11,7 @@ pub mod jobs;
 pub mod maintenance;
 pub mod media;
 pub mod openapi;
+pub mod reactions;
 pub mod request;
 pub mod routes;
 pub mod security;

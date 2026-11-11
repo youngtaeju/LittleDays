@@ -107,6 +107,12 @@ pub struct Asset {
     /// 휴지통 이동 시각.
     #[schema(required = true)]
     pub deleted_at: Option<DateTime<Utc>>,
+    pub like_count: i64,
+    pub comment_count: i64,
+    /// 요청자의 하트 여부.
+    pub liked: bool,
+    /// 요청자의 즐겨찾기 여부.
+    pub favorited: bool,
 }
 
 /// 타임라인 목록 항목.

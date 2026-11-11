@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO asset_comments (id, asset_id, author_id, body) VALUES ($1, $2, $3, 'hi')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a91533af2979d565b9441f3350b0817a7d02da492364ba4311d686effc277e7a"
+}

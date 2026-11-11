@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE asset_favorites SET created_at = $3 WHERE asset_id = $1 AND user_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7cb8bb4e4b6e374e440a174af2eab3ac1332da0c2ca8ba6a5d0c4f495da819ce"
+}

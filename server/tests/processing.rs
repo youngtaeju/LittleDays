@@ -56,7 +56,7 @@ async fn run_one(app: &MediaApp) {
 }
 
 async fn asset(app: &MediaApp, id: Uuid) -> Asset {
-    assets::queries::get(&app.state.pool, id)
+    assets::queries::get(&app.state.pool, id, app.user.id)
         .await
         .unwrap()
         .unwrap()

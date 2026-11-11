@@ -89,6 +89,10 @@ export function assetFixture(id: string, over: Partial<Asset> = {}): Asset {
     processing_error: null,
     size_bytes: 1_000_000,
     taken_at_source: 'exif',
+    like_count: 0,
+    comment_count: 0,
+    liked: false,
+    favorited: false,
     ...over,
   }
 }
@@ -104,6 +108,8 @@ export function dayFixture(
     video_count: 0,
     uploader_ids: [userFixture('guardian').id],
     baby_ids: [],
+    like_count: 0,
+    comment_count: 0,
     preview: [assetSummaryFixture(`${date}-a`, { local_date: date })],
     ...over,
   }
