@@ -17,6 +17,7 @@ env:
 jobs:
   release:
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: write # GitHub Release 생성
       packages: write # GHCR push

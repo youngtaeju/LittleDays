@@ -18,6 +18,7 @@ env:
 jobs:
   server:
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: server
@@ -40,7 +41,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: 시스템 패키지 설치
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config zlib1g-dev libheif-dev libheif-plugin-libde265 libheif-plugin-aomenc libheif-plugin-dav1d ffmpeg
+        timeout-minutes: 10
+        run: sudo apt-get -o Acquire::Retries=3 update && sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends pkg-config zlib1g-dev libheif-dev libheif-plugin-libde265 libheif-plugin-aomenc libheif-plugin-dav1d ffmpeg
       - uses: dtolnay/rust-toolchain@1.99
         with:
           components: rustfmt, clippy
@@ -66,6 +68,7 @@ jobs:
 
   web:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: web
@@ -94,6 +97,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -117,6 +121,7 @@ jobs:
     # docker job 이 채운 GHA 빌드 캐시 재사용. 같은 이미지 이중 빌드 방지.
     needs: docker
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -145,7 +150,11 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Chromium 설치
         working-directory: web
-        run: pnpm exec playwright install --with-deps chromium
+        timeout-minutes: 10
+        # --with-deps 내부 apt 에도 재시도 적용.
+        run: |
+          echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-retries
+          pnpm exec playwright install --with-deps chromium
       - name: e2e
         working-directory: web
         run: pnpm e2e
