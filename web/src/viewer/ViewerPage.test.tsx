@@ -11,6 +11,7 @@ import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
 import {
+  apiError,
   assetFixture,
   assetSummaryFixture,
   babyFixture,
@@ -1281,6 +1282,179 @@ describe('ViewerPage', () => {
     await new Promise((r) => setTimeout(r, 300))
     expect(router.state.location.pathname).toBe('/photos/b')
     expect(box).toHaveValue('안녕')
+  })
+
+  it('favorites_neighbors', async () => {
+    let timelineCalls = 0
+    const { router, user } = renderViewer({
+      path: '/photos/a?from=favorites',
+      extra: {
+        'GET /api/assets': () => {
+          timelineCalls += 1
+          return json(200, { items: [], next_cursor: null })
+        },
+        // 즐겨찾기 순서. 타임라인 순서(a, b, c)와 다름.
+        'GET /api/favorites': () =>
+          json(200, {
+            items: ['c', 'a', 'b'].map((id) => assetSummaryFixture(id)),
+            next_cursor: null,
+          }),
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.prev })
+    expect(screen.getByRole('button', { name: ko.viewer.next })).toBeVisible()
+
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    expect(router.state.location.search).toEqual({ from: 'favorites' })
+    expect(screen.queryByRole('button', { name: ko.viewer.next })).toBeNull()
+
+    await user.keyboard('{ArrowLeft}')
+    await user.keyboard('{ArrowLeft}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    expect(router.state.location.search).toEqual({ from: 'favorites' })
+    expect(timelineCalls).toBe(0)
+
+    // 직접 진입이면 닫기 → 즐겨찾기 화면.
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/me/favorites')
+    })
+  })
+
+  it('invalid_from_dropped', async () => {
+    let timelineCalls = 0
+    const { router, user } = renderViewer({
+      path: '/photos/a?from=x',
+      extra: {
+        'GET /api/assets': () => {
+          timelineCalls += 1
+          return json(200, {
+            items: ['a', 'b', 'c'].map((id) => assetSummaryFixture(id)),
+            next_cursor: null,
+          })
+        },
+      },
+    })
+    // 미등록 GET /api/favorites 호출 시 setup 이 실패 처리.
+    await screen.findByRole('button', { name: ko.viewer.info })
+    expect(router.state.location.search).toEqual({})
+    await user.click(
+      await screen.findByRole('button', { name: ko.viewer.next }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    expect(router.state.location.search).not.toHaveProperty('from')
+    expect(router.state.location.href).toBe('/photos/b')
+    expect(timelineCalls).toBe(1)
+  })
+
+  it('favorites_walk_pages_for_unlisted', async () => {
+    const cursors: (string | null)[] = []
+    const { router, user } = renderViewer({
+      path: '/photos/c?from=favorites',
+      assets: { c: assetFixture('c', { favorited: true }) },
+      extra: {
+        'GET /api/favorites': (req) => {
+          const cursor = new URL(req.url).searchParams.get('cursor')
+          cursors.push(cursor)
+          return cursor === 'c1'
+            ? json(200, {
+                items: [assetSummaryFixture('c')],
+                next_cursor: null,
+              })
+            : json(200, {
+                items: [assetSummaryFixture('a'), assetSummaryFixture('b')],
+                next_cursor: 'c1',
+              })
+        },
+      },
+    })
+    await waitFor(() => {
+      expect(cursors).toEqual([null, 'c1'])
+    })
+    await user.click(
+      await screen.findByRole('button', { name: ko.viewer.prev }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+  })
+
+  it('unfavorite_keeps_viewer', async () => {
+    let favorited = true
+    let listCalls = 0
+    const { router, user } = renderViewer({
+      path: '/photos/b?from=favorites',
+      extra: {
+        'GET /api/assets/b': () => json(200, assetFixture('b', { favorited })),
+        'DELETE /api/assets/b/favorite': () => {
+          favorited = false
+          return json(204, null)
+        },
+        'GET /api/favorites': () => {
+          listCalls += 1
+          const ids = favorited ? ['a', 'b', 'c'] : ['a', 'c']
+          return json(200, {
+            items: ids.map((id) => assetSummaryFixture(id)),
+            next_cursor: null,
+          })
+        },
+      },
+    })
+    const star = await screen.findByRole('button', {
+      name: ko.reactions.favorite,
+    })
+    expect(star).toHaveAttribute('aria-pressed', 'true')
+    await user.click(star)
+    await waitFor(() => {
+      expect(listCalls).toBe(2)
+    })
+    await waitFor(() => {
+      expect(star).toHaveAttribute('aria-pressed', 'false')
+    })
+    // 목록에서 빠져도 같은 사진과 이웃 유지.
+    expect(router.state.location.pathname).toBe('/photos/b')
+    expect(
+      document.querySelector('img[src="/api/assets/b/preview.webp"]'),
+    ).not.toBeNull()
+    expect(screen.getByRole('button', { name: ko.viewer.prev })).toBeVisible()
+    await user.click(screen.getByRole('button', { name: ko.viewer.next }))
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    expect(router.state.location.search).toEqual({ from: 'favorites' })
+  })
+
+  it('unfavorite_not_found_refreshes_favorites', async () => {
+    let listCalls = 0
+    const { user } = renderViewer({
+      path: '/photos/b?from=favorites',
+      assets: { b: assetFixture('b', { favorited: true }) },
+      extra: {
+        'DELETE /api/assets/b/favorite': () => apiError(404, 'asset.notFound'),
+        'GET /api/favorites': () => {
+          listCalls += 1
+          return json(200, {
+            items: ['a', 'b', 'c'].map((id) => assetSummaryFixture(id)),
+            next_cursor: null,
+          })
+        },
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: ko.reactions.favorite }),
+    )
+    await waitFor(() => {
+      expect(listCalls).toBe(2)
+    })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByText(ko.reactions.saveFailed)).toBeNull()
   })
 })
 

@@ -110,6 +110,15 @@ describe('cachePlugins', () => {
     expect(match('/api/babies', false)).toBe(false)
   })
 
+  it('favorites_is_offline_api', () => {
+    const match = (path: string) =>
+      isOfflineApi({ url: new URL(BASE + path), sameOrigin: true })
+    expect(match('/api/favorites')).toBe(true)
+    expect(match('/api/favorites?limit=100&cursor=c1')).toBe(true)
+    expect(match('/api/favorites/x')).toBe(false)
+    expect(match('/api/favoritesx')).toBe(false)
+  })
+
   // 글꼴은 precache 대신 런타임 캐시(vite.config.ts globIgnores). 빌드 sw.js 확인은 수동.
   it('fonts_not_precached', () => {
     const match = (path: string, sameOrigin = true) =>

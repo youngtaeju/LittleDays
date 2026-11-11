@@ -2,6 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { Role } from '@/api/types'
 import { initI18n } from '@/i18n'
+import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
 import { emptyFeedRoutes, settingsFixture, userFixture } from '@/test/fixtures'
 import { renderApp } from '@/test/router'
@@ -47,6 +48,24 @@ describe('MePage', () => {
       await screen.findByRole('link', { name: '우리 집 설정' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '휴지통' })).toBeInTheDocument()
+  })
+
+  it('favorites_row_for_all_roles', async () => {
+    for (const role of ['family', 'guardian', 'owner'] as const) {
+      renderMe(role)
+      const group = (
+        await screen.findByRole('heading', { name: ko.me.photos })
+      ).closest('section')
+      if (!group) throw new Error('사진 그룹 없음')
+      const rows = within(group).getAllByRole('link')
+      expect(rows[0]).toHaveAccessibleName(ko.me.favorites)
+      expect(rows[0]).toHaveAttribute('href', '/me/favorites')
+      // 휴지통은 업로드 권한 있을 때 즐겨찾기 아래.
+      expect(rows.map((r) => r.textContent)).toEqual(
+        role === 'family' ? [ko.me.favorites] : [ko.me.favorites, ko.me.trash],
+      )
+      cleanup()
+    }
   })
 
   it('shows_name_username_role', async () => {

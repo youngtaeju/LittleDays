@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, call } from '@/api/client'
-import { isLogoutError } from '@/api/errors'
+import { ApiError, isLogoutError } from '@/api/errors'
 import type { Asset } from '@/api/types'
 import { assetKey } from '@/timeline/useTimeline'
 
@@ -32,12 +32,14 @@ export function useLikes(assetId: string, enabled: boolean) {
 }
 
 // 즉시 반영 후 요청. 같은 사진의 같은 반응은 scope 로 순서대로 전송, 마지막 누른 값이 서버에 남음.
+// quiet: 오류 알림 생략 조건. 되돌리기와 재조회는 그대로.
 function useToggle(
   assetId: string,
   kind: 'like' | 'favorite',
   send: (next: boolean) => Promise<unknown>,
   apply: (a: Asset, next: boolean) => Asset,
   related: QueryKey,
+  quiet: (e: unknown, next: boolean) => boolean = () => false,
 ) {
   const qc = useQueryClient()
   const { t } = useTranslation()
@@ -54,9 +56,11 @@ function useToggle(
       if (prev) qc.setQueryData(key, apply(prev, next))
       return { prev }
     },
-    onError: (e, _next, ctx) => {
+    onError: (e, next, ctx) => {
       if (ctx?.prev) qc.setQueryData(key, ctx.prev)
-      if (!isLogoutError(e)) toast.error(t('reactions.saveFailed'))
+      if (!isLogoutError(e) && !quiet(e, next)) {
+        toast.error(t('reactions.saveFailed'))
+      }
     },
     onSettled: () => {
       void qc.invalidateQueries({ queryKey: ['days'] })
@@ -91,7 +95,12 @@ export function useToggleLike(assetId: string) {
   )
 }
 
-export function useToggleFavorite(assetId: string) {
+// fromFavorites: 즐겨찾기 화면에서 연 뷰어. 그사이 휴지통으로 간 사진의 ★ 끄기 404 는
+// 오류 대신 목록 재조회(onSettled)로 정리.
+export function useToggleFavorite(
+  assetId: string,
+  { fromFavorites = false }: { fromFavorites?: boolean } = {},
+) {
   return useToggle(
     assetId,
     'favorite',
@@ -103,5 +112,11 @@ export function useToggleFavorite(assetId: string) {
     },
     (a, next) => ({ ...a, favorited: next }),
     favoritesKey,
+    (e, next) =>
+      fromFavorites &&
+      !next &&
+      e instanceof ApiError &&
+      e.status === 404 &&
+      e.key === 'asset.notFound',
   )
 }

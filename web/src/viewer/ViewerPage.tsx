@@ -33,12 +33,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { useFavorites } from '@/favorites/useFavorites'
 import { ageParts } from '@/feed/dayMeta'
 import { errorMessage } from '@/i18n'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { LikersSheet } from '@/reactions/LikersSheet'
-import { useToggleFavorite, useToggleLike } from '@/reactions/useReactions'
+import {
+  favoritesKey,
+  useToggleFavorite,
+  useToggleLike,
+} from '@/reactions/useReactions'
 import { useSettings } from '@/settings/useSettings'
 import { Blurhash } from '@/timeline/Blurhash'
 import {
@@ -167,7 +172,8 @@ function PanelTab({
 export function ViewerPage() {
   const { t, i18n } = useTranslation()
   const { id } = route.useParams()
-  const { baby } = route.useSearch()
+  const { baby, from } = route.useSearch()
+  const fromFavorites = from === 'favorites'
   const navigate = useNavigate()
   const router = useRouter()
   const canGoBack = useCanGoBack()
@@ -178,15 +184,39 @@ export function ViewerPage() {
   const wide = useMediaQuery(WIDE)
 
   const asset = useAsset(id)
+  const timeline = useTimeline(baby, {
+    refetchOnMount: false,
+    enabled: !fromFavorites,
+  })
+  const favorites = useFavorites({
+    refetchOnMount: false,
+    enabled: fromFavorites,
+  })
   const {
     items,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
     fetchNextPage,
-  } = useTimeline(baby, { refetchOnMount: false })
+  } = fromFavorites ? favorites : timeline
   const ids = useMemo(() => items.map((i) => i.id), [items])
-  const { prev, next } = neighbors(ids, id)
+  const listed = ids.includes(id)
+  const found = neighbors(ids, id)
+  // ★ 를 꺼 즐겨찾기 목록에서 빠져도 열린 사진은 마지막으로 목록에 있던 때의 이웃 유지.
+  const [kept, setKept] = useState<{
+    id: string
+    prev?: string
+    next?: string
+  } | null>(null)
+  if (
+    fromFavorites &&
+    listed &&
+    (kept?.id !== id || kept.prev !== found.prev || kept.next !== found.next)
+  ) {
+    setKept({ id, ...found })
+  }
+  const { prev, next } =
+    fromFavorites && !listed && kept?.id === id ? kept : found
   // 상세 도착 전엔 목록 항목으로 표시. 넘길 때 빈 화면 방지.
   const media = asset.data ?? items.find((i) => i.id === id)
   const detail = asset.data
@@ -223,14 +253,17 @@ export function ViewerPage() {
   }
 
   const like = useToggleLike(id)
-  const favorite = useToggleFavorite(id)
+  const favorite = useToggleFavorite(id, { fromFavorites })
 
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
   // 상세 도착 후 판단. 휴지통·다른 아기·이미 지나친 시각처럼 목록에 나올 수 없으면 순회 안 함.
+  // 즐겨찾기 목록은 즐겨찾기한 시각 순서라 즐겨찾기 여부와 휴지통만 판단.
   const unlisted =
-    !ids.includes(id) &&
+    !listed &&
     detail !== undefined &&
-    !outsideTimeline(detail, items[items.length - 1], baby)
+    (fromFavorites
+      ? detail.favorited && detail.deleted_at === null
+      : !outsideTimeline(detail, items[items.length - 1], baby))
   const atEnd = ids.length > 0 && (ids[ids.length - 1] === id || unlisted)
   useEffect(() => {
     if (atEnd && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
@@ -250,7 +283,7 @@ export function ViewerPage() {
     void navigate({
       to: '/photos/$id',
       params: { id: target },
-      search: { baby },
+      search: { baby, from },
       replace: true,
     })
   }
@@ -269,8 +302,9 @@ export function ViewerPage() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     closeTimer.current = window.setTimeout(
       () => {
-        // 직접 진입(앱 내 이전 기록 없음)이면 타임라인.
+        // 직접 진입(앱 내 이전 기록 없음)이면 타임라인 또는 즐겨찾기 화면.
         if (canGoBack) router.history.back()
+        else if (fromFavorites) void navigate({ to: '/me/favorites' })
         else void navigate({ to: '/', search: { baby } })
       },
       reduce ? 0 : FADE_MS,
@@ -291,6 +325,8 @@ export function ViewerPage() {
       ),
     onSuccess: (a) => {
       applyAsset(qc, a)
+      // 휴지통 사진은 즐겨찾기 목록에서 빠짐. 이동과 복구 모두 다시 조회.
+      void qc.invalidateQueries({ queryKey: favoritesKey })
       toast(t('viewer.restored'))
     },
     onError: (e) => {
@@ -306,6 +342,7 @@ export function ViewerPage() {
     onSuccess: (_, assetId) => {
       void qc.invalidateQueries({ queryKey: ['assets'] })
       void qc.invalidateQueries({ queryKey: ['days'] })
+      void qc.invalidateQueries({ queryKey: favoritesKey })
       // 떠나는 항목이라 즉시 재조회 안 함.
       void qc.invalidateQueries({
         queryKey: assetKey(assetId),

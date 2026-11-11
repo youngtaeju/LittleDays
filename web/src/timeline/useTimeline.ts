@@ -24,13 +24,14 @@ export function assetKey(id: string) {
   return ['asset', id] as const
 }
 
-// refetchOnMount false: 뷰어용. 이미 받은 페이지 전체 재조회 방지.
+// refetchOnMount false: 뷰어용. 이미 받은 페이지 전체 재조회 방지. enabled false: 뷰어가 다른 목록(즐겨찾기) 기준일 때.
 export function useTimeline(
   babyId: string | undefined,
   {
     refetchOnMount = true,
+    enabled = true,
     date,
-  }: { refetchOnMount?: boolean; date?: string } = {},
+  }: { refetchOnMount?: boolean; enabled?: boolean; date?: string } = {},
 ) {
   const query = useInfiniteQuery({
     queryKey: timelineKey(babyId, date),
@@ -49,6 +50,7 @@ export function useTimeline(
     // 뷰어 왕복·탭 전환마다 받은 페이지 전체 재조회 방지. 변경은 ['assets'] 무효화로 반영.
     staleTime: 60_000,
     refetchOnMount,
+    enabled,
   })
   const { data } = query
   const items = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data])

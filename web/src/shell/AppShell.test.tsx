@@ -19,7 +19,12 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-async function renderShell(role: Role, path = '/', babies: Baby[] = []) {
+async function renderShell(
+  role: Role,
+  path = '/',
+  babies: Baby[] = [],
+  extra: Parameters<typeof mockFetch>[0] = {},
+) {
   mockFetch({
     ...emptyFeedRoutes,
     'GET /api/babies': () => json(200, babies),
@@ -28,6 +33,7 @@ async function renderShell(role: Role, path = '/', babies: Baby[] = []) {
     'GET /api/auth/status': () => json(200, { signup_open: false }),
     'GET /api/auth/sessions': () => json(200, { sessions: [] }),
     'POST /api/auth/logout': () => json(204, null),
+    ...extra,
   })
   const app = renderApp(path)
   await screen.findAllByText(settingsFixture.instance_name)
@@ -69,6 +75,41 @@ describe('AppShell', () => {
     expect(tabs.getByRole('link', { name: ko.nav.home })).not.toHaveAttribute(
       'aria-current',
     )
+  })
+
+  it('sidebar_has_favorites', async () => {
+    const { user, router } = await renderShell('family', '/', [], {
+      'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
+    })
+    const more = screen.getByRole('navigation', { name: ko.nav.more })
+    const sidebar = more.parentElement
+    if (!sidebar) throw new Error('사이드바 없음')
+    const main = within(sidebar).getByRole('navigation', { name: ko.nav.main })
+    // 주 메뉴 아래 보조 메뉴.
+    expect(
+      main.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    const link = within(more).getByRole('link', { name: ko.nav.favorites })
+    expect(link).not.toHaveAttribute('aria-current')
+    await user.click(link)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/me/favorites')
+    })
+    expect(link).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('sidebar_single_current_on_secondary', async () => {
+    await renderShell('guardian', '/me/favorites', [], {
+      'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
+    })
+    const more = screen.getByRole('navigation', { name: ko.nav.more })
+    const sidebar = more.parentElement
+    if (!sidebar) throw new Error('사이드바 없음')
+    const current = within(sidebar)
+      .getAllByRole('link')
+      .filter((l) => l.getAttribute('aria-current') === 'page')
+    expect(current).toHaveLength(1)
+    expect(current[0]).toHaveAccessibleName(ko.nav.favorites)
   })
 
   it('add_opens_picker', async () => {

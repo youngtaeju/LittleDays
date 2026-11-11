@@ -20,6 +20,8 @@
     "me": "나",
     "add": "사진 올리기",
     "trash": "휴지통",
+    "favorites": "즐겨찾기",
+    "more": "더 보기",
     "logout": "로그아웃"
   },
   "roles": {
@@ -412,6 +414,9 @@
       "roleNotAllowed": "이 역할로는 바꿀 수 없어요."
     }
   },
+  "favorites": {
+    "empty": "사진에서 ★ 를 누르면 여기 모여요"
+  },
   "trash": {
     "retention_one": "휴지통에 넣은 지 {{count}}일이 지나면 영구 삭제돼요.",
     "retention_other": "휴지통에 넣은 지 {{count}}일이 지나면 영구 삭제돼요.",
@@ -541,6 +546,7 @@
     "password": "비밀번호 바꾸기",
     "devices": "로그인한 기기",
     "appearance": "화면과 언어",
+    "favorites": "즐겨찾기",
     "trash": "휴지통",
     "instance": "우리 집 설정",
     "logout": "로그아웃",

@@ -11,6 +11,7 @@ type SubPath =
   | '/me/password'
   | '/me/devices'
   | '/me/appearance'
+  | '/me/favorites'
   | '/me/trash'
   | '/me/instance'
 
@@ -77,11 +78,12 @@ export function MePage() {
       <Group title={t('me.app')}>
         <NavRow to="/me/appearance" label={t('me.appearance')} />
       </Group>
-      {hasRole(user, 'guardian') && (
-        <Group title={t('me.photos')}>
+      <Group title={t('me.photos')}>
+        <NavRow to="/me/favorites" label={t('me.favorites')} />
+        {hasRole(user, 'guardian') && (
           <NavRow to="/me/trash" label={t('me.trash')} />
-        </Group>
-      )}
+        )}
+      </Group>
       {hasRole(user, 'owner') && (
         <Group title={t('me.home')}>
           <NavRow to="/me/instance" label={t('me.instance')} />
