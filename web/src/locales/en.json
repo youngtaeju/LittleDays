@@ -20,6 +20,8 @@
     "me": "Me",
     "add": "Upload photos",
     "trash": "Trash",
+    "favorites": "Favorites",
+    "more": "More",
     "logout": "Sign out"
   },
   "roles": {
@@ -412,6 +414,9 @@
       "roleNotAllowed": "You can't change to this role."
     }
   },
+  "favorites": {
+    "empty": "Tap ★ on a photo to collect it here"
+  },
   "trash": {
     "retention_one": "Items are permanently deleted {{count}} day after they are moved to the trash.",
     "retention_other": "Items are permanently deleted {{count}} days after they are moved to the trash.",
@@ -542,6 +547,7 @@
     "password": "Change password",
     "devices": "Signed-in devices",
     "appearance": "Display & language",
+    "favorites": "Favorites",
     "trash": "Trash",
     "instance": "Home settings",
     "logout": "Sign out",

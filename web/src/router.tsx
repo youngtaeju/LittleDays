@@ -75,6 +75,10 @@ const AgeAlbumPage = lazyRouteComponent(
   () => import('@/babies/AgeAlbumPage'),
   'AgeAlbumPage',
 )
+const FavoritesPage = lazyRouteComponent(
+  () => import('@/favorites/FavoritesPage'),
+  'FavoritesPage',
+)
 const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
   'TrashPage',
@@ -113,6 +117,17 @@ function safeRedirect(v: unknown): string | undefined {
 // 홈·그날·뷰어 공용. baby = 목록·이전/다음 필터.
 function babySearch(s: Record<string, unknown>): { baby?: string } {
   return { baby: typeof s.baby === 'string' ? s.baby : undefined }
+}
+
+// 뷰어 전용. from = 이전/다음 목록(없으면 타임라인). 그 밖의 값은 버림.
+function viewerSearch(s: Record<string, unknown>): {
+  baby?: string
+  from?: 'favorites'
+} {
+  return {
+    ...babySearch(s),
+    from: s.from === 'favorites' ? 'favorites' : undefined,
+  }
 }
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
@@ -305,6 +320,12 @@ const meInstanceRoute = createRoute({
   component: InstancePage,
 })
 
+const favoritesRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/me/favorites',
+  component: FavoritesPage,
+})
+
 const trashRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/me/trash',
@@ -316,7 +337,7 @@ const trashRoute = createRoute({
 const photoRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/photos/$id',
-  validateSearch: babySearch,
+  validateSearch: viewerSearch,
   component: ViewerPage,
 })
 
@@ -324,7 +345,7 @@ const photoRoute = createRoute({
 const legacyPhotoRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/photo/$id',
-  validateSearch: babySearch,
+  validateSearch: viewerSearch,
   beforeLoad: ({ params, search }) => {
     throw redirect({ to: '/photos/$id', params, search, replace: true })
   },
@@ -377,6 +398,7 @@ const routeTree = rootRoute.addChildren([
       meDevicesRoute,
       meAppearanceRoute,
       meInstanceRoute,
+      favoritesRoute,
       trashRoute,
     ]),
     photoRoute,

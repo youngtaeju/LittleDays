@@ -14,7 +14,7 @@ import {
   trashAsset,
 } from './fixtures'
 import type { Page } from '@playwright/test'
-import type { Baby, Comment } from '@/api/types'
+import type { AssetPage, Baby, Comment } from '@/api/types'
 
 // 선언 순서대로 실행(워커 1개). 앞 테스트가 만든 계정·사진 사용.
 // 첫 테스트 외에는 재시도해도 최종 상태가 같도록 작성(복구까지 한 테스트 안에서).
@@ -408,6 +408,78 @@ test('reactions_round_trip', async ({
   } finally {
     await close()
   }
+})
+
+// 이전 시도가 남긴 즐겨찾기 제거. 재시도해도 빈 즐겨찾기에서 시작.
+async function resetFavorites(page: Page): Promise<void> {
+  const headers = { 'X-Requested-With': 'LittleDays' }
+  const res = await page.request.get('/api/favorites?limit=100')
+  expect(res.status()).toBe(200)
+  const { items } = (await res.json()) as AssetPage
+  for (const a of items) {
+    const del = await page.request.delete(`/api/assets/${a.id}/favorite`, {
+      headers,
+    })
+    expect(del.status()).toBeLessThan(300)
+  }
+}
+
+test('favorites_flow', async ({ ownerPage: page }) => {
+  await resetFavorites(page)
+  await page.goto('/')
+  await expectThumbnailsLoaded(page, 3)
+
+  // 첫 사진 ★ → 다음 사진 ★. 첫 사진은 목록 중간(영상이 최신)이라 다음 항목 존재.
+  await page
+    .getByRole('main')
+    .getByRole('link', { name: /^사진,/ })
+    .first()
+    .click()
+  await expect(page).toHaveURL(/\/photos\//)
+  const star = page.getByRole('button', { name: '즐겨찾기', exact: true })
+  await expect(star).toHaveAttribute('aria-pressed', 'false')
+  await star.click()
+  await expect(star).toHaveAttribute('aria-pressed', 'true')
+  const first = new URL(page.url()).pathname
+  await page.getByRole('button', { name: '다음', exact: true }).click()
+  await expect.poll(() => new URL(page.url()).pathname).not.toBe(first)
+  await expect(star).toHaveAttribute('aria-pressed', 'false')
+  await star.click()
+  await expect(star).toHaveAttribute('aria-pressed', 'true')
+  const second = new URL(page.url()).pathname
+  await expect
+    .poll(async () => {
+      const res = await page.request.get('/api/favorites')
+      return ((await res.json()) as AssetPage).items.length
+    })
+    .toBe(2)
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/$/)
+
+  // 나 → 즐겨찾기. 최근에 담은 사진이 먼저.
+  await page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .getByRole('link', { name: '나' })
+    .click()
+  await page.getByRole('main').getByRole('link', { name: '즐겨찾기' }).click()
+  await expect(page).toHaveURL(/\/me\/favorites$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: '즐겨찾기' }),
+  ).toBeVisible()
+  await expect(tiles(page)).toHaveCount(2)
+  await expectThumbnailsLoaded(page, 2)
+
+  // 즐겨찾기 순서로 넘김. 닫으면 즐겨찾기 화면.
+  await tiles(page).first().click()
+  await expect(page).toHaveURL(new RegExp(`${second}\\?from=favorites$`))
+  await expect(
+    page.getByRole('button', { name: '이전', exact: true }),
+  ).toHaveCount(0)
+  await page.getByRole('button', { name: '다음', exact: true }).click()
+  await expect(page).toHaveURL(new RegExp(`${first}\\?from=favorites$`))
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/me\/favorites$/)
+  await expect(tiles(page)).toHaveCount(2)
 })
 
 test('offline_banner', async ({ ownerPage: page, context }) => {
