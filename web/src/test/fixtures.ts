@@ -2,6 +2,7 @@ import type {
   Asset,
   AssetSummary,
   Baby,
+  Comment,
   DaySummary,
   Role,
   Settings,
@@ -93,6 +94,22 @@ export function assetFixture(id: string, over: Partial<Asset> = {}): Asset {
     comment_count: 0,
     liked: false,
     favorited: false,
+    ...over,
+  }
+}
+
+// 사진 a 의 댓글. 기본 작성자는 userFixture 공용 id.
+export function commentFixture(
+  id: string,
+  over: Partial<Comment> = {},
+): Comment {
+  return {
+    id,
+    asset_id: 'a',
+    author_id: userFixture('guardian').id,
+    body: '예뻐요',
+    created_at: '2024-05-10T03:00:00Z',
+    edited_at: null,
     ...over,
   }
 }

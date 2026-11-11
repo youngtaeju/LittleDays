@@ -37,8 +37,10 @@ export function LikersSheet({
           {likes.data ? (
             <ul className="grid gap-1">
               {likes.data.map((like) => {
-                const name =
-                  users?.find((u) => u.id === like.user_id)?.display_name ?? ''
+                const known = users?.find(
+                  (u) => u.id === like.user_id,
+                )?.display_name
+                const name = known ?? t('comments.unknownUser')
                 return (
                   <li
                     key={like.user_id}
@@ -48,7 +50,7 @@ export function LikersSheet({
                       aria-hidden
                       className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-accent-soft font-bold text-accent-ink"
                     >
-                      {Array.from(name)[0] ?? '?'}
+                      {Array.from(known ?? '')[0] ?? '?'}
                     </span>
                     <span className="truncate text-[15px]">{name}</span>
                   </li>

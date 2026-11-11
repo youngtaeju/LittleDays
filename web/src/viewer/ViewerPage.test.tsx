@@ -14,6 +14,7 @@ import {
   assetFixture,
   assetSummaryFixture,
   babyFixture,
+  commentFixture,
   dayFixture,
   settingsFixture,
   userFixture,
@@ -1037,8 +1038,9 @@ describe('ViewerPage', () => {
       .closest('[class*="bottom-0"]')
     expect(bottomBar).toContainElement(like)
     expect(bottomBar).toContainElement(count)
-    // 💬 는 댓글 화면과 함께.
-    expect(screen.queryByRole('button', { name: /댓글/ })).toBeNull()
+    expect(bottomBar).toContainElement(
+      screen.getByRole('button', { name: '댓글 보기, 2개' }),
+    )
   })
 
   it('no_likers_button_at_zero', async () => {
@@ -1187,7 +1189,112 @@ describe('ViewerPage', () => {
     })
     expect(await within(sheet).findByText('guardian')).toBeInTheDocument()
   })
+
+  it('comment_button_shows_count', async () => {
+    renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: { a: assetFixture('a', { comment_count: 3 }) },
+    })
+    const button = await screen.findByRole('button', {
+      name: '댓글 보기, 3개',
+    })
+    expect(button).toHaveTextContent('3')
+  })
+
+  it('desktop_panel_tabs', async () => {
+    wideScreen()
+    const { router, user } = renderViewer({
+      path: '/photos/a',
+      ids: ['a', 'b'],
+      assets: {
+        a: assetFixture('a', { comment_count: 1 }),
+        b: assetFixture('b', { comment_count: 2 }),
+      },
+      extra: {
+        'GET /api/assets/a/comments': () =>
+          json(200, { items: [commentFixture('c1')], next_cursor: null }),
+        'GET /api/assets/b/comments': () =>
+          json(200, {
+            items: [commentFixture('c2'), commentFixture('c3')],
+            next_cursor: null,
+          }),
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: '댓글 보기, 1개' }),
+    )
+    const panel = await screen.findByRole('complementary', {
+      name: ko.comments.label,
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(within(panel).getByRole('tab', { name: '댓글 1' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(await within(panel).findAllByRole('listitem')).toHaveLength(1)
+
+    // ⓘ → 정보 탭.
+    await user.click(screen.getByRole('button', { name: ko.viewer.info }))
+    const info = await screen.findByRole('complementary', {
+      name: ko.viewer.info,
+    })
+    expect(
+      within(info).getByRole('tab', { name: ko.viewer.info }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(
+      within(info).getByRole('button', { name: ko.viewer.editCaption }),
+    ).toBeInTheDocument()
+
+    // 댓글 탭으로 돌아가 넘겨도 같은 탭.
+    await user.click(within(info).getByRole('tab', { name: '댓글 1' }))
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    const next = await screen.findByRole('complementary', {
+      name: ko.comments.label,
+    })
+    expect(
+      await within(next).findByRole('tab', { name: '댓글 2' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(await within(next).findAllByRole('listitem')).toHaveLength(2)
+  })
+
+  it('typing_arrow_does_not_navigate', async () => {
+    wideScreen()
+    const { router, user } = renderViewer({
+      path: '/photos/b',
+      extra: {
+        'GET /api/assets/b/comments': () =>
+          json(200, { items: [], next_cursor: null }),
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: '댓글 보기, 0개' }),
+    )
+    const panel = await screen.findByRole('complementary', {
+      name: ko.comments.label,
+    })
+    const box = within(panel).getByRole('textbox', { name: ko.comments.input })
+    await user.type(box, '안녕{ArrowLeft}{ArrowRight}{Escape}')
+    await new Promise((r) => setTimeout(r, 300))
+    expect(router.state.location.pathname).toBe('/photos/b')
+    expect(box).toHaveValue('안녕')
+  })
 })
+
+function wideScreen() {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) =>
+      ({
+        matches: query === '(min-width: 1024px)',
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      }) as unknown as MediaQueryList,
+  )
+}
 
 function at(x: number, y: number) {
   return { pointerId: 1, pointerType: 'touch', clientX: x, clientY: y }

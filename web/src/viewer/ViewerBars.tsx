@@ -78,7 +78,7 @@ export function ViewerBars({
     onLike: () => void
     onLikers: () => void
     onFavorite: () => void
-    comments?: { count: number; onOpen: () => void }
+    comments?: { count: number; open: boolean; onOpen: () => void }
   } | null
 }) {
   const { t } = useTranslation()
@@ -238,6 +238,7 @@ export function ViewerBars({
                   aria-label={t('reactions.comments', {
                     count: reactions.comments.count,
                   })}
+                  aria-pressed={reactions.comments.open}
                   onClick={reactions.comments.onOpen}
                 >
                   <IconComment aria-hidden />
