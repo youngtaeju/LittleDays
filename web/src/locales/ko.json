@@ -24,6 +24,14 @@
     "more": "더 보기",
     "logout": "로그아웃"
   },
+  "addSheet": {
+    "open": "추가하기",
+    "title": "무엇을 남길까요?",
+    "upload": "사진·영상 올리기",
+    "story": "이야기 쓰기",
+    "growth": "키·몸무게 기록",
+    "milestone": "마일스톤 기록"
+  },
   "roles": {
     "owner": "관리자",
     "guardian": "보호자",
@@ -252,7 +260,13 @@
     "commentCount_one": "댓글 {{count}}개",
     "commentCount_other": "댓글 {{count}}개",
     "viewAll_one": "{{date}} {{count}}개 모두 보기",
-    "viewAll_other": "{{date}} {{count}}개 모두 보기"
+    "viewAll_other": "{{date}} {{count}}개 모두 보기",
+    "milestones": "· 🎉 {{names}}",
+    "milestonesMore_one": "· 🎉 {{names}} 외 {{count}}",
+    "milestonesMore_other": "· 🎉 {{names}} 외 {{count}}",
+    "recordedBy": "{{name}}가 기록",
+    "recordedBy_batchim": "{{name}}이 기록",
+    "recordedBy_unknown": "{{name}}이(가) 기록"
   },
   "day": {
     "back": "뒤로",
@@ -412,6 +426,12 @@
       "invalidLocale": "지원하지 않는 언어예요.",
       "notFound": "사용자를 찾을 수 없어요.",
       "roleNotAllowed": "이 역할로는 바꿀 수 없어요."
+    },
+    "story": {
+      "bodyInvalid": "이야기는 1~5000자로 써 주세요.",
+      "dateInvalid": "오늘 이후 날짜는 고를 수 없어요.",
+      "notFound": "이야기를 찾을 수 없어요.",
+      "forbidden": "이 이야기를 고칠 수 없어요."
     }
   },
   "favorites": {
@@ -593,5 +613,78 @@
     "expand": "댓글 크게 보기",
     "collapse": "댓글 작게 보기",
     "close": "댓글 닫기"
+  },
+  "stories": {
+    "newTitle": "이야기 쓰기",
+    "editTitle": "이야기 고치기",
+    "post": "올리기",
+    "date": "날짜",
+    "body": "이야기",
+    "placeholder": "오늘 어떤 일이 있었나요?",
+    "counter": "{{count}}/5000",
+    "photos": "사진",
+    "photoCount_one": "{{count}}장",
+    "photoCount_other": "{{count}}장",
+    "photoItem": "{{count}}장 중 {{index}}번째 사진",
+    "removePhoto": "{{index}}번째 사진 빼기",
+    "pickExisting": "올린 사진에서 고르기",
+    "uploadNew": "새로 올리기",
+    "uploadHint": "새로 올린 사진은 홈에도 보이고, 끝나는 대로 이 이야기에 붙어요.",
+    "pickTitle": "사진 고르기",
+    "pickGrid": "올린 사진",
+    "otherDays": "다른 날",
+    "thatDay": "그날 사진",
+    "pickEmptyDay": "이날 올린 사진이 없어요",
+    "pickEmptyAll": "올린 사진이 없어요",
+    "pickedOrder": "{{index}}번째로 고름",
+    "pickDone_one": "{{count}}장 고르기",
+    "pickDone_other": "{{count}}장 고르기",
+    "discardTitle": "쓰던 이야기를 버릴까요?",
+    "discardDescription": "쓴 내용은 저장되지 않아요.",
+    "keepWriting": "계속 쓰기",
+    "discard": "버리기",
+    "uploadFailed": "이야기는 저장했지만 새 사진을 올리지 못했어요.",
+    "reorderHint": "왼쪽, 오른쪽 화살표로 순서를 바꿔요",
+    "moved": "{{count}}장 중 {{index}}번째로 옮겼어요",
+    "title": "이야기",
+    "back": "뒤로",
+    "menu": "이야기 메뉴",
+    "edit": "고치기",
+    "delete": "지우기",
+    "deleteTitle": "이야기를 지울까요?",
+    "deleteDescription": "지운 이야기는 되돌릴 수 없어요. 붙인 사진은 그대로 남아요.",
+    "deleted": "이야기를 지웠어요",
+    "more": "더 보기",
+    "open": "{{name}} 이야기: {{excerpt}}",
+    "photoGrid": "붙인 사진",
+    "less": "접기"
+  },
+  "milestones": {
+    "presets": {
+      "first_smile": "첫 웃음",
+      "neck_control": "목 가누기",
+      "rollover": "뒤집기",
+      "sit_alone": "혼자 앉기",
+      "crawl": "기기",
+      "stand_holding": "잡고 서기",
+      "walk_holding": "잡고 걷기",
+      "stand_alone": "혼자 서기",
+      "walk_alone": "혼자 걷기",
+      "run": "뛰기",
+      "stairs": "계단 오르기",
+      "first_word": "첫 말(엄마, 아빠)",
+      "two_words": "두 단어 말하기",
+      "wave_bye": "빠이빠이",
+      "clap": "박수",
+      "point": "손가락으로 가리키기",
+      "spoon_self": "혼자 숟가락질",
+      "first_tooth": "첫 이",
+      "first_solid_food": "이유식 시작",
+      "sleep_through": "통잠",
+      "potty": "배변 가리기",
+      "first_haircut": "첫 이발",
+      "first_trip": "첫 여행",
+      "first_daycare": "첫 등원"
+    }
   }
 }

@@ -10,7 +10,9 @@ import {
   assetSummaryFixture,
   babyFixture,
   dayFixture,
+  milestoneFixture,
   settingsFixture,
+  storyFixture,
   userFixture,
 } from '@/test/fixtures'
 import { intersectAll } from '@/test/intersection'
@@ -838,5 +840,245 @@ describe('FeedPage', () => {
         name: `사진, 5월 10일 금요일, 12:00, ${ko.timeline.failed}`,
       }),
     ).toBeInTheDocument()
+  })
+
+  it('day_with_story_after_meta', async () => {
+    const mom = user(1, '엄마')
+    renderFeed({
+      users: [mom],
+      days: () =>
+        page([
+          dayFixture('2024-05-10', {
+            uploader_ids: [mom.id],
+            milestones: [
+              milestoneFixture('m1', { preset_key: 'walk_alone' }),
+              milestoneFixture('m2', {
+                preset_key: null,
+                custom_label: '첫 수영',
+              }),
+              milestoneFixture('m3'),
+            ],
+            stories: [
+              storyFixture('s1', {
+                author_id: mom.id,
+                body: '혼자 걸었어요',
+                like_count: 3,
+                previews: [
+                  assetSummaryFixture('2024-05-10-a', {
+                    local_date: '2024-05-10',
+                  }),
+                ],
+                asset_count: 1,
+              }),
+            ],
+          }),
+        ]),
+    })
+    await screen.findByRole('heading', { name: /^5월 10일 금요일/ })
+    // 머리글: 날짜 옆 마일스톤 두 개 + 외 N. 하루 묶음 이름은 날짜만.
+    const card = day('5월 10일 금요일')
+    expect(
+      within(card).getByText('· 🎉 혼자 걷기, 첫 수영 외 1'),
+    ).toBeInTheDocument()
+
+    // 모자이크 → 메타 줄 → 이야기 순서.
+    const mosaic = within(card).getByRole('list')
+    const meta = within(card).getByRole('link', {
+      name: '엄마가 올림 · 사진 1장',
+    })
+    const story = within(card).getByRole('link', {
+      name: '엄마 이야기: 혼자 걸었어요',
+    })
+    expect(story).toHaveAttribute('href', '/stories/s1')
+    const body = within(card).getByText('혼자 걸었어요')
+    const follows = (a: Node, b: Node) =>
+      (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    expect(follows(mosaic, meta)).toBe(true)
+    expect(follows(meta, body)).toBe(true)
+    // 이야기 아래 줄: 쓴 사람 + 반응 수(0 생략). 그날 사진은 썸네일 없음.
+    const block = body.closest('[data-story]')
+    if (!(block instanceof HTMLElement)) throw new Error('이야기 블록 없음')
+    expect(within(block).getByText('엄마')).toBeInTheDocument()
+    expect(within(block).getByRole('img', { name: '하트 3개' })).toBeVisible()
+    expect(within(block).queryByText(/^사진 \d장$/)).toBeNull()
+    expect(block.querySelector('img')).toBeNull()
+  })
+
+  it('text_only_day', async () => {
+    const mom = user(1, '엄마')
+    const dad = user(2, '아빠')
+    renderFeed({
+      users: [mom, dad],
+      days: () =>
+        page([
+          dayFixture('2024-05-10', {
+            photo_count: 0,
+            preview: [],
+            uploader_ids: [],
+            baby_ids: [SKY.id],
+            stories: [
+              storyFixture('s1', { author_id: mom.id, body: '열이 났어요' }),
+              storyFixture('s2', {
+                author_id: dad.id,
+                body: '다 나았어요',
+                comment_count: 2,
+              }),
+            ],
+          }),
+        ]),
+    })
+    await screen.findByRole('heading', { name: '5월 10일 금요일' })
+    const card = day('5월 10일 금요일')
+    // 머리글 나이 줄, 사진 칸, 메타 줄 없음.
+    expect(within(card).getByText('3개월 10일')).toBeInTheDocument()
+    expect(within(card).queryByRole('list')).toBeNull()
+    expect(within(card).queryByText(/올림/)).toBeNull()
+    // 쓴 순서대로.
+    expect(
+      within(card)
+        .getAllByRole('link', { name: / 이야기: / })
+        .map((l) => l.getAttribute('href')),
+    ).toEqual(['/stories/s1', '/stories/s2'])
+    expect(within(card).getByText('열이 났어요')).toBeInTheDocument()
+    expect(
+      within(card).getByRole('img', { name: '댓글 2개' }),
+    ).toBeInTheDocument()
+  })
+
+  it('milestone_only_day', async () => {
+    const dad = user(2, '아빠')
+    renderFeed({
+      users: [dad],
+      days: () =>
+        page([
+          dayFixture('2024-05-10', {
+            photo_count: 0,
+            preview: [],
+            uploader_ids: [],
+            milestones: [
+              milestoneFixture('m1', {
+                note: '아래 앞니 하나',
+                created_by: dad.id,
+              }),
+            ],
+          }),
+          dayFixture('2024-05-09', {
+            photo_count: 0,
+            preview: [],
+            uploader_ids: [],
+            milestones: [
+              milestoneFixture('m2', {
+                preset_key: 'rollover',
+                created_by: dad.id,
+              }),
+            ],
+          }),
+        ]),
+    })
+    await screen.findByRole('heading', { name: /^5월 10일 금요일/ })
+    const withNote = day('5월 10일 금요일')
+    expect(within(withNote).getByText('· 🎉 첫 이')).toBeInTheDocument()
+    expect(within(withNote).getByText('아래 앞니 하나')).toBeInTheDocument()
+    expect(within(withNote).queryByRole('list')).toBeNull()
+    const noNote = day('5월 9일 목요일')
+    expect(within(noNote).getByText('· 🎉 뒤집기')).toBeInTheDocument()
+    expect(within(noNote).getByText('아빠가 기록')).toBeInTheDocument()
+  })
+
+  it('other_day_photos_thumbs', async () => {
+    const mom = user(1, '엄마')
+    const others = ['a', 'b', 'c', 'd'].map((x) =>
+      assetSummaryFixture(`old-${x}`, { local_date: '2024-05-01' }),
+    )
+    renderFeed({
+      users: [mom],
+      days: () =>
+        page([
+          dayFixture('2024-05-10', {
+            photo_count: 0,
+            preview: [],
+            uploader_ids: [],
+            stories: [
+              storyFixture('s1', {
+                author_id: mom.id,
+                entry_date: '2024-05-10',
+                body: '지난주 바다 사진',
+                previews: others,
+                asset_count: 6,
+              }),
+            ],
+          }),
+        ]),
+    })
+    await screen.findByRole('heading', { name: '5월 10일 금요일' })
+    const block = within(day('5월 10일 금요일'))
+      .getByText('지난주 바다 사진')
+      .closest('[data-story]')
+    if (!(block instanceof HTMLElement)) throw new Error('이야기 블록 없음')
+    // 썸네일 최대 4 + 전체 장수. 모자이크 칸(li)이 아님.
+    expect(
+      [...block.querySelectorAll('img')].map((i) => i.getAttribute('src')),
+    ).toEqual(others.map((a) => `/api/assets/${a.id}/thumb.webp`))
+    expect(block.querySelector('li')).toBeNull()
+    expect(within(block).getByText('사진 6장')).toBeInTheDocument()
+  })
+
+  it('long_story_more', async () => {
+    // jsdom 은 레이아웃 없음. 긴 글만 3줄 넘침으로 측정.
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.textContent.includes('긴 이야기') ? 120 : 20
+      },
+    )
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(66)
+    const mom = user(1, '엄마')
+    const { user: u } = renderFeed({
+      users: [mom],
+      days: () =>
+        page([
+          dayFixture('2024-05-10', {
+            stories: [
+              storyFixture('s1', {
+                author_id: mom.id,
+                body: `긴 이야기 <@${mom.id}> ${'긴 이야기 '.repeat(40)}`,
+              }),
+              storyFixture('s2', { author_id: mom.id, body: '짧은 이야기' }),
+            ],
+          }),
+        ]),
+    })
+    await screen.findByRole('heading', { name: '5월 10일 금요일' })
+    const card = day('5월 10일 금요일')
+    const more = await within(card).findByRole('button', {
+      name: ko.stories.more,
+    })
+    expect(
+      within(card).getAllByRole('button', { expanded: false }),
+    ).toHaveLength(1)
+    const long = within(card).getByText(/^긴 이야기/)
+    expect(long).toHaveClass('line-clamp-3')
+    expect(more).toHaveAttribute('aria-controls', long.id)
+    // 상세 링크 이름: 쓴 사람 + 본문 앞 20자(멘션은 @이름).
+    expect(
+      within(card).getByRole('link', {
+        name: '엄마 이야기: 긴 이야기 @엄마 긴 이야기 긴 이야…',
+      }),
+    ).toHaveAttribute('href', '/stories/s1')
+    expect(
+      within(card).getByRole('link', { name: '엄마 이야기: 짧은 이야기' }),
+    ).toBeInTheDocument()
+
+    // 제자리 펼침. 같은 버튼이 접기로 바뀌어 포커스 유지, 상세로 이동하지 않음.
+    await u.click(more)
+    expect(long).not.toHaveClass('line-clamp-3')
+    expect(more).toHaveFocus()
+    expect(more).toHaveAccessibleName(ko.stories.less)
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    expect(
+      screen.getByRole('heading', { name: '5월 10일 금요일' }),
+    ).toBeInTheDocument()
+    await u.keyboard('{Enter}')
+    expect(long).toHaveClass('line-clamp-3')
+    expect(more).toHaveAccessibleName(ko.stories.more)
   })
 })

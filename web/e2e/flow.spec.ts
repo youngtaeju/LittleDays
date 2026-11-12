@@ -8,10 +8,13 @@ import {
   expectThumbnailsLoaded,
   getAsset,
   listAssets,
+  resetStories,
   sidebarUpload,
+  STORY_FILE,
   test,
   tiles,
   trashAsset,
+  uniqueJpeg,
 } from './fixtures'
 import type { Page } from '@playwright/test'
 import type { AssetPage, Baby, Comment } from '@/api/types'
@@ -50,9 +53,9 @@ test('first_signup_and_baby', async ({ page }) => {
 
 test('upload_and_process', async ({ ownerPage: page }) => {
   await page.goto('/')
-  // 사이드바 버튼 → 기기 선택창 → 확인 대화상자 → 올리기.
+  // 사이드바 추가하기 → 추가 시트 → 기기 선택창 → 확인 대화상자 → 올리기.
   const chooser = page.waitForEvent('filechooser')
-  await sidebarUpload(page).click()
+  await sidebarUpload(page)
   await (await chooser).setFiles([FILES.jpg, FILES.heic, FILES.mp4])
   const confirm = page.getByRole('dialog', {
     name: '사진 2장 · 영상 1개 올리기',
@@ -257,7 +260,7 @@ test('duplicate_in_trash_restore', async ({ ownerPage: page }) => {
 
   await page.goto('/')
   const chooser = page.waitForEvent('filechooser')
-  await sidebarUpload(page).click()
+  await sidebarUpload(page)
   await (await chooser).setFiles(FILES.jpg)
   await page
     .getByRole('dialog', { name: '사진 1장 올리기' })
@@ -300,6 +303,7 @@ test('invite_family_cannot_upload', async ({
     const nav = guest.getByRole('navigation', { name: '주 메뉴' })
     await expect(nav.getByRole('link', { name: '홈' })).toBeVisible()
     await expect(nav.getByRole('link', { name: '가족' })).toBeVisible()
+    await expect(guest.getByRole('button', { name: '추가하기' })).toHaveCount(0)
     await expect(
       guest.getByRole('button', { name: '사진 올리기' }),
     ).toHaveCount(0)
@@ -480,6 +484,107 @@ test('favorites_flow', async ({ ownerPage: page }) => {
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/\/me\/favorites$/)
   await expect(tiles(page)).toHaveCount(2)
+})
+
+test('story_round_trip', async ({
+  ownerPage: page,
+  browser,
+  baseURL,
+  locale,
+  timezoneId,
+}) => {
+  const retry = String(test.info().retry)
+  await resetStories(page, STORY_FILE)
+  const body = `바닷가에서 처음 모래를 만졌어요 ${retry}`
+  const { guest, close } = await createFamilyPage(page, browser, {
+    baseURL,
+    locale,
+    timezoneId,
+    displayName: `삼촌${retry}`,
+    username: `uncle${retry}`,
+  })
+  try {
+    // 쓰기: 본문 + 새 사진 1장(날짜 오늘, 아기 1명 자동). 올리면 상세로.
+    // 사이드바 추가하기 → 추가 시트 → 이야기 쓰기.
+    await page.goto('/')
+    await page
+      .getByRole('navigation', { name: '주 메뉴' })
+      .locator('..')
+      .getByRole('button', { name: '추가하기' })
+      .click()
+    await page
+      .getByRole('dialog', { name: '무엇을 남길까요?' })
+      .getByRole('button', { name: '이야기 쓰기' })
+      .click()
+    await expect(page).toHaveURL(/\/stories\/new$/)
+    await page.getByRole('textbox', { name: '이야기' }).fill(body)
+    const chooser = page.waitForEvent('filechooser')
+    await page.getByRole('button', { name: '새로 올리기' }).click()
+    await (
+      await chooser
+    ).setFiles({
+      name: `${STORY_FILE}-${retry}.jpg`,
+      mimeType: 'image/jpeg',
+      buffer: uniqueJpeg(`${STORY_FILE}-${retry}-${String(Date.now())}`),
+    })
+    await page.getByRole('button', { name: '올리기', exact: true }).click()
+    await expect(page).toHaveURL(/\/stories\/[0-9a-f-]+$/)
+    const storyUrl = page.url()
+    await expect(page.getByText(body)).toBeVisible()
+
+    // 업로드 마무리 때 서버가 연결 → 상세 재조회. 처리 끝날 때까지 폴링.
+    const grid = page.getByRole('list', { name: '붙인 사진' })
+    const photo = grid.getByRole('link', { name: /^사진,/ })
+    await expect(photo).toHaveCount(1, { timeout: 60_000 })
+    await expect(grid.getByRole('img', { name: '처리 중' })).toHaveCount(0, {
+      timeout: 60_000,
+    })
+    await expect
+      .poll(() =>
+        grid
+          .locator('img')
+          .evaluate((e) => e instanceof HTMLImageElement && e.naturalWidth > 0),
+      )
+      .toBe(true)
+
+    // 사진 → 이야기 출처 뷰어. 닫으면 상세.
+    await photo.click()
+    await expect(page).toHaveURL(/\/photos\/[0-9a-f-]+\?from=story&of=/)
+    await expect(page.getByRole('button', { name: '닫기' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(page).toHaveURL(storyUrl)
+
+    // 홈 하루 묶음(오늘, 글과 다른 날 사진 썸네일).
+    await page.goto('/')
+    const card = page
+      .getByRole('main')
+      .getByRole('article')
+      .filter({ hasText: body })
+    await expect(card).toBeVisible()
+    await expect(card.getByText('사진 1장')).toBeVisible()
+    await expect(
+      card.getByRole('link', {
+        name: `${OWNER.displayName} 이야기: 바닷가에서 처음 모래를 만졌어요 ${retry}`,
+      }),
+    ).toHaveAttribute('href', new URL(storyUrl).pathname)
+
+    // 가족: (+) 와 이야기 메뉴 없음, 댓글은 가능.
+    await guest.goto(storyUrl)
+    await expect(guest.getByText(body)).toBeVisible()
+    await expect(guest.getByRole('button', { name: '추가하기' })).toHaveCount(0)
+    await expect(
+      guest.getByRole('button', { name: '이야기 메뉴' }),
+    ).toHaveCount(0)
+    const comments = guest.getByRole('region', { name: /^댓글/ })
+    await comments.getByRole('textbox', { name: '댓글 입력' }).fill('좋았겠다')
+    await comments.getByRole('button', { name: '올리기' }).click()
+    await expect(comments.getByText('좋았겠다')).toBeVisible()
+    await expect(guest.getByRole('region', { name: '댓글 1' })).toBeVisible()
+  } finally {
+    await close()
+    // 뒤 테스트(홈 사진 3장, 하루 묶음 수) 전제 유지.
+    await resetStories(page, STORY_FILE)
+  }
 })
 
 test('offline_banner', async ({ ownerPage: page, context }) => {

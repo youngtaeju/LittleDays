@@ -231,11 +231,17 @@ describe('UploadPill', () => {
       JSON.stringify([
         { id: 'f1', name: 'a.jpg', ...resume([B2.id]) },
         { id: 'f2', name: 'b.jpg', ...resume([B1.id, 'gone']) },
+        {
+          id: 'f3',
+          name: 'd.jpg',
+          ...resume([B1.id, 'gone']),
+          attach: { kind: 'story', id: 's1' },
+        },
       ]),
     )
     restorePendingUploads()
     const { user } = await renderShell()
-    await user.click(pill('이어서 올릴 사진 2개'))
+    await user.click(pill('이어서 올릴 사진 3개'))
     const sheet = await screen.findByRole('dialog', { name: ko.upload.queue })
     expect(within(sheet).getByText(ko.upload.resumeHint)).toBeVisible()
 
@@ -250,6 +256,7 @@ describe('UploadPill', () => {
     // 같은 파일은 확인 없이 원래 태그로(지운 아기 제외). 다른 파일은 확인 시트.
     const a = new File(['x'], 'a.jpg', { type: 'image/jpeg', lastModified: 1 })
     const b = new File(['x'], 'b.jpg', { type: 'image/jpeg', lastModified: 1 })
+    const d = new File(['x'], 'd.jpg', { type: 'image/jpeg', lastModified: 1 })
     const other = new File(['y'], 'c.jpg', {
       type: 'image/jpeg',
       lastModified: 1,
@@ -257,12 +264,14 @@ describe('UploadPill', () => {
     // 시트가 열린 동안 본문은 pointer-events: none. 실제 선택창은 프로그램 click 이라 무관.
     await userEvent
       .setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-      .upload(input, [a, b, other])
+      .upload(input, [a, b, d, other])
     await waitFor(() => {
       expect(add).toHaveBeenCalledWith([a], [B2.id])
     })
     expect(add).toHaveBeenCalledWith([b], [B1.id])
-    expect(add).toHaveBeenCalledTimes(2)
+    // 태그가 같아도 붙일 대상이 다르면 따로.
+    expect(add).toHaveBeenCalledWith([d], [B1.id], { kind: 'story', id: 's1' })
+    expect(add).toHaveBeenCalledTimes(3)
     expect(
       await screen.findByRole('dialog', { name: '사진 1장 올리기' }),
     ).toBeInTheDocument()

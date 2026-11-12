@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import type { ApiError } from '@/api/errors'
+import type { AttachTarget } from '@/api/types'
 
 // 파일 선택 accept·Uppy 제한 공용. 확장자는 MIME 을 비워 보내는 브라우저 대응.
 export const ACCEPTED_FILE_TYPES = ['image/*', 'video/*', '.heic', '.heif']
@@ -21,6 +22,8 @@ export interface ResumeInfo {
   size: number
   lastModified: number
   babyIds: string[]
+  // 마무리 때 붙일 이야기, 마일스톤.
+  attach?: AttachTarget
 }
 
 export interface UploadItem {
@@ -208,6 +211,14 @@ export function clearUploads(): void {
   resetAll()
 }
 
+function isAttach(v: unknown): v is AttachTarget {
+  if (typeof v !== 'object' || v === null) return false
+  const a = v as Record<string, unknown>
+  return (
+    (a.kind === 'story' || a.kind === 'milestone') && typeof a.id === 'string'
+  )
+}
+
 function parsePending(raw: string | null): PendingRecord[] {
   let value: unknown
   try {
@@ -225,7 +236,8 @@ function parsePending(raw: string | null): PendingRecord[] {
       typeof p.size === 'number' &&
       typeof p.lastModified === 'number' &&
       Array.isArray(p.babyIds) &&
-      p.babyIds.every((b) => typeof b === 'string')
+      p.babyIds.every((b) => typeof b === 'string') &&
+      (p.attach === undefined || isAttach(p.attach))
     )
   })
 }
@@ -240,12 +252,12 @@ export function restorePendingUploads(): void {
   }
   const restored = parsePending(raw)
     .filter((r) => !items.some((i) => i.id === r.id))
-    .map(({ id, name, size, lastModified, babyIds }): UploadItem => ({
+    .map(({ id, name, size, lastModified, babyIds, attach }): UploadItem => ({
       id,
       name,
       status: 'resumable',
       progress: 0,
-      resume: { size, lastModified, babyIds },
+      resume: { size, lastModified, babyIds, ...(attach && { attach }) },
     }))
   set([...items, ...restored])
 }

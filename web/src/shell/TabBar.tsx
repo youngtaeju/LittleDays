@@ -27,8 +27,8 @@ function Tab({ item }: { item: NavItem }) {
   )
 }
 
-// 1024px 미만 하단 탭. family 는 (+) 없음.
-export function TabBar() {
+// 1024px 미만 하단 탭. family 는 (+) 없음. onAdd: 셸의 추가 시트 열기.
+export function TabBar({ onAdd }: { onAdd: () => void }) {
   const { t } = useTranslation()
   const { user } = useMe()
   const items = useNavItems()
@@ -45,7 +45,7 @@ export function TabBar() {
         ))}
         {hasRole(user, 'guardian') && (
           <li className="flex flex-1 justify-center">
-            <AddButton />
+            <AddButton onClick={onAdd} />
           </li>
         )}
         {items.slice(2).map((item) => (

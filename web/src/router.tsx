@@ -26,6 +26,7 @@ import { FeedPage } from '@/feed/FeedPage'
 import { pickBaby } from '@/babies/lastBaby'
 import { parseAgeParam } from '@/babies/useBabyStats'
 import { babiesQuery } from '@/timeline/useBabies'
+import { storyQuery } from '@/stories/useStory'
 import { isCalendarDate } from '@/lib/dates'
 import { uploadStore } from '@/upload/useUploadStore'
 
@@ -84,6 +85,18 @@ const TrashPage = lazyRouteComponent(
   'TrashPage',
 )
 const DayPage = lazyRouteComponent(() => import('@/feed/DayPage'), 'DayPage')
+const StoryNewPage = lazyRouteComponent(
+  () => import('@/stories/StoryEditor'),
+  'StoryNewPage',
+)
+const StoryPage = lazyRouteComponent(
+  () => import('@/stories/StoryPage'),
+  'StoryPage',
+)
+const StoryEditPage = lazyRouteComponent(
+  () => import('@/stories/StoryEditor'),
+  'StoryEditPage',
+)
 const ViewerPage = lazyRouteComponent(
   () => import('@/viewer/ViewerPage'),
   'ViewerPage',
@@ -119,14 +132,24 @@ function babySearch(s: Record<string, unknown>): { baby?: string } {
   return { baby: typeof s.baby === 'string' ? s.baby : undefined }
 }
 
-// 뷰어 전용. from = 이전/다음 목록(없으면 타임라인). 그 밖의 값은 버림.
+// 뷰어 전용. from = 이전/다음 목록(없으면 타임라인), of = 이야기, 마일스톤 id.
+// 그 밖의 값, of 없는 story/milestone 은 버림. of 는 story/milestone 일 때만.
 function viewerSearch(s: Record<string, unknown>): {
   baby?: string
-  from?: 'favorites'
+  from?: 'favorites' | 'story' | 'milestone'
+  of?: string
 } {
+  const of = typeof s.of === 'string' && s.of !== '' ? s.of : undefined
+  const from =
+    s.from === 'favorites'
+      ? 'favorites'
+      : (s.from === 'story' || s.from === 'milestone') && of
+        ? s.from
+        : undefined
   return {
     ...babySearch(s),
-    from: s.from === 'favorites' ? 'favorites' : undefined,
+    from,
+    of: from === 'story' || from === 'milestone' ? of : undefined,
   }
 }
 
@@ -276,6 +299,41 @@ const ageAlbumRoute = createRoute({
   component: AgeAlbumPage,
 })
 
+// date: 그날 화면에서 진입 시 기본 날짜. 미래 날짜는 화면이 오늘로.
+const storyNewRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/stories/new',
+  validateSearch: (s: Record<string, unknown>): { date?: string } => ({
+    date:
+      typeof s.date === 'string' && isCalendarDate(s.date) ? s.date : undefined,
+  }),
+  beforeLoad: requireRole('guardian'),
+  component: StoryNewPage,
+})
+
+const storyRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/stories/$id',
+  component: StoryPage,
+})
+
+// 작성자만. 아니면 상세로. 조회 실패(오프라인 등)는 화면에서.
+const storyEditRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/stories/$id/edit',
+  beforeLoad: async ({ context, params }) => {
+    requireRole('guardian')({ context })
+    // 고치기 시작 값은 최신 상세.
+    const story = await context.queryClient
+      .query({ ...storyQuery(params.id), staleTime: 0 })
+      .catch(() => undefined)
+    if (story && context.me && story.author_id !== context.me.id) {
+      throw redirect({ to: '/stories/$id', params, replace: true })
+    }
+  },
+  component: StoryEditPage,
+})
+
 // 모든 멤버. 초대·역할 변경은 화면에서 관리자만.
 const familyRoute = createRoute({
   getParentRoute: () => shellRoute,
@@ -391,6 +449,9 @@ const routeTree = rootRoute.addChildren([
       babiesRoute,
       babyRoute,
       ageAlbumRoute,
+      storyNewRoute,
+      storyRoute,
+      storyEditRoute,
       familyRoute,
       meRoute,
       meProfileRoute,

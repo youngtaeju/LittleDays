@@ -24,6 +24,14 @@
     "more": "More",
     "logout": "Sign out"
   },
+  "addSheet": {
+    "open": "Add",
+    "title": "What would you like to add?",
+    "upload": "Upload photos and videos",
+    "story": "Write a story",
+    "growth": "Log height and weight",
+    "milestone": "Log a milestone"
+  },
   "roles": {
     "owner": "Admin",
     "guardian": "Guardian",
@@ -252,7 +260,13 @@
     "commentCount_one": "{{count}} comment",
     "commentCount_other": "{{count}} comments",
     "viewAll_one": "View {{count}} item from {{date}}",
-    "viewAll_other": "View all {{count}} from {{date}}"
+    "viewAll_other": "View all {{count}} from {{date}}",
+    "milestones": "· 🎉 {{names}}",
+    "milestonesMore_one": "· 🎉 {{names}} and {{count}} more",
+    "milestonesMore_other": "· 🎉 {{names}} and {{count}} more",
+    "recordedBy": "Logged by {{name}}",
+    "recordedBy_batchim": "Logged by {{name}}",
+    "recordedBy_unknown": "Logged by {{name}}"
   },
   "day": {
     "back": "Back",
@@ -412,6 +426,12 @@
       "invalidLocale": "This language is not supported.",
       "notFound": "The user could not be found.",
       "roleNotAllowed": "You can't change to this role."
+    },
+    "story": {
+      "bodyInvalid": "Stories must be 1 to 5000 characters.",
+      "dateInvalid": "You can't choose a date after today.",
+      "notFound": "The story could not be found.",
+      "forbidden": "You can't edit this story."
     }
   },
   "favorites": {
@@ -594,5 +614,78 @@
     "expand": "Expand comments",
     "collapse": "Shrink comments",
     "close": "Close comments"
+  },
+  "stories": {
+    "newTitle": "Write a story",
+    "editTitle": "Edit story",
+    "post": "Post",
+    "date": "Date",
+    "body": "Story",
+    "placeholder": "What happened today?",
+    "counter": "{{count}}/5000",
+    "photos": "Photos",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos",
+    "photoItem": "Photo {{index}} of {{count}}",
+    "removePhoto": "Remove photo {{index}}",
+    "pickExisting": "Choose from uploads",
+    "uploadNew": "Upload new",
+    "uploadHint": "New photos also show on Home and are added to this story once they finish uploading.",
+    "pickTitle": "Choose photos",
+    "pickGrid": "Uploaded photos",
+    "otherDays": "Other days",
+    "thatDay": "That day",
+    "pickEmptyDay": "No photos from this day",
+    "pickEmptyAll": "No photos yet",
+    "pickedOrder": "picked {{index}}",
+    "pickDone_one": "Choose {{count}} photo",
+    "pickDone_other": "Choose {{count}} photos",
+    "discardTitle": "Discard this story?",
+    "discardDescription": "What you wrote won't be saved.",
+    "keepWriting": "Keep writing",
+    "discard": "Discard",
+    "uploadFailed": "Your story was saved, but the new photos couldn't be uploaded.",
+    "reorderHint": "Use the left and right arrow keys to reorder",
+    "moved": "Moved to {{index}} of {{count}}",
+    "title": "Story",
+    "back": "Back",
+    "menu": "Story menu",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete this story?",
+    "deleteDescription": "You can't undo this. Attached photos stay in your library.",
+    "deleted": "Story deleted",
+    "more": "More",
+    "open": "Story by {{name}}: {{excerpt}}",
+    "photoGrid": "Attached photos",
+    "less": "Show less"
+  },
+  "milestones": {
+    "presets": {
+      "first_smile": "First smile",
+      "neck_control": "Holds head up",
+      "rollover": "Rolls over",
+      "sit_alone": "Sits alone",
+      "crawl": "Crawls",
+      "stand_holding": "Stands with support",
+      "walk_holding": "Walks with support",
+      "stand_alone": "Stands alone",
+      "walk_alone": "Walks alone",
+      "run": "Runs",
+      "stairs": "Climbs stairs",
+      "first_word": "First word (mama, dada)",
+      "two_words": "Two-word phrases",
+      "wave_bye": "Waves bye-bye",
+      "clap": "Claps",
+      "point": "Points with finger",
+      "spoon_self": "Feeds self with a spoon",
+      "first_tooth": "First tooth",
+      "first_solid_food": "Starts solid food",
+      "sleep_through": "Sleeps through the night",
+      "potty": "Potty trained",
+      "first_haircut": "First haircut",
+      "first_trip": "First trip",
+      "first_daycare": "First day at daycare"
+    }
   }
 }

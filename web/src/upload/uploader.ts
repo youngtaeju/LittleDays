@@ -3,6 +3,9 @@ import Uppy, { type UppyFile } from '@uppy/core'
 import Tus, { type TusBody, type TusOptions } from '@uppy/tus'
 import { errorBody } from '@/api/client'
 import { ApiError } from '@/api/errors'
+import type { AttachTarget } from '@/api/types'
+import { milestoneKey } from '@/milestones/useMilestones'
+import { storyKey } from '@/stories/useStory'
 import { fileMime } from './fileKind'
 import { finalizeUpload } from './finalize'
 import {
@@ -16,8 +19,13 @@ export const TUS_CHUNK_SIZE = 8 * 1024 * 1024
 // 합 69초 + 첫 시도. 서버 PATCH idle timeout(60초) 동안 이전 PATCH 가 락 보유(409 upload.locked).
 export const TUS_RETRY_DELAYS = [0, 1000, 3000, 5000, 10000, 20000, 30000]
 
-// babyIds 는 finalize 용. tus metadata 로는 filename·filetype 만 전송.
-type UploadMeta = { babyIds: string[]; filename?: string; filetype?: string }
+// babyIds, attach 는 finalize 용. tus metadata 로는 filename, filetype 만 전송.
+type UploadMeta = {
+  babyIds: string[]
+  attach?: AttachTarget
+  filename?: string
+  filetype?: string
+}
 type UploaderUppy = Uppy<UploadMeta, TusBody>
 type UploadResponse = NonNullable<UppyFile<UploadMeta, TusBody>['response']>
 
@@ -74,7 +82,8 @@ function tusError(
 export interface Uploader {
   uppy: UploaderUppy
   // 반환: 파일별 업로드 목록 항목 ID(큐에 이미 있는 파일·지원 안 함 포함).
-  add: (files: File[], babyIds: string[]) => string[]
+  // attach: 마무리 때 붙일 이야기, 마일스톤.
+  add: (files: File[], babyIds: string[], attach?: AttachTarget) => string[]
   retry: (id: string) => void
 }
 
@@ -86,7 +95,12 @@ function createQueue(): Uploader {
   // 전송 완료 파일. finalize 재시도·다시 올리기용.
   const sent = new Map<
     string,
-    { data: File; babyIds: string[]; uploadUrl: string }
+    {
+      data: File
+      babyIds: string[]
+      attach: AttachTarget | undefined
+      uploadUrl: string
+    }
   >()
   let created = false
 
@@ -107,9 +121,20 @@ function createQueue(): Uploader {
       s.uploadUrl,
       s.babyIds,
       s.data.lastModified,
+      s.attach,
     )
     // 같은 파일 다시 선택 허용. await 이후라 tus 이벤트 정리 완료(동기 제거 시 업로드 DELETE).
     if (uppy.checkIfFileAlreadyExists(id)) uppy.removeFile(id)
+    // 새 자산, 중복 모두 서버가 대상에 연결. 열린 이야기, 마일스톤 상세에 바로 반영.
+    if (
+      s.attach &&
+      (outcome.kind === 'created' || outcome.kind === 'duplicate')
+    ) {
+      const { kind, id: target } = s.attach
+      void queryClient?.invalidateQueries({
+        queryKey: kind === 'story' ? storyKey(target) : milestoneKey(target),
+      })
+    }
     switch (outcome.kind) {
       case 'created':
         sent.delete(id)
@@ -151,6 +176,7 @@ function createQueue(): Uploader {
               size: file.data.size,
               lastModified: file.data.lastModified,
               babyIds: file.meta.babyIds,
+              ...(file.meta.attach && { attach: file.meta.attach }),
             }
           : undefined,
     })
@@ -184,6 +210,7 @@ function createQueue(): Uploader {
     sent.set(file.id, {
       data: file.data,
       babyIds: file.meta.babyIds,
+      attach: file.meta.attach,
       uploadUrl: response.uploadURL,
     })
     void finalize(file.id)
@@ -208,15 +235,32 @@ function createQueue(): Uploader {
     created = false
   })
 
-  function add(files: File[], babyIds: string[]): string[] {
+  // 진행 중 파일에 붙일 대상 지정. 마무리 요청, 이어올리기 기록 모두 반영.
+  function setAttach(id: string, attach: AttachTarget): void {
+    uppy.setFileMeta(id, { ...uppy.getFile(id).meta, attach })
+    const s = sent.get(id)
+    if (s) s.attach = attach
+    const resume = uploadStore.getSnapshot().find((i) => i.id === id)?.resume
+    if (resume) uploadStore.patch(id, { resume: { ...resume, attach } })
+  }
+
+  function add(
+    files: File[],
+    babyIds: string[],
+    attach?: AttachTarget,
+  ): string[] {
     uploadStore.startRun()
     // addFiles 안에서 동기로 발생하는 이벤트로 ID 수집. 이벤트 순서와 무관하게 파일 순서로.
     const ids = new Map<unknown, string>()
+    // 큐에 이미 있는 파일(같은 ID). 붙일 대상만 갱신 대상.
+    const existing: string[] = []
     const added = (file: { id: string; data: unknown }) => {
       ids.set(file.data, file.id)
     }
     const rejected = (file: { id: string; data: unknown } | undefined) => {
-      if (file) ids.set(file.data, file.id)
+      if (!file) return
+      ids.set(file.data, file.id)
+      if (uppy.checkIfFileAlreadyExists(file.id)) existing.push(file.id)
     }
     uppy.on('file-added', added).on('restriction-failed', rejected)
     try {
@@ -226,12 +270,13 @@ function createQueue(): Uploader {
           // MIME 없는 파일은 확장자로 보정(Uppy 제한·tus filetype).
           type: fileMime(data),
           data,
-          meta: { babyIds },
+          meta: attach ? { babyIds, attach } : { babyIds },
         })),
       )
     } finally {
       uppy.off('file-added', added).off('restriction-failed', rejected)
     }
+    if (attach) for (const id of existing) setAttach(id, attach)
     return files.flatMap((f) => ids.get(f) ?? [])
   }
 
@@ -244,7 +289,7 @@ function createQueue(): Uploader {
       if (s && item?.status === 'lost') {
         // 응답 유실. 새 업로드로 다시 올림(지문은 성공 시 삭제됨) → 이미 있으면 duplicate.
         sent.delete(id)
-        add([s.data], s.babyIds)
+        add([s.data], s.babyIds, s.attach)
       } else if (s) {
         void finalize(id)
       } else if (uppy.checkIfFileAlreadyExists(id)) {
