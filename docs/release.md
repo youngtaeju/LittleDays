@@ -6,7 +6,8 @@
 
 1. `server/Cargo.toml` 의 `version` 과 `web/package.json` 의 `version` 을 같은 값으로 올립니다.
 2. `cd server && cargo update --workspace` 로 `Cargo.lock` 의 `littledays` 버전을 갱신하고 함께 커밋합니다. 다른 크레이트는 바뀌지 않습니다.
-3. PR 로 main 에 병합합니다.
+3. OpenAPI 문서에 버전이 들어가므로 `cd server && cargo run -q -- openapi > ../web/openapi.json` 으로 다시 만들고 함께 커밋합니다. 빠뜨리면 CI 의 OpenAPI 신선도 검사가 실패합니다.
+4. PR 로 main 에 병합합니다.
 
 ## 태그 push
 
