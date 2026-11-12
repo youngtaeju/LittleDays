@@ -6,16 +6,18 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Comment, User } from '@/api/types'
+import type { User } from '@/api/types'
 import { FormError } from '@/components/Field'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { useBrowserOnline } from '@/pwa/OfflineBanner'
+import type { ReactionTarget } from '@/reactions/useReactions'
 import { mentionQuery, toBody, toEditable, type Picked } from './mentions'
 import {
   isCommentGone,
   useCreateComment,
   useUpdateComment,
+  type AnyComment,
 } from './useComments'
 
 // 서버와 같은 기준. 앞뒤 공백 제거 후 유니코드 문자 수.
@@ -24,7 +26,7 @@ const MENTION_LIMIT = 5
 
 // 아래 고정 입력칸. editing 이 있으면 그 댓글 고치기. 고치기 시작, 끝마다 key 로 새로 마운트.
 export function CommentComposer({
-  assetId,
+  target,
   users,
   editing,
   notice,
@@ -32,9 +34,9 @@ export function CommentComposer({
   onGone,
   onPosted,
 }: {
-  assetId: string
+  target: ReactionTarget
   users: User[]
-  editing: Comment | null
+  editing: AnyComment | null
   // 입력칸 밖에서 난 오류(이미 없는 댓글). 이 입력칸의 오류가 우선.
   notice: unknown
   onEditDone: () => void
@@ -58,8 +60,8 @@ export function CommentComposer({
   // 멘션 삽입 뒤 커서 위치. 값이 화면에 반영된 다음 적용.
   const nextCaret = useRef<number | null>(null)
   const listId = useId()
-  const create = useCreateComment(assetId)
-  const update = useUpdateComment(assetId)
+  const create = useCreateComment(target)
+  const update = useUpdateComment(target)
   const pending = create.isPending || update.isPending
   const error = editing ? update.error : create.error
 

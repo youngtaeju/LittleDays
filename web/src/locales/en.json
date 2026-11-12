@@ -24,6 +24,14 @@
     "more": "More",
     "logout": "Sign out"
   },
+  "addSheet": {
+    "open": "Add",
+    "title": "What would you like to add?",
+    "upload": "Upload photos and videos",
+    "story": "Write a story",
+    "growth": "Log height and weight",
+    "milestone": "Log a milestone"
+  },
   "roles": {
     "owner": "Admin",
     "guardian": "Guardian",

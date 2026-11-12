@@ -2,10 +2,11 @@ import IconMore from '~icons/material-symbols/more-horiz-rounded'
 import { DropdownMenu } from 'radix-ui'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Comment, User } from '@/api/types'
+import type { User } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { toSegments } from './mentions'
+import type { AnyComment } from './useComments'
 import { relativeTime } from './relativeTime'
 
 const LONG_PRESS_MS = 500
@@ -24,7 +25,7 @@ function CommentItem({
   onEdit,
   onDelete,
 }: {
-  comment: Comment
+  comment: AnyComment
   users: User[]
   now: Date
   canEdit: boolean
@@ -172,12 +173,12 @@ export function CommentList({
   onEdit,
   onDelete,
 }: {
-  items: Comment[]
+  items: AnyComment[]
   users: User[]
   me: string | undefined
   canDeleteOthers: boolean
-  onEdit: (c: Comment) => void
-  onDelete: (c: Comment) => void
+  onEdit: (c: AnyComment) => void
+  onDelete: (c: AnyComment) => void
 }) {
   const now = new Date()
   return (

@@ -7,20 +7,20 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { useUsers } from '@/members/useUsers'
-import { useLikes } from './useReactions'
+import { useLikes, type ReactionTarget } from './useReactions'
 
 // 뷰어 위라 테마와 무관하게 어두운 시트. 데스크톱도 아래에서, 폭만 제한.
 export function LikersSheet({
-  assetId,
+  target,
   open,
   onOpenChange,
 }: {
-  assetId: string
+  target: ReactionTarget
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation()
-  const likes = useLikes(assetId, open)
+  const likes = useLikes(target, open)
   const users = useUsers().data?.users
 
   return (

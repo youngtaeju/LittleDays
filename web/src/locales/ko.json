@@ -24,6 +24,14 @@
     "more": "더 보기",
     "logout": "로그아웃"
   },
+  "addSheet": {
+    "open": "추가하기",
+    "title": "무엇을 남길까요?",
+    "upload": "사진·영상 올리기",
+    "story": "이야기 쓰기",
+    "growth": "키·몸무게 기록",
+    "milestone": "마일스톤 기록"
+  },
   "roles": {
     "owner": "관리자",
     "guardian": "보호자",

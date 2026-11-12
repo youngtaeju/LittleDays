@@ -1,7 +1,6 @@
 import IconLiked from '~icons/material-symbols/favorite-rounded'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Comment } from '@/api/types'
 import { hasRole, useMe } from '@/auth/session'
 import { FormError } from '@/components/Field'
 import { Button } from '@/components/ui/button'
@@ -18,23 +17,28 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 import { useUsers } from '@/members/useUsers'
 import { likedByText } from '@/reactions/names'
-import { useLikes } from '@/reactions/useReactions'
+import { useLikes, type ReactionTarget } from '@/reactions/useReactions'
 import { CommentComposer } from './CommentComposer'
 import { CommentList } from './CommentList'
-import { isCommentGone, useComments, useDeleteComment } from './useComments'
+import {
+  isCommentGone,
+  useComments,
+  useDeleteComment,
+  type AnyComment,
+} from './useComments'
 
 // 이만큼 끌면 시트 높이 전환.
 const DRAG_PX = 30
 
 // 목록과 입력칸. 휴대폰 시트, 데스크톱 패널 공용.
-export function CommentThread({ assetId }: { assetId: string }) {
+export function CommentThread({ target }: { target: ReactionTarget }) {
   const { t } = useTranslation()
-  const { items, query } = useComments(assetId)
+  const { items, query } = useComments(target)
   const users = useUsers().data?.users ?? []
   const me = useMe().user
-  const [editing, setEditing] = useState<Comment | null>(null)
-  const [deleting, setDeleting] = useState<Comment | null>(null)
-  const remove = useDeleteComment(assetId)
+  const [editing, setEditing] = useState<AnyComment | null>(null)
+  const [deleting, setDeleting] = useState<AnyComment | null>(null)
+  const remove = useDeleteComment(target)
   // 이미 없는 댓글의 고치기/지우기 오류. 편집 모드, 대화상자를 닫은 뒤 입력칸 아래 표시.
   const [gone, setGone] = useState<unknown>(null)
   function onGone(e: unknown, id: string) {
@@ -92,7 +96,7 @@ export function CommentThread({ assetId }: { assetId: string }) {
       </div>
       <CommentComposer
         key={editing?.id ?? 'new'}
-        assetId={assetId}
+        target={target}
         users={users}
         editing={editing}
         notice={gone}
@@ -154,13 +158,13 @@ export function CommentThread({ assetId }: { assetId: string }) {
 
 // 휴대폰 댓글 시트. 처음 반쯤, 손잡이를 끌어 올리면 전체.
 export function CommentSheet({
-  assetId,
+  target,
   open,
   onOpenChange,
   count,
   likeCount,
 }: {
-  assetId: string
+  target: ReactionTarget
   open: boolean
   onOpenChange: (open: boolean) => void
   count: number
@@ -168,7 +172,7 @@ export function CommentSheet({
 }) {
   const { t } = useTranslation()
   const [full, setFull] = useState(false)
-  const likes = useLikes(assetId, open && likeCount > 0)
+  const likes = useLikes(target, open && likeCount > 0)
   const users = useUsers().data?.users
   const dragStart = useRef<number | null>(null)
   // 끌기 뒤 따라오는 click 무시.
@@ -257,7 +261,7 @@ export function CommentSheet({
             </p>
           )}
         </div>
-        <CommentThread assetId={assetId} />
+        <CommentThread target={target} />
       </SheetContent>
     </Sheet>
   )

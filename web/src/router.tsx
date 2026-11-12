@@ -276,6 +276,13 @@ const ageAlbumRoute = createRoute({
   component: AgeAlbumPage,
 })
 
+// 이야기 쓰기 자리. 화면은 이야기 쓰기 작업에서 연결.
+const storyNewRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/stories/new',
+  beforeLoad: requireRole('guardian'),
+})
+
 // 모든 멤버. 초대·역할 변경은 화면에서 관리자만.
 const familyRoute = createRoute({
   getParentRoute: () => shellRoute,
@@ -391,6 +398,7 @@ const routeTree = rootRoute.addChildren([
       babiesRoute,
       babyRoute,
       ageAlbumRoute,
+      storyNewRoute,
       familyRoute,
       meRoute,
       meProfileRoute,

@@ -6,6 +6,8 @@ import type {
   DaySummary,
   Role,
   Settings,
+  Story,
+  StoryComment,
   User,
 } from '@/api/types'
 import { json } from './fetch'
@@ -110,6 +112,42 @@ export function commentFixture(
     body: '예뻐요',
     created_at: '2024-05-10T03:00:00Z',
     edited_at: null,
+    ...over,
+  }
+}
+
+// 이야기 s 의 댓글. 기본 작성자는 userFixture 공용 id.
+export function storyCommentFixture(
+  id: string,
+  over: Partial<StoryComment> = {},
+): StoryComment {
+  return {
+    id,
+    story_id: 's',
+    author_id: userFixture('guardian').id,
+    body: '좋아요',
+    created_at: '2024-05-10T03:00:00Z',
+    edited_at: null,
+    ...over,
+  }
+}
+
+// 사진 없는 글만 있는 이야기.
+export function storyFixture(id: string, over: Partial<Story> = {}): Story {
+  return {
+    id,
+    author_id: userFixture('guardian').id,
+    entry_date: '2024-05-10',
+    body: '오늘 처음 웃었어요',
+    created_at: '2024-05-10T03:00:00Z',
+    edited_at: null,
+    baby_ids: [],
+    previews: [],
+    asset_count: 0,
+    like_count: 0,
+    comment_count: 0,
+    assets: [],
+    liked: false,
     ...over,
   }
 }

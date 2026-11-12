@@ -53,13 +53,18 @@ describe('AppShell', () => {
     for (const name of [ko.nav.home, ko.nav.babies, ko.nav.family, ko.nav.me]) {
       expect(owner.getByRole('link', { name })).toBeInTheDocument()
     }
-    expect(owner.getByRole('button', { name: ko.nav.add })).toBeInTheDocument()
+    expect(
+      owner.getByRole('button', { name: ko.addSheet.open }),
+    ).toBeInTheDocument()
     cleanup()
 
     await renderShell('family')
     const family = within(tabBar())
     expect(family.getAllByRole('listitem')).toHaveLength(4)
-    expect(family.queryByRole('button', { name: ko.nav.add })).toBeNull()
+    expect(family.queryByRole('button', { name: ko.addSheet.open })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: ko.addSheet.open }),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: ko.nav.add }),
     ).not.toBeInTheDocument()
@@ -115,12 +120,69 @@ describe('AppShell', () => {
   it('add_opens_picker', async () => {
     const click = vi.spyOn(HTMLInputElement.prototype, 'click')
     const { user } = await renderShell('guardian')
-    await user.click(within(tabBar()).getByRole('button', { name: ko.nav.add }))
+    await user.click(
+      within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
+    )
+    const sheet = await screen.findByRole('dialog', {
+      name: ko.addSheet.title,
+    })
+    expect(click).not.toHaveBeenCalled()
+    await user.click(
+      within(sheet).getByRole('button', { name: ko.addSheet.upload }),
+    )
     expect(click).toHaveBeenCalledTimes(1)
     const input = click.mock.contexts[0]
     expect(input).toBeInstanceOf(HTMLInputElement)
     expect(input).toHaveAttribute('type', 'file')
     expect(input).toHaveAttribute('multiple')
+    await waitFor(() => {
+      expect(sheet).not.toBeInTheDocument()
+    })
+  })
+
+  it('add_sheet_items', async () => {
+    const { user, router } = await renderShell('guardian')
+    async function openSheet() {
+      await user.click(
+        within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
+      )
+      return screen.findByRole('dialog', { name: ko.addSheet.title })
+    }
+    let sheet = await openSheet()
+    const items = within(sheet)
+      .getAllByRole('listitem')
+      .map((li) => within(li).getByRole('button'))
+    expect(items.map((b) => b.textContent)).toEqual([
+      ko.addSheet.upload,
+      ko.addSheet.story,
+      ko.addSheet.growth,
+      ko.addSheet.milestone,
+    ])
+
+    await user.click(
+      within(sheet).getByRole('button', { name: ko.addSheet.story }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/stories/new')
+    })
+    expect(sheet).not.toBeInTheDocument()
+
+    // 키/몸무게, 마일스톤은 기록 시트 연결 전까지 아기 화면.
+    sheet = await openSheet()
+    await user.click(
+      within(sheet).getByRole('button', { name: ko.addSheet.growth }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/babies')
+    })
+    await router.navigate({ to: '/' })
+    sheet = await openSheet()
+    await user.click(
+      within(sheet).getByRole('button', { name: ko.addSheet.milestone }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/babies')
+    })
   })
 
   it('logout_goes_to_login', async () => {

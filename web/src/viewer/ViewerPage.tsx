@@ -252,7 +252,7 @@ export function ViewerPage() {
     setLikersOpen(false)
   }
 
-  const like = useToggleLike(id)
+  const like = useToggleLike({ kind: 'asset', id })
   const favorite = useToggleFavorite(id, { fromFavorites })
 
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
@@ -717,7 +717,7 @@ export function ViewerPage() {
               {shown === 'info' ? (
                 infoPanel
               ) : (
-                <CommentThread key={id} assetId={id} />
+                <CommentThread key={id} target={{ kind: 'asset', id }} />
               )}
             </div>
           </aside>
@@ -743,7 +743,7 @@ export function ViewerPage() {
           </Sheet>
           {reactable && (
             <CommentSheet
-              assetId={id}
+              target={{ kind: 'asset', id }}
               open={shown === 'comments'}
               onOpenChange={(open) => {
                 setPanel(open ? 'comments' : null)
@@ -755,7 +755,7 @@ export function ViewerPage() {
         </>
       )}
       <LikersSheet
-        assetId={id}
+        target={{ kind: 'asset', id }}
         open={likersOpen}
         onOpenChange={setLikersOpen}
       />

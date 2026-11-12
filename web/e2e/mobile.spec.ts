@@ -194,12 +194,16 @@ test('viewer_nav_buttons_visible', async ({ ownerPage: page }) => {
 test('upload_sheet_and_pill', async ({ ownerPage: page }) => {
   await page.goto('/')
   await expect(tiles(page)).toHaveCount(3)
-  // 탭 바 (+) → 선택창 → 아래 확인 시트. 이미 올린 사진이라 "이미 있어요"로 끝남.
-  const chooser = page.waitForEvent('filechooser')
+  // 탭 바 (+) → 추가 시트 → 선택창 → 아래 확인 시트. 이미 올린 사진이라 "이미 있어요"로 끝남.
   await page
     .getByTestId('tab-bar')
-    .getByRole('button', { name: '사진 올리기' })
+    .getByRole('button', { name: '추가하기' })
     .click()
+  const add = page.getByRole('dialog', { name: '무엇을 남길까요?' })
+  await expect(add).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  const chooser = page.waitForEvent('filechooser')
+  await add.getByRole('button', { name: '사진·영상 올리기' }).click()
   await (await chooser).setFiles(FILES.jpg)
   const confirm = page.getByRole('dialog', { name: '사진 1장 올리기' })
   await expect(confirm).toBeVisible()

@@ -3,13 +3,14 @@ import { act, renderHook, screen, waitFor } from '@testing-library/react'
 import i18next from 'i18next'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import type { Asset } from '@/api/types'
+import type { Asset, Story } from '@/api/types'
 import { Toaster } from '@/components/ui/sonner'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
-import { apiError, assetFixture } from '@/test/fixtures'
+import { apiError, assetFixture, storyFixture } from '@/test/fixtures'
 import { createTestQueryClient } from '@/test/query'
+import { storyKey } from '@/stories/useStory'
 import { assetKey } from '@/timeline/useTimeline'
 import { assetQuery } from '@/viewer/useAsset'
 import { likedByText } from './names'
@@ -32,7 +33,7 @@ function setup(initial: Asset) {
   const { result } = renderHook(
     () => {
       useQuery({ ...assetQuery(initial.id), staleTime: Infinity })
-      return useToggleLike(initial.id)
+      return useToggleLike({ kind: 'asset', id: initial.id })
     },
     { wrapper },
   )
@@ -150,5 +151,44 @@ describe('reactions', () => {
     await waitFor(() => {
       expect(qc.isMutating() + qc.isFetching()).toBe(0)
     })
+  })
+  it('story_like_updates_story_query', async () => {
+    let release = () => {}
+    const gate = new Promise<void>((r) => {
+      release = r
+    })
+    let sent = ''
+    mockFetch({
+      'PUT /api/stories/s/like': () => {
+        sent = 'PUT'
+        return gate.then(() => json(204, null))
+      },
+    })
+    const qc = createTestQueryClient()
+    qc.setQueryData(storyKey('s'), storyFixture('s', { like_count: 1 }))
+    qc.setQueryData(['days'], { pages: [] })
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    )
+    const { result } = renderHook(
+      () => useToggleLike({ kind: 'story', id: 's' }),
+      { wrapper },
+    )
+    await act(async () => {
+      result.current.mutate(true)
+      await Promise.resolve()
+    })
+    // 이야기 상세 쿼리에 즉시 반영.
+    expect(qc.getQueryData<Story>(storyKey('s'))).toMatchObject({
+      liked: true,
+      like_count: 2,
+    })
+    release()
+    await waitFor(() => {
+      expect(qc.isMutating()).toBe(0)
+    })
+    expect(sent).toBe('PUT')
+    expect(qc.getQueryState(storyKey('s'))?.isInvalidated).toBe(true)
+    expect(qc.getQueryState(['days'])?.isInvalidated).toBe(true)
   })
 })

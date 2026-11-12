@@ -1,7 +1,15 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import i18next from 'i18next'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Comment, Role, User } from '@/api/types'
+import type { Comment, Role, StoryComment, User } from '@/api/types'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
@@ -12,9 +20,14 @@ import {
   babyFixture,
   commentFixture,
   settingsFixture,
+  storyCommentFixture,
+  storyFixture,
   userFixture,
 } from '@/test/fixtures'
+import { createTestQueryClient } from '@/test/query'
 import { renderApp } from '@/test/router'
+import { storyKey } from '@/stories/useStory'
+import { CommentSheet } from './Comments'
 import { relativeTime } from './relativeTime'
 
 beforeEach(() => {
@@ -456,6 +469,101 @@ describe('comments', () => {
     await waitFor(() => {
       expect(posted).toEqual({ body: `<@${MOM2}> 안녕 @엄` })
     })
+  })
+
+  it('story_target_endpoints', async () => {
+    let items: StoryComment[] = [
+      storyCommentFixture('c1', { body: '첫 댓글' }),
+      storyCommentFixture('c2', { author_id: GRANDMA, body: '할머니 댓글' }),
+    ]
+    const sent: string[] = []
+    mockFetch({
+      'GET /api/auth/me': () => json(200, { user: userFixture('guardian') }),
+      'GET /api/users': () => json(200, { users: family('guardian') }),
+      'GET /api/stories/s/likes': () =>
+        json(200, [{ user_id: GRANDMA, created_at: '2024-05-10T03:00:00Z' }]),
+      'GET /api/stories/s/comments': () =>
+        json(200, { items, next_cursor: null }),
+      'POST /api/stories/s/comments': async (req) => {
+        sent.push(`POST ${JSON.stringify(await req.json())}`)
+        const c = storyCommentFixture('c3', { body: '새 댓글' })
+        items = [...items, c]
+        return json(201, c)
+      },
+      'PATCH /api/story-comments/c1': async (req) => {
+        sent.push(`PATCH ${JSON.stringify(await req.json())}`)
+        const c = storyCommentFixture('c1', {
+          body: '고친 댓글',
+          edited_at: '2024-05-10T04:00:00Z',
+        })
+        items = items.map((x) => (x.id === 'c1' ? c : x))
+        return json(200, c)
+      },
+      'DELETE /api/story-comments/c2': () => {
+        sent.push('DELETE')
+        items = items.filter((x) => x.id !== 'c2')
+        return json(204, null)
+      },
+    })
+    const qc = createTestQueryClient()
+    qc.setQueryData(storyKey('s'), storyFixture('s'))
+    const user = userEvent.setup()
+    render(
+      <QueryClientProvider client={qc}>
+        <CommentSheet
+          target={{ kind: 'story', id: 's' }}
+          open
+          onOpenChange={() => {}}
+          count={2}
+          likeCount={1}
+        />
+      </QueryClientProvider>,
+    )
+    const sheet = await screen.findByRole('dialog', { name: /^댓글/ })
+    expect(await within(sheet).findByText('첫 댓글')).toBeInTheDocument()
+    // 할머니 댓글 작성자 + 하트 누른 사람 요약(이야기 경로).
+    await waitFor(() => {
+      expect(within(sheet).getAllByText('할머니')).toHaveLength(2)
+    })
+
+    await user.type(box(sheet), '새 댓글')
+    await user.click(postButton(sheet))
+    expect(await within(sheet).findByText('새 댓글')).toBeInTheDocument()
+    expect(qc.getQueryState(storyKey('s'))?.isInvalidated).toBe(true)
+
+    const [mine, others] = within(sheet).getAllByRole('listitem') as [
+      HTMLElement,
+      HTMLElement,
+    ]
+    let menu = await itemMenu(user, mine)
+    await user.click(
+      within(menu).getByRole('menuitem', { name: ko.comments.edit }),
+    )
+    await user.clear(box(sheet))
+    await user.type(box(sheet), '고친 댓글')
+    await user.click(
+      within(sheet).getByRole('button', { name: ko.common.save }),
+    )
+    expect(await within(sheet).findByText('고친 댓글')).toBeInTheDocument()
+
+    menu = await itemMenu(user, others)
+    await user.click(
+      within(menu).getByRole('menuitem', { name: ko.comments.delete }),
+    )
+    const confirm = await screen.findByRole('dialog', {
+      name: ko.comments.deleteTitle,
+    })
+    await user.click(
+      within(confirm).getByRole('button', { name: ko.comments.delete }),
+    )
+    await waitFor(() => {
+      expect(within(sheet).queryByText('할머니 댓글')).not.toBeInTheDocument()
+    })
+    expect(sent).toEqual([
+      'POST {"body":"새 댓글"}',
+      'PATCH {"body":"고친 댓글"}',
+      'DELETE',
+    ])
   })
 
   it('relative_time_steps', () => {
