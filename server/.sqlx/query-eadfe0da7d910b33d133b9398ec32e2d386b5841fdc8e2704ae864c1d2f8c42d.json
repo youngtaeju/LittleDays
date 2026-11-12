@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO story_babies (story_id, baby_id) SELECT $1, unnest($2::uuid[])",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "eadfe0da7d910b33d133b9398ec32e2d386b5841fdc8e2704ae864c1d2f8c42d"
+}

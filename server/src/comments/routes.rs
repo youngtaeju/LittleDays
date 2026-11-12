@@ -1,11 +1,11 @@
 use axum::{Json, extract::State, http::StatusCode};
-use serde::Deserialize;
-use sqlx::PgExecutor;
-use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{Comment, mention_ids, normalize_body, queries};
+use super::{
+    Comment, CommentRequest, ListQuery, check_can_delete, check_can_edit, check_limit, into_page,
+    queries, validate,
+};
 use crate::{
     assets::{Page, cursor},
     auth::extract::CurrentUser,
@@ -13,41 +13,12 @@ use crate::{
     reactions::require_visible,
     request::{Json as JsonBody, Path, Query},
     state::AppState,
-    users::Role,
 };
 
 pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(list_comments, create_comment))
         .routes(routes!(update_comment, delete_comment))
-}
-
-const DEFAULT_LIMIT: i64 = 100;
-const MAX_LIMIT: i64 = 100;
-
-#[derive(Deserialize, IntoParams)]
-#[into_params(parameter_in = Query)]
-struct ListQuery {
-    /// 이전 응답의 `next_cursor`.
-    cursor: Option<String>,
-    /// 1~100, 기본 100.
-    limit: Option<i64>,
-}
-
-#[derive(Deserialize, ToSchema)]
-struct CommentRequest {
-    /// 앞뒤 공백 제거 후 1~1000자. 멘션은 `<@사용자id>`.
-    body: String,
-}
-
-/// 본문 검증과 멘션 대상 존재 확인. 저장할 본문 반환.
-async fn validate<'a>(exec: impl PgExecutor<'_>, raw: &'a str) -> AppResult<&'a str> {
-    let body = normalize_body(raw)?;
-    let ids = mention_ids(body);
-    if !ids.is_empty() && queries::count_users(exec, &ids).await? != ids.len() as i64 {
-        return Err(AppError::bad_request("comment.mentionInvalid"));
-    }
-    Ok(body)
 }
 
 #[utoipa::path(
@@ -67,20 +38,11 @@ async fn list_comments(
     Path(id): Path<Uuid>,
     Query(q): Query<ListQuery>,
 ) -> AppResult<Json<Page<Comment>>> {
-    let limit = q.limit.unwrap_or(DEFAULT_LIMIT);
-    if !(1..=MAX_LIMIT).contains(&limit) {
-        return Err(AppError::bad_request("request.invalidQuery"));
-    }
+    let limit = check_limit(q.limit)?;
     let after = q.cursor.as_deref().map(cursor::decode).transpose()?;
     require_visible(&state.pool, id).await?;
-    let mut items = queries::list(&state.pool, id, after, limit + 1).await?;
-    let next_cursor = if items.len() as i64 > limit {
-        items.truncate(limit as usize);
-        items.last().map(|c| cursor::encode(c.created_at, c.id))
-    } else {
-        None
-    };
-    Ok(Json(Page { items, next_cursor }))
+    let items = queries::list(&state.pool, id, after, limit + 1).await?;
+    Ok(Json(into_page(items, limit, |c| (c.created_at, c.id))))
 }
 
 #[utoipa::path(
@@ -132,9 +94,7 @@ async fn update_comment(
     let author = queries::visible_author(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound("comment.notFound"))?;
-    if author != current.user.id {
-        return Err(AppError::Forbidden("comment.forbidden"));
-    }
+    check_can_edit(&current, author)?;
     let body = validate(&state.pool, &req.body).await?;
     queries::update_body(&state.pool, id, body)
         .await?
@@ -162,10 +122,7 @@ async fn delete_comment(
     let author = queries::visible_author(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound("comment.notFound"))?;
-    let moderator = matches!(current.user.role, Role::Owner | Role::Guardian);
-    if author != current.user.id && !moderator {
-        return Err(AppError::Forbidden("comment.forbidden"));
-    }
+    check_can_delete(&current, author)?;
     if !queries::delete(&state.pool, id).await? {
         return Err(AppError::NotFound("comment.notFound"));
     }

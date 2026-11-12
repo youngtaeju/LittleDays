@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM story_likes WHERE story_id = $1 AND user_id = $2)\n             AS \"liked!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "liked!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "ad6a1318932015cd12074bf6fc361b4eb1d5c7ccb19369baa8de139406b961e8"
+}
