@@ -1,5 +1,7 @@
 //! 이야기. 날짜에 붙는 일기. 사진은 기존 사진 연결만, 휴지통 사진은 응답에서 제외.
 
+use std::collections::HashSet;
+
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -17,6 +19,7 @@ pub mod routes;
 
 const MAX_BODY_CHARS: usize = 5000;
 const PREVIEW_LIMIT: i64 = 4;
+const MAX_ASSETS: usize = 200;
 
 /// 하루 목록용 이야기.
 #[derive(Debug, Clone, Serialize, ToSchema)]
@@ -50,6 +53,22 @@ pub struct Story {
     pub liked: bool,
 }
 
+// 하트 누른 사람은 사진과 같은 `Like` 모양.
+pub use crate::reactions::Like;
+
+/// 이야기 댓글. 사진 댓글과 같은 모양.
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct StoryComment {
+    pub id: Uuid,
+    pub story_id: Uuid,
+    pub author_id: Uuid,
+    pub body: String,
+    pub created_at: DateTime<Utc>,
+    /// 고친 적 없으면 `null`.
+    #[schema(required = true)]
+    pub edited_at: Option<DateTime<Utc>>,
+}
+
 /// 작성자이고 guardian 이상.
 pub fn can_edit(current: &CurrentUser, story_author: Uuid) -> bool {
     current.user.id == story_author && can_write(current)
@@ -70,13 +89,8 @@ fn normalize_body(raw: &str) -> AppResult<&str> {
 
 /// 첫 등장 순서 유지 중복 제거.
 fn dedup(ids: &[Uuid]) -> Vec<Uuid> {
-    let mut out = Vec::with_capacity(ids.len());
-    for id in ids {
-        if !out.contains(id) {
-            out.push(*id);
-        }
-    }
-    out
+    let mut seen = HashSet::with_capacity(ids.len());
+    ids.iter().copied().filter(|id| seen.insert(*id)).collect()
 }
 
 #[cfg(test)]

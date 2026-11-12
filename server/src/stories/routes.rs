@@ -6,13 +6,19 @@ use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{Story, can_edit, can_write, dedup, normalize_body, queries};
+use super::{
+    Like, MAX_ASSETS, Story, StoryComment, can_edit, can_write, dedup, normalize_body, queries,
+};
 use crate::{
+    assets::{Page, cursor},
     auth::extract::CurrentUser,
     babies,
-    comments::check_mentions,
+    comments::{
+        CommentRequest, ListQuery, check_can_delete, check_can_edit, check_limit, check_mentions,
+        into_page, validate,
+    },
     error::{AppError, AppResult, ErrorBody},
-    request::{Json as JsonBody, Path},
+    request::{Json as JsonBody, Path, Query},
     settings,
     state::AppState,
 };
@@ -21,6 +27,10 @@ pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(create_story))
         .routes(routes!(get_story, update_story, delete_story))
+        .routes(routes!(like_story, unlike_story))
+        .routes(routes!(list_story_likes))
+        .routes(routes!(list_story_comments, create_story_comment))
+        .routes(routes!(update_story_comment, delete_story_comment))
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -65,8 +75,11 @@ async fn check_babies(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<Vec<Uu
     Ok(ids)
 }
 
-/// 중복 제거한 사진 목록. 없거나 휴지통이면 404 `asset.notFound`.
+/// 중복 제거한 사진 목록. 200장 초과면 400 `request.invalidBody`. 없거나 휴지통이면 404 `asset.notFound`.
 async fn check_assets(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<Vec<Uuid>> {
+    if ids.len() > MAX_ASSETS {
+        return Err(AppError::bad_request("request.invalidBody"));
+    }
     let ids = dedup(ids);
     if !ids.is_empty() && queries::lock_visible_assets(conn, &ids).await? != ids.len() {
         return Err(AppError::NotFound("asset.notFound"));
@@ -80,7 +93,7 @@ async fn check_assets(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<Vec<Uu
     request_body = CreateStoryRequest,
     responses(
         (status = 201, description = "작성됨", body = Story),
-        (status = 400, description = "본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`)", body = ErrorBody),
+        (status = 400, description = "본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`, 사진 200장 초과 `request.invalidBody`)", body = ErrorBody),
         (status = 401, description = "인증 필요", body = ErrorBody),
         (status = 403, description = "guardian 이상 아님 (`story.forbidden`) 또는 CSRF 헤더 누락", body = ErrorBody),
         (status = 404, description = "사진 없음 또는 휴지통 (`asset.notFound`)", body = ErrorBody),
@@ -144,7 +157,7 @@ async fn get_story(
     request_body = UpdateStoryRequest,
     responses(
         (status = 200, description = "고쳐짐. `edited_at` 갱신", body = Story),
-        (status = 400, description = "본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`)", body = ErrorBody),
+        (status = 400, description = "본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`, 사진 200장 초과 `request.invalidBody`)", body = ErrorBody),
         (status = 401, description = "인증 필요", body = ErrorBody),
         (status = 403, description = "guardian 이상 작성자 아님 (`story.forbidden`) 또는 CSRF 헤더 누락", body = ErrorBody),
         (status = 404, description = "이야기 없음 (`story.notFound`), 사진 없음 또는 휴지통 (`asset.notFound`)", body = ErrorBody),
@@ -157,7 +170,7 @@ async fn update_story(
     JsonBody(req): JsonBody<UpdateStoryRequest>,
 ) -> AppResult<Json<Story>> {
     let mut tx = state.pool.begin().await?;
-    let author = queries::lock_author(&mut *tx, id)
+    let author = queries::lock_author(&mut *tx, id, false)
         .await?
         .ok_or(AppError::NotFound("story.notFound"))?;
     if !can_edit(&current, author) {
@@ -205,7 +218,7 @@ async fn delete_story(
     Path(id): Path<Uuid>,
 ) -> AppResult<StatusCode> {
     let mut tx = state.pool.begin().await?;
-    let author = queries::lock_author(&mut *tx, id)
+    let author = queries::lock_author(&mut *tx, id, true)
         .await?
         .ok_or(AppError::NotFound("story.notFound"))?;
     if author != current.user.id && !can_write(&current) {
@@ -213,5 +226,179 @@ async fn delete_story(
     }
     queries::delete(&mut *tx, id).await?;
     tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    put,
+    path = "/api/stories/{id}/like",
+    params(("id" = Uuid, Path, description = "이야기 ID")),
+    responses(
+        (status = 204, description = "하트 켬. 이미 켠 상태면 그대로"),
+        (status = 400, description = "ID 형식 오류", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "이야기 없음 (`story.notFound`)", body = ErrorBody),
+    )
+)]
+async fn like_story(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<StatusCode> {
+    let mut tx = state.pool.begin().await?;
+    queries::require_exists(&mut *tx, id).await?;
+    queries::like(&mut *tx, id, current.user.id).await?;
+    tx.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/stories/{id}/like",
+    params(("id" = Uuid, Path, description = "이야기 ID")),
+    responses(
+        (status = 204, description = "하트 끔. 이미 끈 상태면 그대로"),
+        (status = 400, description = "ID 형식 오류", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "이야기 없음 (`story.notFound`)", body = ErrorBody),
+    )
+)]
+async fn unlike_story(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<StatusCode> {
+    queries::require_exists(&state.pool, id).await?;
+    queries::unlike(&state.pool, id, current.user.id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/stories/{id}/likes",
+    params(("id" = Uuid, Path, description = "이야기 ID")),
+    responses(
+        (status = 200, description = "하트 누른 사람. 최신순", body = Vec<Like>),
+        (status = 400, description = "ID 형식 오류", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 404, description = "이야기 없음 (`story.notFound`)", body = ErrorBody),
+    )
+)]
+async fn list_story_likes(
+    State(state): State<AppState>,
+    _current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<Vec<Like>>> {
+    queries::require_exists(&state.pool, id).await?;
+    Ok(Json(queries::likes(&state.pool, id).await?))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/stories/{id}/comments",
+    params(("id" = Uuid, Path, description = "이야기 ID"), ListQuery),
+    responses(
+        (status = 200, description = "오래된 순 댓글", body = Page<StoryComment>),
+        (status = 400, description = "쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`)", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 404, description = "이야기 없음 (`story.notFound`)", body = ErrorBody),
+    )
+)]
+async fn list_story_comments(
+    State(state): State<AppState>,
+    _current: CurrentUser,
+    Path(id): Path<Uuid>,
+    Query(q): Query<ListQuery>,
+) -> AppResult<Json<Page<StoryComment>>> {
+    let limit = check_limit(q.limit)?;
+    let after = q.cursor.as_deref().map(cursor::decode).transpose()?;
+    queries::require_exists(&state.pool, id).await?;
+    let items = queries::list_comments(&state.pool, id, after, limit + 1).await?;
+    Ok(Json(into_page(items, limit, |c| (c.created_at, c.id))))
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/stories/{id}/comments",
+    params(("id" = Uuid, Path, description = "이야기 ID")),
+    request_body = CommentRequest,
+    responses(
+        (status = 201, description = "작성됨", body = StoryComment),
+        (status = 400, description = "본문 오류 (`comment.bodyInvalid`, `comment.mentionInvalid`)", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "이야기 없음 (`story.notFound`)", body = ErrorBody),
+    )
+)]
+async fn create_story_comment(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+    JsonBody(req): JsonBody<CommentRequest>,
+) -> AppResult<(StatusCode, Json<StoryComment>)> {
+    let mut tx = state.pool.begin().await?;
+    queries::require_exists(&mut *tx, id).await?;
+    let body = validate(&mut *tx, &req.body).await?;
+    let comment = queries::insert_comment(&mut *tx, id, current.user.id, body).await?;
+    tx.commit().await?;
+    Ok((StatusCode::CREATED, Json(comment)))
+}
+
+#[utoipa::path(
+    patch,
+    path = "/api/story-comments/{id}",
+    params(("id" = Uuid, Path, description = "댓글 ID")),
+    request_body = CommentRequest,
+    responses(
+        (status = 200, description = "고쳐짐", body = StoryComment),
+        (status = 400, description = "본문 오류 (`comment.bodyInvalid`, `comment.mentionInvalid`)", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "작성자 아님 (`comment.forbidden`) 또는 CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "댓글 없음 (`comment.notFound`)", body = ErrorBody),
+    )
+)]
+async fn update_story_comment(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+    JsonBody(req): JsonBody<CommentRequest>,
+) -> AppResult<Json<StoryComment>> {
+    let author = queries::comment_author(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("comment.notFound"))?;
+    check_can_edit(&current, author)?;
+    let body = validate(&state.pool, &req.body).await?;
+    queries::update_comment_body(&state.pool, id, body)
+        .await?
+        .map(Json)
+        .ok_or(AppError::NotFound("comment.notFound"))
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/story-comments/{id}",
+    params(("id" = Uuid, Path, description = "댓글 ID")),
+    responses(
+        (status = 204, description = "지워짐"),
+        (status = 400, description = "ID 형식 오류 (`request.invalidPath`)", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 403, description = "작성자나 owner, guardian 아님 (`comment.forbidden`) 또는 CSRF 헤더 누락", body = ErrorBody),
+        (status = 404, description = "댓글 없음 (`comment.notFound`)", body = ErrorBody),
+    )
+)]
+async fn delete_story_comment(
+    State(state): State<AppState>,
+    current: CurrentUser,
+    Path(id): Path<Uuid>,
+) -> AppResult<StatusCode> {
+    let author = queries::comment_author(&state.pool, id)
+        .await?
+        .ok_or(AppError::NotFound("comment.notFound"))?;
+    check_can_delete(&current, author)?;
+    if !queries::delete_comment(&state.pool, id).await? {
+        return Err(AppError::NotFound("comment.notFound"));
+    }
     Ok(StatusCode::NO_CONTENT)
 }

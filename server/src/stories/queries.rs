@@ -1,11 +1,11 @@
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
-use super::{PREVIEW_LIMIT, Story, StorySummary};
+use super::{Like, PREVIEW_LIMIT, Story, StoryComment, StorySummary};
 use crate::{
     assets::{AssetKind, AssetStatus, AssetSummary},
-    error::AppResult,
+    error::{AppError, AppResult},
 };
 
 /// 쓴 시각 오래된 순. 없는 id 는 빠짐.
@@ -174,10 +174,24 @@ pub async fn lock_visible_assets(exec: impl PgExecutor<'_>, ids: &[Uuid]) -> App
 }
 
 /// 작성자 id. 트랜잭션 안에서 행 잠금(동시 수정, 삭제 직렬화).
-pub async fn lock_author(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Uuid>> {
-    let author = sqlx::query_scalar!("SELECT author_id FROM stories WHERE id = $1 FOR UPDATE", id)
+/// 수정은 `FOR NO KEY UPDATE`(하트/댓글 삽입과 공존), 삭제(`delete = true`)는 `FOR UPDATE`.
+pub async fn lock_author(
+    exec: impl PgExecutor<'_>,
+    id: Uuid,
+    delete: bool,
+) -> AppResult<Option<Uuid>> {
+    let author = if delete {
+        sqlx::query_scalar!("SELECT author_id FROM stories WHERE id = $1 FOR UPDATE", id)
+            .fetch_optional(exec)
+            .await?
+    } else {
+        sqlx::query_scalar!(
+            "SELECT author_id FROM stories WHERE id = $1 FOR NO KEY UPDATE",
+            id
+        )
         .fetch_optional(exec)
-        .await?;
+        .await?
+    };
     Ok(author)
 }
 
@@ -272,4 +286,127 @@ pub async fn delete(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<()> {
         .execute(exec)
         .await?;
     Ok(())
+}
+
+/// 없으면 404 `story.notFound`. 트랜잭션 안에서 호출 시 커밋까지 삭제 차단(반응 쓰기의 FK 위반 방지).
+pub async fn require_exists(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<()> {
+    sqlx::query_scalar!("SELECT id FROM stories WHERE id = $1 FOR KEY SHARE", id)
+        .fetch_optional(exec)
+        .await?
+        .map(|_| ())
+        .ok_or(AppError::NotFound("story.notFound"))
+}
+
+/// 이미 누른 상태면 그대로(시각 유지).
+pub async fn like(exec: impl PgExecutor<'_>, story_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query!(
+        "INSERT INTO story_likes (story_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+        story_id,
+        user_id
+    )
+    .execute(exec)
+    .await?;
+    Ok(())
+}
+
+pub async fn unlike(exec: impl PgExecutor<'_>, story_id: Uuid, user_id: Uuid) -> AppResult<()> {
+    sqlx::query!(
+        "DELETE FROM story_likes WHERE story_id = $1 AND user_id = $2",
+        story_id,
+        user_id
+    )
+    .execute(exec)
+    .await?;
+    Ok(())
+}
+
+/// 최신순.
+pub async fn likes(exec: impl PgExecutor<'_>, story_id: Uuid) -> AppResult<Vec<Like>> {
+    let rows = sqlx::query_as!(
+        Like,
+        "SELECT user_id, created_at FROM story_likes WHERE story_id = $1
+         ORDER BY created_at DESC, user_id DESC",
+        story_id
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows)
+}
+
+/// 오래된 순. `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
+pub async fn list_comments(
+    exec: impl PgExecutor<'_>,
+    story_id: Uuid,
+    cursor: Option<(DateTime<Utc>, Uuid)>,
+    limit: i64,
+) -> AppResult<Vec<StoryComment>> {
+    let (cursor_ts, cursor_id) = cursor.unzip();
+    let rows = sqlx::query_as!(
+        StoryComment,
+        "SELECT id, story_id, author_id, body, created_at, edited_at FROM story_comments
+         WHERE story_id = $1
+           AND ($2::timestamptz IS NULL OR (created_at, id) > ($2, $3))
+         ORDER BY created_at, id
+         LIMIT $4",
+        story_id,
+        cursor_ts,
+        cursor_id,
+        limit
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows)
+}
+
+pub async fn insert_comment(
+    exec: impl PgExecutor<'_>,
+    story_id: Uuid,
+    author_id: Uuid,
+    body: &str,
+) -> AppResult<StoryComment> {
+    let row = sqlx::query_as!(
+        StoryComment,
+        "INSERT INTO story_comments (id, story_id, author_id, body) VALUES ($1, $2, $3, $4)
+         RETURNING id, story_id, author_id, body, created_at, edited_at",
+        Uuid::now_v7(),
+        story_id,
+        author_id,
+        body
+    )
+    .fetch_one(exec)
+    .await?;
+    Ok(row)
+}
+
+pub async fn comment_author(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Uuid>> {
+    let author = sqlx::query_scalar!("SELECT author_id FROM story_comments WHERE id = $1", id)
+        .fetch_optional(exec)
+        .await?;
+    Ok(author)
+}
+
+/// 이미 지워졌으면 `None`.
+pub async fn update_comment_body(
+    exec: impl PgExecutor<'_>,
+    id: Uuid,
+    body: &str,
+) -> AppResult<Option<StoryComment>> {
+    let row = sqlx::query_as!(
+        StoryComment,
+        "UPDATE story_comments SET body = $2, edited_at = now() WHERE id = $1
+         RETURNING id, story_id, author_id, body, created_at, edited_at",
+        id,
+        body
+    )
+    .fetch_optional(exec)
+    .await?;
+    Ok(row)
+}
+
+/// 이미 지워졌으면 `false`.
+pub async fn delete_comment(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
+    let done = sqlx::query!("DELETE FROM story_comments WHERE id = $1", id)
+        .execute(exec)
+        .await?;
+    Ok(done.rows_affected() > 0)
 }

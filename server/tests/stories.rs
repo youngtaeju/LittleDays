@@ -492,3 +492,25 @@ async fn stories_require_auth(pool: PgPool) {
         .await
         .assert_status(StatusCode::UNAUTHORIZED);
 }
+
+#[sqlx::test]
+async fn too_many_assets_rejected(pool: PgPool) {
+    let app = media_app(&pool, Role::Owner).await;
+    let ids: Vec<Uuid> = (0..201).map(|_| Uuid::now_v7()).collect();
+    let body = json!({
+        "entry_date": "2024-06-01",
+        "body": "x",
+        "baby_ids": [],
+        "asset_ids": ids,
+    });
+    let res = post(&app.server, body).await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "request.invalidBody");
+    let s = create(&app.server, json!({})).await;
+    let res = patch(
+        &app.server,
+        s["id"].as_str().unwrap(),
+        json!({ "asset_ids": ids }),
+    )
+    .await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "request.invalidBody");
+}

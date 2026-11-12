@@ -612,6 +612,70 @@ export interface paths {
         patch: operations["update_story"];
         trace?: never;
     };
+    "/api/stories/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_story_comments"];
+        put?: never;
+        post: operations["create_story_comment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/{id}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["like_story"];
+        post?: never;
+        delete: operations["unlike_story"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/{id}/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_story_likes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/story-comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_story_comment"];
+        options?: never;
+        head?: never;
+        patch: operations["update_story_comment"];
+        trace?: never;
+    };
     "/api/trash": {
         parameters: {
             query?: never;
@@ -938,6 +1002,7 @@ export interface components {
             /** Format: uuid */
             id: string;
         };
+        /** @description 댓글 작성/수정 요청. 사진/이야기 공용. */
         CommentRequest: {
             /** @description 앞뒤 공백 제거 후 1~1000자. 멘션은 `<@사용자id>`. */
             body: string;
@@ -1213,6 +1278,27 @@ export interface components {
             next_cursor: string | null;
         };
         /** @description 커서 페이지. */
+        Page_StoryComment: {
+            items: {
+                /** Format: uuid */
+                author_id: string;
+                body: string;
+                /** Format: date-time */
+                created_at: string;
+                /**
+                 * Format: date-time
+                 * @description 고친 적 없으면 `null`.
+                 */
+                edited_at: string | null;
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                story_id: string;
+            }[];
+            /** @description 다음 페이지가 없으면 `null`. */
+            next_cursor: string | null;
+        };
+        /** @description 커서 페이지. */
         Page_TrashItem: {
             items: (components["schemas"]["AssetSummary"] & {
                 /**
@@ -1329,6 +1415,23 @@ export interface components {
             assets: components["schemas"]["AssetSummary"][];
             /** @description 요청자의 하트 여부. */
             liked: boolean;
+        };
+        /** @description 이야기 댓글. 사진 댓글과 같은 모양. */
+        StoryComment: {
+            /** Format: uuid */
+            author_id: string;
+            body: string;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description 고친 적 없으면 `null`.
+             */
+            edited_at: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            story_id: string;
         };
         /** @description 하루 목록용 이야기. */
         StorySummary: {
@@ -3795,7 +3898,7 @@ export interface operations {
                     "application/json": components["schemas"]["Story"];
                 };
             };
-            /** @description 본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`) */
+            /** @description 본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`, 사진 200장 초과 `request.invalidBody`) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3965,7 +4068,7 @@ export interface operations {
                     "application/json": components["schemas"]["Story"];
                 };
             };
-            /** @description 본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`) */
+            /** @description 본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`, 사진 200장 초과 `request.invalidBody`) */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -3993,6 +4096,408 @@ export interface operations {
                 };
             };
             /** @description 이야기 없음 (`story.notFound`), 사진 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_story_comments: {
+        parameters: {
+            query?: {
+                /** @description 이전 응답의 `next_cursor`. */
+                cursor?: string;
+                /** @description 1~100, 기본 100. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 오래된 순 댓글 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_StoryComment"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_story_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentRequest"];
+            };
+        };
+        responses: {
+            /** @description 작성됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryComment"];
+                };
+            };
+            /** @description 본문 오류 (`comment.bodyInvalid`, `comment.mentionInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    like_story: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 하트 켬. 이미 켠 상태면 그대로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    unlike_story: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 하트 끔. 이미 끈 상태면 그대로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_story_likes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 하트 누른 사람. 최신순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Like"][];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_story_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 댓글 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 (`request.invalidPath`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 작성자나 owner, guardian 아님 (`comment.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 댓글 없음 (`comment.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_story_comment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 댓글 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryComment"];
+                };
+            };
+            /** @description 본문 오류 (`comment.bodyInvalid`, `comment.mentionInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 작성자 아님 (`comment.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 댓글 없음 (`comment.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
