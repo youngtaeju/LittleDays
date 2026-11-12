@@ -1,0 +1,123 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT p.story_id AS \"story_id!\", p.id AS \"id!\", p.kind AS \"kind!: AssetKind\",\n                  p.status AS \"status!: AssetStatus\", p.taken_at AS \"taken_at!\",\n                  p.local_date AS \"local_date!\", p.width, p.height, p.duration_ms, p.blurhash,\n                  p.dominant_color, p.uploaded_by AS \"uploaded_by!\",\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id\n                            WHERE ab.asset_id = p.id), '{}') AS \"baby_ids!\",\n                  p.derivatives AS \"derivatives!\"\n           FROM (\n               SELECT sa.story_id, sa.position, a.id, a.kind, a.status, a.taken_at, a.width,\n                      a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,\n                      a.derivatives, (a.taken_at AT TIME ZONE $1)::date AS local_date,\n                      row_number() OVER (PARTITION BY sa.story_id\n                                         ORDER BY sa.position, a.id) AS rn\n               FROM story_assets sa JOIN assets a ON a.id = sa.asset_id\n               WHERE sa.story_id = ANY($2) AND a.deleted_at IS NULL\n           ) p\n           WHERE $3::bigint IS NULL OR p.rn <= $3\n           ORDER BY p.story_id, p.position, p.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "story_id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "id!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "kind!: AssetKind",
+        "type_info": {
+          "Custom": {
+            "name": "asset_kind",
+            "kind": {
+              "Enum": [
+                "photo",
+                "video"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "status!: AssetStatus",
+        "type_info": {
+          "Custom": {
+            "name": "asset_status",
+            "kind": {
+              "Enum": [
+                "processing",
+                "ready",
+                "failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "taken_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "local_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 6,
+        "name": "width",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "height",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "duration_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 9,
+        "name": "blurhash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "dominant_color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "uploaded_by!",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 12,
+        "name": "baby_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 13,
+        "name": "derivatives!",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "UuidArray",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "8d98ab3078bc1924066329e05cdad74d9efaeb7f9b582542caeb41c3b9008a3d"
+}

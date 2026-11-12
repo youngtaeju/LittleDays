@@ -580,6 +580,38 @@ export interface paths {
         patch: operations["patch_settings"];
         trace?: never;
     };
+    "/api/stories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["create_story"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stories/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_story"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_story"];
+        options?: never;
+        head?: never;
+        patch: operations["update_story"];
+        trace?: never;
+    };
     "/api/trash": {
         parameters: {
             query?: never;
@@ -931,6 +963,19 @@ export interface components {
             /** @description `{PUBLIC_URL}/invite/{원문 토큰}`. 원문 토큰은 이 응답에서만 노출. */
             url: string;
         };
+        CreateStoryRequest: {
+            /** @description 붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만. */
+            asset_ids: string[];
+            /** @description 중복은 한 번만. */
+            baby_ids: string[];
+            /** @description 앞뒤 공백 제거 후 1~5000자. 멘션은 `<@사용자id>`. */
+            body: string;
+            /**
+             * Format: date
+             * @description 인스턴스 시간대 오늘 이전(오늘 포함).
+             */
+            entry_date: string;
+        };
         /** @description 그날 화면 머리글과 이전·다음 날. */
         DayDetail: {
             /** @description 그날 태그된 아기. 아기 표시 순서. */
@@ -1278,6 +1323,43 @@ export interface components {
         StatusResponse: {
             signup_open: boolean;
         };
+        /** @description 이야기 상세. */
+        Story: components["schemas"]["StorySummary"] & {
+            /** @description 붙인 순서 전부. 휴지통 제외. */
+            assets: components["schemas"]["AssetSummary"][];
+            /** @description 요청자의 하트 여부. */
+            liked: boolean;
+        };
+        /** @description 하루 목록용 이야기. */
+        StorySummary: {
+            /**
+             * Format: int64
+             * @description 휴지통 제외.
+             */
+            asset_count: number;
+            /** Format: uuid */
+            author_id: string;
+            /** @description 아기 표시 순서. */
+            baby_ids: string[];
+            body: string;
+            /** Format: int64 */
+            comment_count: number;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description 고친 적 없으면 `null`.
+             */
+            edited_at: string | null;
+            /** Format: date */
+            entry_date: string;
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            like_count: number;
+            /** @description 붙인 순서 앞 4장. 휴지통 제외. */
+            previews: components["schemas"]["AssetSummary"][];
+        };
         /**
          * @description 촬영일 출처.
          * @enum {string}
@@ -1290,6 +1372,16 @@ export interface components {
              * @description 휴지통 이동 시각.
              */
             deleted_at: string;
+        };
+        /** @description 보낸 필드만 교체. */
+        UpdateStoryRequest: {
+            /** @description 전체 교체, 목록 순서가 붙일 순서. */
+            asset_ids?: string[] | null;
+            /** @description 전체 교체. */
+            baby_ids?: string[] | null;
+            body?: string | null;
+            /** Format: date */
+            entry_date?: string | null;
         };
         User: {
             /** Format: date-time */
@@ -3672,6 +3764,236 @@ export interface operations {
             };
             /** @description owner 아님 또는 CSRF 헤더 누락 */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_story: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateStoryRequest"];
+            };
+        };
+        responses: {
+            /** @description 작성됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Story"];
+                };
+            };
+            /** @description 본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`story.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 사진 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_story: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 이야기 상세 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Story"];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_story: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐. 붙인 사진은 남음 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 작성자나 owner, guardian 아님 (`story.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_story: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 이야기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStoryRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐. `edited_at` 갱신 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Story"];
+                };
+            };
+            /** @description 본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 작성자 아님 (`story.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 이야기 없음 (`story.notFound`), 사진 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

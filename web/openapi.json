@@ -2739,6 +2739,269 @@
         }
       }
     },
+    "/api/stories": {
+      "post": {
+        "operationId": "create_story",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "작성됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Story"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`story.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "사진 없음 또는 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stories/{id}": {
+      "get": {
+        "operationId": "get_story",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "이야기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "이야기 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Story"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "이야기 없음 (`story.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_story",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "이야기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "지워짐. 붙인 사진은 남음"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "작성자나 owner, guardian 아님 (`story.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "이야기 없음 (`story.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "update_story",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "이야기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStoryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "고쳐짐. `edited_at` 갱신",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Story"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "본문, 날짜, 아기 오류 (`story.bodyInvalid`, `comment.mentionInvalid`, `story.dateInvalid`, `asset.babyInvalid`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 작성자 아님 (`story.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "이야기 없음 (`story.notFound`), 사진 없음 또는 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/trash": {
       "get": {
         "operationId": "list_trash",
@@ -4233,6 +4496,42 @@
           }
         }
       },
+      "CreateStoryRequest": {
+        "type": "object",
+        "required": [
+          "entry_date",
+          "body",
+          "baby_ids",
+          "asset_ids"
+        ],
+        "properties": {
+          "asset_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만."
+          },
+          "baby_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "중복은 한 번만."
+          },
+          "body": {
+            "type": "string",
+            "description": "앞뒤 공백 제거 후 1~5000자. 멘션은 `<@사용자id>`."
+          },
+          "entry_date": {
+            "type": "string",
+            "format": "date",
+            "description": "인스턴스 시간대 오늘 이전(오늘 포함)."
+          }
+        }
+      },
       "DayDetail": {
         "type": "object",
         "description": "그날 화면 머리글과 이전·다음 날.",
@@ -5259,6 +5558,108 @@
           }
         }
       },
+      "Story": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/StorySummary"
+          },
+          {
+            "type": "object",
+            "required": [
+              "assets",
+              "liked"
+            ],
+            "properties": {
+              "assets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AssetSummary"
+                },
+                "description": "붙인 순서 전부. 휴지통 제외."
+              },
+              "liked": {
+                "type": "boolean",
+                "description": "요청자의 하트 여부."
+              }
+            }
+          }
+        ],
+        "description": "이야기 상세."
+      },
+      "StorySummary": {
+        "type": "object",
+        "description": "하루 목록용 이야기.",
+        "required": [
+          "id",
+          "author_id",
+          "entry_date",
+          "body",
+          "created_at",
+          "edited_at",
+          "baby_ids",
+          "previews",
+          "asset_count",
+          "like_count",
+          "comment_count"
+        ],
+        "properties": {
+          "asset_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "휴지통 제외."
+          },
+          "author_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "baby_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "아기 표시 순서."
+          },
+          "body": {
+            "type": "string"
+          },
+          "comment_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "edited_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "고친 적 없으면 `null`."
+          },
+          "entry_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "like_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "previews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetSummary"
+            },
+            "description": "붙인 순서 앞 4장. 휴지통 제외."
+          }
+        }
+      },
       "TakenAtSource": {
         "type": "string",
         "description": "촬영일 출처.",
@@ -5291,6 +5692,47 @@
           }
         ],
         "description": "휴지통 목록 항목."
+      },
+      "UpdateStoryRequest": {
+        "type": "object",
+        "description": "보낸 필드만 교체.",
+        "properties": {
+          "asset_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "전체 교체, 목록 순서가 붙일 순서."
+          },
+          "baby_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "전체 교체."
+          },
+          "body": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "entry_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
+        }
       },
       "User": {
         "type": "object",

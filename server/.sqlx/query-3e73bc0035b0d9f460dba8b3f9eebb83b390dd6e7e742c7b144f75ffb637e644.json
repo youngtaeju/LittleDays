@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT s.id, s.author_id, s.entry_date, s.body, s.created_at, s.edited_at,\n                  ARRAY(SELECT b.id FROM story_babies sb JOIN babies b ON b.id = sb.baby_id\n                        WHERE sb.story_id = s.id\n                        ORDER BY b.sort_order, b.created_at, b.id) AS \"baby_ids!\",\n                  (SELECT count(*) FROM story_assets sa JOIN assets a ON a.id = sa.asset_id\n                   WHERE sa.story_id = s.id AND a.deleted_at IS NULL) AS \"asset_count!\",\n                  (SELECT count(*) FROM story_likes l WHERE l.story_id = s.id) AS \"like_count!\",\n                  (SELECT count(*) FROM story_comments c WHERE c.story_id = s.id)\n                    AS \"comment_count!\"\n           FROM stories s\n           WHERE s.id = ANY($1)\n           ORDER BY s.created_at, s.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "author_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "entry_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "edited_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "baby_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 7,
+        "name": "asset_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 8,
+        "name": "like_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 9,
+        "name": "comment_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "3e73bc0035b0d9f460dba8b3f9eebb83b390dd6e7e742c7b144f75ffb637e644"
+}

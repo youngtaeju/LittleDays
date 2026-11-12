@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use sqlx::PgExecutor;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -52,6 +53,15 @@ pub fn mention_ids(body: &str) -> Vec<Uuid> {
     ids.sort_unstable();
     ids.dedup();
     ids
+}
+
+/// 멘션 대상 중 없는 사용자가 있으면 400 `comment.mentionInvalid`. 이야기 본문 공용.
+pub(crate) async fn check_mentions(exec: impl PgExecutor<'_>, body: &str) -> AppResult<()> {
+    let ids = mention_ids(body);
+    if !ids.is_empty() && queries::count_users(exec, &ids).await? != ids.len() as i64 {
+        return Err(AppError::bad_request("comment.mentionInvalid"));
+    }
+    Ok(())
 }
 
 fn is_lower_hyphenated(s: &str) -> bool {

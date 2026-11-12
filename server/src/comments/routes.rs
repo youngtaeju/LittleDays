@@ -5,7 +5,7 @@ use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{Comment, mention_ids, normalize_body, queries};
+use super::{Comment, check_mentions, normalize_body, queries};
 use crate::{
     assets::{Page, cursor},
     auth::extract::CurrentUser,
@@ -43,10 +43,7 @@ struct CommentRequest {
 /// 본문 검증과 멘션 대상 존재 확인. 저장할 본문 반환.
 async fn validate<'a>(exec: impl PgExecutor<'_>, raw: &'a str) -> AppResult<&'a str> {
     let body = normalize_body(raw)?;
-    let ids = mention_ids(body);
-    if !ids.is_empty() && queries::count_users(exec, &ids).await? != ids.len() as i64 {
-        return Err(AppError::bad_request("comment.mentionInvalid"));
-    }
+    check_mentions(exec, body).await?;
     Ok(body)
 }
 

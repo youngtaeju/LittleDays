@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE stories SET entry_date = COALESCE($2, entry_date), body = COALESCE($3, body),\n                            edited_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bdd274a33dd0533f05769f0327c57498980a2656264f616f52d458371895e3d5"
+}
