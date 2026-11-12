@@ -2065,6 +2065,155 @@
         }
       }
     },
+    "/api/babies/{id}/milestones": {
+      "get": {
+        "operationId": "list_milestones",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "달성일 오래된 순, 같은 날은 만든 순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MilestoneSummary"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "기록됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/babies/{id}/stats": {
       "get": {
         "operationId": "baby_stats",
@@ -2924,6 +3073,212 @@
           },
           "410": {
             "description": "만료, 사용됨, 회수됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/milestones/{id}": {
+      "get": {
+        "operationId": "get_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "마일스톤 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "마일스톤 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "마일스톤 없음 (`milestone.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "마일스톤 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "지워짐"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "마일스톤 없음 (`milestone.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "update_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "마일스톤 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "고쳐짐",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "마일스톤 없음 (`milestone.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5289,6 +5644,49 @@
           }
         }
       },
+      "CreateMilestoneRequest": {
+        "type": "object",
+        "required": [
+          "achieved_on",
+          "asset_ids"
+        ],
+        "properties": {
+          "achieved_on": {
+            "type": "string",
+            "format": "date",
+            "description": "아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함)."
+          },
+          "asset_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만, 200장 이하."
+          },
+          "custom_label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "직접 입력, 앞뒤 공백 제거 후 1~30자."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "앞뒤 공백 제거 후 100자 이하. 빈 값은 없음."
+          },
+          "preset_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "미리 정한 항목 키. `custom_label` 과 정확히 하나. 아기당 한 번."
+          }
+        }
+      },
       "CreateStoryRequest": {
         "type": "object",
         "required": [
@@ -5789,6 +6187,104 @@
           },
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "Milestone": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MilestoneSummary"
+          },
+          {
+            "type": "object",
+            "required": [
+              "assets",
+              "created_by",
+              "created_at",
+              "updated_at"
+            ],
+            "properties": {
+              "assets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AssetSummary"
+                },
+                "description": "붙인 순서 전부. 휴지통 제외."
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "created_by": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ],
+        "description": "마일스톤 상세."
+      },
+      "MilestoneSummary": {
+        "type": "object",
+        "description": "아기 화면, 하루 목록용 마일스톤.",
+        "required": [
+          "id",
+          "baby_id",
+          "preset_key",
+          "custom_label",
+          "achieved_on",
+          "note",
+          "previews",
+          "asset_count"
+        ],
+        "properties": {
+          "achieved_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "asset_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "휴지통 제외."
+          },
+          "baby_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "custom_label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "미리 정한 항목이면 `null`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preset_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "직접 입력이면 `null`."
+          },
+          "previews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetSummary"
+            },
+            "description": "붙인 순서 앞 4장. 휴지통 제외."
           }
         }
       },
@@ -6680,6 +7176,48 @@
               "null"
             ],
             "format": "double"
+          }
+        }
+      },
+      "UpdateMilestoneRequest": {
+        "type": "object",
+        "description": "보낸 필드만 교체. 결과에 `preset_key` 와 `custom_label` 중 정확히 하나가 남아야 함.",
+        "properties": {
+          "achieved_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "asset_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "전체 교체, 목록 순서가 붙일 순서."
+          },
+          "custom_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preset_key": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },

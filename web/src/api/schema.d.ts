@@ -420,6 +420,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/babies/{id}/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_milestones"];
+        put?: never;
+        post: operations["create_milestone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/babies/{id}/stats": {
         parameters: {
             query?: never;
@@ -594,6 +610,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/milestones/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_milestone"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_milestone"];
+        options?: never;
+        head?: never;
+        patch: operations["update_milestone"];
         trace?: never;
     };
     "/api/settings": {
@@ -1079,6 +1111,21 @@ export interface components {
             /** @description `{PUBLIC_URL}/invite/{원문 토큰}`. 원문 토큰은 이 응답에서만 노출. */
             url: string;
         };
+        CreateMilestoneRequest: {
+            /**
+             * Format: date
+             * @description 아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함).
+             */
+            achieved_on: string;
+            /** @description 붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만, 200장 이하. */
+            asset_ids: string[];
+            /** @description 직접 입력, 앞뒤 공백 제거 후 1~30자. */
+            custom_label?: string | null;
+            /** @description 앞뒤 공백 제거 후 100자 이하. 빈 값은 없음. */
+            note?: string | null;
+            /** @description 미리 정한 항목 키. `custom_label` 과 정확히 하나. 아기당 한 번. */
+            preset_key?: string | null;
+        };
         CreateStoryRequest: {
             /** @description 붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만. */
             asset_ids: string[];
@@ -1260,6 +1307,38 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
             token: string;
+        };
+        /** @description 마일스톤 상세. */
+        Milestone: components["schemas"]["MilestoneSummary"] & {
+            /** @description 붙인 순서 전부. 휴지통 제외. */
+            assets: components["schemas"]["AssetSummary"][];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            created_by: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description 아기 화면, 하루 목록용 마일스톤. */
+        MilestoneSummary: {
+            /** Format: date */
+            achieved_on: string;
+            /**
+             * Format: int64
+             * @description 휴지통 제외.
+             */
+            asset_count: number;
+            /** Format: uuid */
+            baby_id: string;
+            /** @description 미리 정한 항목이면 `null`. */
+            custom_label: string | null;
+            /** Format: uuid */
+            id: string;
+            note: string | null;
+            /** @description 직접 입력이면 `null`. */
+            preset_key: string | null;
+            /** @description 붙인 순서 앞 4장. 휴지통 제외. */
+            previews: components["schemas"]["AssetSummary"][];
         };
         /** @description 월별 자산 수. */
         MonthCount: {
@@ -1561,6 +1640,16 @@ export interface components {
             note?: string | null;
             /** Format: double */
             weight_kg?: number | null;
+        };
+        /** @description 보낸 필드만 교체. 결과에 `preset_key` 와 `custom_label` 중 정확히 하나가 남아야 함. */
+        UpdateMilestoneRequest: {
+            /** Format: date */
+            achieved_on?: string | null;
+            /** @description 전체 교체, 목록 순서가 붙일 순서. */
+            asset_ids?: string[] | null;
+            custom_label?: string | null;
+            note?: string | null;
+            preset_key?: string | null;
         };
         /** @description 보낸 필드만 교체. */
         UpdateStoryRequest: {
@@ -3392,6 +3481,128 @@ export interface operations {
             };
         };
     };
+    list_milestones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 달성일 오래된 순, 같은 날은 만든 순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MilestoneSummary"][];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMilestoneRequest"];
+            };
+        };
+        responses: {
+            /** @description 기록됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Milestone"];
+                };
+            };
+            /** @description 항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     baby_stats: {
         parameters: {
             query?: never;
@@ -4106,6 +4317,185 @@ export interface operations {
             };
             /** @description 만료, 사용됨, 회수됨 */
             410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 마일스톤 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 마일스톤 상세 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Milestone"];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 마일스톤 없음 (`milestone.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 마일스톤 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 마일스톤 없음 (`milestone.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 마일스톤 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMilestoneRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Milestone"];
+                };
+            };
+            /** @description 항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 마일스톤 없음 (`milestone.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,7 +1,5 @@
 //! 이야기. 날짜에 붙는 일기. 사진은 기존 사진 연결만, 휴지통 사진은 응답에서 제외.
 
-use std::collections::HashSet;
-
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -18,8 +16,6 @@ pub mod queries;
 pub mod routes;
 
 const MAX_BODY_CHARS: usize = 5000;
-const PREVIEW_LIMIT: i64 = 4;
-const MAX_ASSETS: usize = 200;
 
 /// 하루 목록용 이야기.
 #[derive(Debug, Clone, Serialize, ToSchema)]
@@ -87,22 +83,9 @@ fn normalize_body(raw: &str) -> AppResult<&str> {
     Ok(body)
 }
 
-/// 첫 등장 순서 유지 중복 제거.
-fn dedup(ids: &[Uuid]) -> Vec<Uuid> {
-    let mut seen = HashSet::with_capacity(ids.len());
-    ids.iter().copied().filter(|id| seen.insert(*id)).collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn dedup_keeps_first_order() {
-        let a = Uuid::now_v7();
-        let b = Uuid::now_v7();
-        assert_eq!(dedup(&[b, a, b, a]), [b, a]);
-    }
 
     #[test]
     fn body_normalized() {

@@ -6,9 +6,7 @@ use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{
-    Like, MAX_ASSETS, Story, StoryComment, can_edit, can_write, dedup, normalize_body, queries,
-};
+use super::{Like, Story, StoryComment, can_edit, can_write, normalize_body, queries};
 use crate::{
     assets::{Page, cursor},
     auth::extract::CurrentUser,
@@ -18,6 +16,7 @@ use crate::{
         into_page, validate,
     },
     error::{AppError, AppResult, ErrorBody},
+    links::{self, dedup},
     request::{Json as JsonBody, Path, Query},
     settings,
     state::AppState,
@@ -75,18 +74,6 @@ async fn check_babies(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<Vec<Uu
     Ok(ids)
 }
 
-/// 중복 제거한 사진 목록. 200장 초과면 400 `request.invalidBody`. 없거나 휴지통이면 404 `asset.notFound`.
-async fn check_assets(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<Vec<Uuid>> {
-    if ids.len() > MAX_ASSETS {
-        return Err(AppError::bad_request("request.invalidBody"));
-    }
-    let ids = dedup(ids);
-    if !ids.is_empty() && queries::lock_visible_assets(conn, &ids).await? != ids.len() {
-        return Err(AppError::NotFound("asset.notFound"));
-    }
-    Ok(ids)
-}
-
 #[utoipa::path(
     post,
     path = "/api/stories",
@@ -113,7 +100,7 @@ async fn create_story(
     check_mentions(&mut *tx, body).await?;
     check_date(&mut tx, &timezone, req.entry_date).await?;
     let baby_ids = check_babies(&mut tx, &req.baby_ids).await?;
-    let asset_ids = check_assets(&mut tx, &req.asset_ids).await?;
+    let asset_ids = links::check_assets(&mut tx, &req.asset_ids).await?;
 
     let id = Uuid::now_v7();
     queries::insert(&mut *tx, id, current.user.id, req.entry_date, body).await?;
@@ -189,7 +176,7 @@ async fn update_story(
         queries::replace_babies(&mut tx, id, &ids).await?;
     }
     if let Some(ids) = &req.asset_ids {
-        let ids = check_assets(&mut tx, ids).await?;
+        let ids = links::check_assets(&mut tx, ids).await?;
         queries::replace_assets(&mut tx, id, &ids).await?;
     }
     queries::update(&mut *tx, id, req.entry_date, body).await?;

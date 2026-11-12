@@ -64,9 +64,14 @@ pub(crate) fn check_weight(x: f64) -> AppResult<()> {
 
 /// 앞뒤 공백 제거, 빈 값은 `None`. 100자(유니코드 문자 수) 초과면 400 `growth.noteInvalid`.
 pub(crate) fn normalize_note(raw: &str) -> AppResult<Option<&str>> {
+    normalize_note_or(raw, "growth.noteInvalid")
+}
+
+/// `normalize_note` 의 오류 키 지정판. 마일스톤 공용.
+pub(crate) fn normalize_note_or<'a>(raw: &'a str, key: &'static str) -> AppResult<Option<&'a str>> {
     let note = raw.trim();
     if note.chars().count() > MAX_NOTE_CHARS {
-        return Err(AppError::bad_request("growth.noteInvalid"));
+        return Err(AppError::bad_request(key));
     }
     Ok((!note.is_empty()).then_some(note))
 }

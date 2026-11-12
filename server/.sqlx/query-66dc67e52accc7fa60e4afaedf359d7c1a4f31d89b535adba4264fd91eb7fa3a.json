@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO milestone_assets (milestone_id, asset_id, position)\n         SELECT $1, t.asset_id, (t.n - 1)::int\n         FROM unnest($2::uuid[]) WITH ORDINALITY AS t(asset_id, n)\n         ON CONFLICT (milestone_id, asset_id) DO UPDATE SET position = EXCLUDED.position",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "66dc67e52accc7fa60e4afaedf359d7c1a4f31d89b535adba4264fd91eb7fa3a"
+}
