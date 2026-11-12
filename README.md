@@ -152,3 +152,5 @@ SQL 쿼리를 바꾼 뒤에는 `cargo sqlx prepare -- --all-targets` 를 실행�
 AGPL-3.0-only. [LICENSE](LICENSE) 참조.
 
 Docker 이미지에는 서드파티 패키지가 함께 들어 있으며 각각의 라이선스를 따릅니다. 예를 들어 Debian 의 ffmpeg 는 GPL 구성요소(x264, x265 등)를 링크하고, 이미지에는 libheif 등도 포함됩니다. 해당 패키지의 소스는 Debian 에서 받을 수 있습니다.
+
+성장 차트의 또래 성장 곡선은 WHO Child Growth Standards 표를 월 단위로 줄여 내장했습니다. 표 자체에는 라이선스 명시가 없어 WHO 출판물 기준인 CC BY-NC-SA 3.0 IGO(비상업)로 간주합니다. 출처와 이용 조건은 [web/src/growth/who/NOTICE.md](web/src/growth/who/NOTICE.md) 에 있습니다.

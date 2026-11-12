@@ -432,6 +432,12 @@
       "dateInvalid": "You can't choose a date after today.",
       "notFound": "The story could not be found.",
       "forbidden": "You can't edit this story."
+    },
+    "growth": {
+      "valueInvalid": "The height or weight is not valid.",
+      "dateInvalid": "Pick a date from the birth date to today.",
+      "notFound": "Couldn't find this record.",
+      "noteInvalid": "Notes can be up to 100 characters."
     }
   },
   "favorites": {
@@ -686,6 +692,50 @@
       "first_haircut": "First haircut",
       "first_trip": "First trip",
       "first_daycare": "First day at daycare"
+    }
+  },
+  "growth": {
+    "title": "Growth",
+    "add": "Log",
+    "addLabel": "Log height and weight",
+    "heightValue": "{{value}} cm",
+    "weightValue": "{{value}} kg",
+    "values": "{{height}} · {{weight}}",
+    "latest": "{{values}} · {{date}}",
+    "tabs": "Growth chart type",
+    "height": "Height",
+    "weight": "Weight",
+    "heightChart": "Height growth chart",
+    "weightChart": "Weight growth chart",
+    "chartSummary_one": "{{count}} record, {{from}} to {{to}} months, {{min}} to {{max}}",
+    "chartSummary_other": "{{count}} records, {{from}} to {{to}} months, {{min}} to {{max}}",
+    "noSexHint": "Add a sex to see growth curves for children of the same age",
+    "unborn": "You can log growth once your baby is born",
+    "empty": "No height or weight logged yet",
+    "emptyHeight": "No height logged yet",
+    "emptyWeight": "No weight logged yet",
+    "viewAll": "View all records",
+    "month_one": "{{count}} mo",
+    "month_other": "{{count}} mo",
+    "listTitle": "{{name}}'s growth records",
+    "listLabel": "Height and weight records",
+    "newTitle": "Log height and weight",
+    "editTitle": "Edit record",
+    "baby": "Baby",
+    "noBabies": "No baby to log for yet. You can log growth once a baby is born.",
+    "date": "Measured on",
+    "heightField": "Height (cm)",
+    "weightField": "Weight (kg)",
+    "note": "Note",
+    "delete": "Delete this record",
+    "deleteConfirm": "Delete this record? This can't be undone.",
+    "deleteSubmit": "Delete",
+    "errors": {
+      "valueRequired": "Enter a height or a weight.",
+      "heightInvalid": "Enter a height from 20 to 150 cm, up to 1 decimal place.",
+      "weightInvalid": "Enter a weight from 0.5 to 50 kg, up to 2 decimal places.",
+      "noteTooLong": "Notes can be up to 100 characters.",
+      "dateRange": "Pick a date from the birth date to today."
     }
   }
 }

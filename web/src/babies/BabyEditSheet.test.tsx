@@ -71,9 +71,9 @@ function renderBabies(
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/babies': () => json(200, list.current),
     ...Object.fromEntries(
-      [...babies, babyFixture({ id: 'new' })].map((b) => [
-        `GET /api/babies/${b.id}/stats`,
-        () => json(200, EMPTY_STATS),
+      [...babies, babyFixture({ id: 'new' })].flatMap((b) => [
+        [`GET /api/babies/${b.id}/stats`, () => json(200, EMPTY_STATS)],
+        [`GET /api/babies/${b.id}/growth`, () => json(200, [])],
       ]),
     ),
     [`PUT /api/babies/${SKY.id}`]: async (req) => {

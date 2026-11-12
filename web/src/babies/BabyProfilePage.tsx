@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import type { AgeMonth, Baby } from '@/api/types'
 import { hasRole, useMe } from '@/auth/session'
 import { Button } from '@/components/ui/button'
+import { GrowthSection } from '@/growth/GrowthSection'
 import { errorMessage } from '@/i18n'
 import {
   dayNumber,
@@ -183,7 +184,7 @@ function MonthAlbums({ id }: { id: string }) {
   )
 }
 
-// 아기 탭. 머리글(이름·나이)·숫자 상자·개월별 앨범.
+// 아기 탭. 머리글(이름, 나이), 숫자 상자, 개월별 앨범, 성장.
 export function BabyProfilePage() {
   const { t } = useTranslation()
   const { id } = route.useParams()
@@ -228,6 +229,7 @@ export function BabyProfilePage() {
       </div>
       <Numbers id={baby.id} />
       <MonthAlbums id={baby.id} />
+      <GrowthSection baby={baby} />
     </div>
   )
 }

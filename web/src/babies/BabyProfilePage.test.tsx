@@ -90,6 +90,12 @@ function renderBabies(
         },
       ]),
     ),
+    ...Object.fromEntries(
+      babies.map((b) => [
+        `GET /api/babies/${b.id}/growth`,
+        () => json(200, []),
+      ]),
+    ),
   })
   return { ...renderApp(path), statsRequests }
 }

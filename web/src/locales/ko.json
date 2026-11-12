@@ -432,6 +432,12 @@
       "dateInvalid": "오늘 이후 날짜는 고를 수 없어요.",
       "notFound": "이야기를 찾을 수 없어요.",
       "forbidden": "이 이야기를 고칠 수 없어요."
+    },
+    "growth": {
+      "valueInvalid": "키나 몸무게 값이 올바르지 않아요.",
+      "dateInvalid": "생일부터 오늘까지의 날짜만 고를 수 있어요.",
+      "notFound": "기록을 찾을 수 없어요.",
+      "noteInvalid": "메모는 100자까지 쓸 수 있어요."
     }
   },
   "favorites": {
@@ -685,6 +691,50 @@
       "first_haircut": "첫 이발",
       "first_trip": "첫 여행",
       "first_daycare": "첫 등원"
+    }
+  },
+  "growth": {
+    "title": "성장",
+    "add": "기록",
+    "addLabel": "키·몸무게 기록하기",
+    "heightValue": "{{value}}cm",
+    "weightValue": "{{value}}kg",
+    "values": "{{height}} · {{weight}}",
+    "latest": "{{values}} · {{date}}",
+    "tabs": "성장 차트 종류",
+    "height": "키",
+    "weight": "몸무게",
+    "heightChart": "키 성장 차트",
+    "weightChart": "몸무게 성장 차트",
+    "chartSummary_one": "기록 {{count}}개, {{from}}~{{to}}개월, {{min}}~{{max}}",
+    "chartSummary_other": "기록 {{count}}개, {{from}}~{{to}}개월, {{min}}~{{max}}",
+    "noSexHint": "성별을 넣으면 또래 성장 곡선을 함께 볼 수 있어요",
+    "unborn": "태어난 뒤부터 기록할 수 있어요",
+    "empty": "아직 키와 몸무게 기록이 없어요",
+    "emptyHeight": "아직 키 기록이 없어요",
+    "emptyWeight": "아직 몸무게 기록이 없어요",
+    "viewAll": "기록 전체 보기",
+    "month_one": "{{count}}개월",
+    "month_other": "{{count}}개월",
+    "listTitle": "{{name}} 성장 기록",
+    "listLabel": "키와 몸무게 기록",
+    "newTitle": "키·몸무게 기록",
+    "editTitle": "기록 고치기",
+    "baby": "아기",
+    "noBabies": "기록할 수 있는 아기가 없어요. 태어난 뒤부터 기록할 수 있어요.",
+    "date": "잰 날",
+    "heightField": "키(cm)",
+    "weightField": "몸무게(kg)",
+    "note": "메모",
+    "delete": "이 기록 지우기",
+    "deleteConfirm": "이 기록을 지울까요? 지우면 되돌릴 수 없어요.",
+    "deleteSubmit": "지우기",
+    "errors": {
+      "valueRequired": "키나 몸무게 중 하나는 넣어 주세요.",
+      "heightInvalid": "키는 20~150cm, 소수 한 자리까지 넣어 주세요.",
+      "weightInvalid": "몸무게는 0.5~50kg, 소수 두 자리까지 넣어 주세요.",
+      "noteTooLong": "메모는 100자까지 쓸 수 있어요.",
+      "dateRange": "생일부터 오늘까지의 날짜를 골라 주세요."
     }
   }
 }
