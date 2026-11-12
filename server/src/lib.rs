@@ -7,6 +7,7 @@ pub mod config;
 pub mod days;
 pub mod db;
 pub mod error;
+pub mod growth;
 pub mod invites;
 pub mod jobs;
 pub mod maintenance;

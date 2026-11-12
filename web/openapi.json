@@ -1926,6 +1926,145 @@
         }
       }
     },
+    "/api/babies/{id}/growth": {
+      "get": {
+        "operationId": "list_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "측정일 오래된 순, 같은 날은 만든 순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrowthRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrowthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "기록됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/babies/{id}/stats": {
       "get": {
         "operationId": "baby_stats",
@@ -2329,6 +2468,145 @@
           },
           "401": {
             "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/growth/{id}": {
+      "delete": {
+        "operationId": "delete_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "성장 기록 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "지워짐"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "기록 없음 (`growth.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "update_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "성장 기록 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGrowthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "고쳐짐",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "기록 없음 (`growth.notFound`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4937,6 +5215,42 @@
           }
         }
       },
+      "CreateGrowthRequest": {
+        "type": "object",
+        "required": [
+          "measured_on"
+        ],
+        "properties": {
+          "height_cm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "20.0~150.0 cm, 소수 1자리. 키와 몸무게 중 하나 이상 필수."
+          },
+          "measured_on": {
+            "type": "string",
+            "format": "date",
+            "description": "아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함)."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "앞뒤 공백 제거 후 100자 이하. 빈 값은 없음."
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "0.50~50.00 kg, 소수 2자리."
+          }
+        }
+      },
       "CreateInviteRequest": {
         "type": "object",
         "required": [
@@ -5240,6 +5554,68 @@
             ],
             "format": "date-time",
             "description": "클라이언트 파일 수정 시각. 촬영 메타데이터 없을 때 촬영일 후보."
+          }
+        }
+      },
+      "GrowthRecord": {
+        "type": "object",
+        "required": [
+          "id",
+          "baby_id",
+          "measured_on",
+          "height_cm",
+          "weight_kg",
+          "note",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "baby_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "height_cm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "cm, 소수 1자리. 없으면 `null`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measured_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "kg, 소수 2자리. 없으면 `null`."
           }
         }
       },
@@ -6273,6 +6649,39 @@
           }
         ],
         "description": "휴지통 목록 항목."
+      },
+      "UpdateGrowthRequest": {
+        "type": "object",
+        "description": "보낸 필드만 교체. `null` 은 비움, 결과에 키나 몸무게 하나는 남아야 함.",
+        "properties": {
+          "height_cm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "measured_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
       },
       "UpdateStoryRequest": {
         "type": "object",

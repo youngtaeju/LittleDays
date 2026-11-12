@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, baby_id, measured_on, height_cm::float8 AS height_cm,\n                  weight_kg::float8 AS weight_kg, note, created_by, created_at, updated_at\n           FROM growth_records WHERE baby_id = $1\n           ORDER BY measured_on, created_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "baby_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "measured_on",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "height_cm",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "weight_kg",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "11e03bd197ec913cd1ce99eca986b98d67f02057cb4dbbf74cc73a60fddb0070"
+}

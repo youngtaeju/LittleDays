@@ -404,6 +404,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/babies/{id}/growth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_growth"];
+        put?: never;
+        post: operations["create_growth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/babies/{id}/stats": {
         parameters: {
             query?: never;
@@ -482,6 +498,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/growth/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_growth"];
+        options?: never;
+        head?: never;
+        patch: operations["update_growth"];
         trace?: never;
     };
     "/api/health": {
@@ -1014,6 +1046,25 @@ export interface components {
             name: string;
             sex?: null | components["schemas"]["Sex"];
         };
+        CreateGrowthRequest: {
+            /**
+             * Format: double
+             * @description 20.0~150.0 cm, 소수 1자리. 키와 몸무게 중 하나 이상 필수.
+             */
+            height_cm?: number | null;
+            /**
+             * Format: date
+             * @description 아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함).
+             */
+            measured_on: string;
+            /** @description 앞뒤 공백 제거 후 100자 이하. 빈 값은 없음. */
+            note?: string | null;
+            /**
+             * Format: double
+             * @description 0.50~50.00 kg, 소수 2자리.
+             */
+            weight_kg?: number | null;
+        };
         CreateInviteRequest: {
             /**
              * Format: int32
@@ -1131,6 +1182,31 @@ export interface components {
              * @description 클라이언트 파일 수정 시각. 촬영 메타데이터 없을 때 촬영일 후보.
              */
             file_modified_at?: string | null;
+        };
+        GrowthRecord: {
+            /** Format: uuid */
+            baby_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            created_by: string;
+            /**
+             * Format: double
+             * @description cm, 소수 1자리. 없으면 `null`.
+             */
+            height_cm: number | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            measured_on: string;
+            note: string | null;
+            /** Format: date-time */
+            updated_at: string;
+            /**
+             * Format: double
+             * @description kg, 소수 2자리. 없으면 `null`.
+             */
+            weight_kg: number | null;
         };
         HealthResponse: {
             db: boolean;
@@ -1475,6 +1551,16 @@ export interface components {
              * @description 휴지통 이동 시각.
              */
             deleted_at: string;
+        };
+        /** @description 보낸 필드만 교체. `null` 은 비움, 결과에 키나 몸무게 하나는 남아야 함. */
+        UpdateGrowthRequest: {
+            /** Format: double */
+            height_cm?: number | null;
+            /** Format: date */
+            measured_on?: string | null;
+            note?: string | null;
+            /** Format: double */
+            weight_kg?: number | null;
         };
         /** @description 보낸 필드만 교체. */
         UpdateStoryRequest: {
@@ -3193,6 +3279,119 @@ export interface operations {
             };
         };
     };
+    list_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 측정일 오래된 순, 같은 날은 만든 순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrowthRecord"][];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGrowthRequest"];
+            };
+        };
+        responses: {
+            /** @description 기록됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrowthRecord"];
+                };
+            };
+            /** @description 값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     baby_stats: {
         parameters: {
             query?: never;
@@ -3499,6 +3698,126 @@ export interface operations {
             };
             /** @description 인증 필요 */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 성장 기록 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 기록 없음 (`growth.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 성장 기록 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGrowthRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrowthRecord"];
+                };
+            };
+            /** @description 값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 기록 없음 (`growth.notFound`) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
