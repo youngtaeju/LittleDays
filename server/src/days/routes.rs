@@ -65,18 +65,15 @@ async fn list_days(
     if !(1..=MAX_LIMIT).contains(&limit) {
         return Err(AppError::bad_request("request.invalidQuery"));
     }
-    let mut conn = state.pool.acquire().await?;
-    let tz = settings::queries::load(&mut *conn).await?.timezone;
-    let mut items = queries::list(
-        &mut *conn,
-        &tz,
-        q.cursor,
-        q.baby_id,
-        q.from,
-        q.to,
-        limit + 1,
-    )
-    .await?;
+    // 날짜 목록, 미리보기, 기록을 한 스냅숏에서 조회. 처리 작업의 촬영 시각 갱신이
+    // 조회 사이에 끼면 개수만 있고 미리보기 없는 날 발생.
+    let mut tx = state
+        .pool
+        .begin_with("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        .await?;
+    let tz = settings::queries::load(&mut *tx).await?.timezone;
+    let mut items =
+        queries::list(&mut *tx, &tz, q.cursor, q.baby_id, q.from, q.to, limit + 1).await?;
     let next_cursor = if items.len() as i64 > limit {
         items.truncate(limit as usize);
         items.last().map(|last| last.date.to_string())
@@ -85,7 +82,7 @@ async fn list_days(
     };
 
     let dates: Vec<NaiveDate> = items.iter().map(|d| d.date).collect();
-    let mut previews = queries::previews(&mut *conn, &tz, &dates, q.baby_id)
+    let mut previews = queries::previews(&mut *tx, &tz, &dates, q.baby_id)
         .await?
         .into_iter()
         .peekable();
@@ -95,7 +92,8 @@ async fn list_days(
             day.preview.push(p);
         }
     }
-    let (stories, milestones) = queries::records(&mut conn, &tz, &dates, q.baby_id).await?;
+    let (stories, milestones) = queries::records(&mut tx, &tz, &dates, q.baby_id).await?;
+    tx.commit().await?;
     // 날짜 집합에서 온 기록이라 해당 날 항상 존재.
     for s in stories {
         if let Some(day) = items.iter_mut().find(|d| d.date == s.entry_date) {
@@ -130,11 +128,16 @@ async fn get_day(
     Path(date): Path<NaiveDate>,
     Query(q): Query<DayQuery>,
 ) -> AppResult<Json<DayDetail>> {
-    let mut conn = state.pool.acquire().await?;
-    let tz = settings::queries::load(&mut *conn).await?.timezone;
-    let mut day = queries::detail(&mut *conn, &tz, date, q.baby_id)
+    // 그날 판정, 개수와 기록을 한 스냅숏에서 조회.
+    let mut tx = state
+        .pool
+        .begin_with("BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+        .await?;
+    let tz = settings::queries::load(&mut *tx).await?.timezone;
+    let mut day = queries::detail(&mut *tx, &tz, date, q.baby_id)
         .await?
         .ok_or(AppError::NotFound("day.notFound"))?;
-    (day.stories, day.milestones) = queries::records(&mut conn, &tz, &[date], q.baby_id).await?;
+    (day.stories, day.milestones) = queries::records(&mut tx, &tz, &[date], q.baby_id).await?;
+    tx.commit().await?;
     Ok(Json(day))
 }

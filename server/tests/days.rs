@@ -738,6 +738,139 @@ async fn days_union_follows_instance_timezone(pool: PgPool) {
     assert_error(&res, StatusCode::NOT_FOUND, "day.notFound");
 }
 
+/// 처리 작업의 촬영 시각 갱신과 동시 조회. 개수와 미리보기는 같은 시점 기준.
+/// 갱신이 날짜 목록과 미리보기 조회 사이에 끼면 개수만 있고 미리보기 없는 날 발생.
+#[sqlx::test]
+async fn days_preview_matches_counts_during_taken_at_updates(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    set_timezone(&pool, "UTC").await;
+    let me = app.user.id;
+    photo(&pool, me, at(1, 8)).await;
+    photo(&pool, me, at(1, 9)).await;
+
+    // 사진 2장을 05-01 과 05-02 사이로 계속 이동.
+    let (stop_tx, mut stop_rx) = tokio::sync::watch::channel(false);
+    let mover_pool = pool.clone();
+    let mover = tokio::spawn(async move {
+        while !*stop_rx.borrow_and_update() {
+            sqlx::query!(
+                "UPDATE assets SET taken_at = CASE WHEN taken_at < $1 THEN taken_at + interval '1 day'
+                                                  ELSE taken_at - interval '1 day' END",
+                at(2, 0)
+            )
+            .execute(&mover_pool)
+            .await
+            .unwrap();
+        }
+    });
+
+    for _ in 0..20 {
+        let page: Value = app.server.get("/api/days").await.json();
+        let items = page["items"].as_array().unwrap();
+        assert_eq!(items.len(), 1, "{page}");
+        let day = &items[0];
+        assert_eq!(day["photo_count"], 2, "{page}");
+        assert_eq!(day["preview"].as_array().unwrap().len(), 2, "{page}");
+        for p in day["preview"].as_array().unwrap() {
+            assert_eq!(p["local_date"], day["date"], "{page}");
+        }
+    }
+    stop_tx.send(true).unwrap();
+    mover.await.unwrap();
+}
+
+/// 이야기 날짜 변경과 동시 조회. 그날 판정과 기록은 같은 시점 기준.
+/// 변경이 그날 판정과 기록 조회 사이에 끼면 200 인데 아무 기록 없는 날 발생.
+#[sqlx::test]
+async fn day_records_match_found_during_entry_date_updates(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    let s = story(&pool, app.user.id, "2024-05-01", &[], at(1, 1)).await;
+
+    // 이야기를 05-01 과 05-02 사이로 계속 이동.
+    let (stop_tx, mut stop_rx) = tokio::sync::watch::channel(false);
+    let mover_pool = pool.clone();
+    let mover = tokio::spawn(async move {
+        while !*stop_rx.borrow_and_update() {
+            sqlx::query!(
+                "UPDATE stories SET entry_date = CASE WHEN entry_date = $1 THEN $2 ELSE $1 END",
+                NaiveDate::from_ymd_opt(2024, 5, 1).unwrap(),
+                NaiveDate::from_ymd_opt(2024, 5, 2).unwrap(),
+            )
+            .execute(&mover_pool)
+            .await
+            .unwrap();
+        }
+    });
+
+    let mut found = 0;
+    for _ in 0..100 {
+        let res = app.server.get("/api/days/2024-05-01").await;
+        if res.status_code() == StatusCode::NOT_FOUND {
+            continue;
+        }
+        let day: Value = res.json();
+        assert_eq!(record_ids(&day, "stories"), [s], "{day}");
+        found += 1;
+    }
+    stop_tx.send(true).unwrap();
+    mover.await.unwrap();
+    assert!(found > 0);
+}
+
+// 운영 compose 가 쓰는 PG 기본 `jit_above_cost`. 테스트 서버 설정(-1 로 JIT 끔 등)과 무관하게 고정.
+const JIT_ABOVE_COST: f64 = 100_000.0;
+
+/// 통계 없는 작은 새 DB(설치 직후, 아기 몇 명인 집)에서 하루 목록, 그날 정보 계획 비용이
+/// `jit_above_cost` 미만. 넘으면 요청마다 JIT 컴파일 수백 ms.
+#[sqlx::test]
+async fn days_plans_below_jit_threshold(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    let a = baby(&pool, "a").await;
+    for h in [1, 2, 3] {
+        let id = photo(&pool, app.user.id, at(1, h)).await;
+        assets::queries::add_babies(&pool, id, &[a], app.user.id)
+            .await
+            .unwrap();
+    }
+    let day = NaiveDate::from_ymd_opt(2024, 5, 1).unwrap();
+    for filter in [None, Some(a)] {
+        let list = format!("EXPLAIN (FORMAT JSON) {PERF_LIST_SQL}");
+        let detail = format!("EXPLAIN (FORMAT JSON) {PERF_DETAIL_SQL}");
+        let plans = [
+            (
+                "list",
+                sqlx::query_scalar::<_, Value>(&list)
+                    .bind("UTC")
+                    .bind(filter)
+                    .bind(None::<NaiveDate>)
+                    .bind(None::<NaiveDate>)
+                    .bind(None::<NaiveDate>)
+                    .bind(21_i64)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap(),
+            ),
+            (
+                "detail",
+                sqlx::query_scalar::<_, Value>(&detail)
+                    .bind("UTC")
+                    .bind(day)
+                    .bind(filter)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap(),
+            ),
+        ];
+        for (name, plan) in plans {
+            let cost = plan[0]["Plan"]["Total Cost"].as_f64().unwrap();
+            assert!(
+                cost < JIT_ABOVE_COST,
+                "{name} baby={filter:?} cost {cost} >= jit_above_cost {JIT_ABOVE_COST}"
+            );
+        }
+    }
+}
+
 #[sqlx::test]
 async fn days_invalid_query(pool: PgPool) {
     let app = media_app(&pool, Role::Family).await;
@@ -862,6 +995,39 @@ async fn days_perf_10k(pool: PgPool) {
     }
 }
 
+/// sqlx 별칭 표기(`AS "x!"`, `AS "x!: T"`)를 `AS x` 로, 공백 연속은 한 칸으로.
+fn normalize_sql(sql: &str) -> String {
+    let mut out = String::new();
+    let mut rest = sql;
+    while let Some(i) = rest.find("AS \"") {
+        out.push_str(&rest[..i + 3]);
+        let tail = &rest[i + 4..];
+        let end = tail.find('"').unwrap();
+        let name = tail[..end].split(['!', '?', ':']).next().unwrap();
+        out.push_str(name);
+        rest = &tail[end + 1..];
+    }
+    out.push_str(rest);
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// 성능 측정, JIT 가드용 SQL 사본이 실제 질의와 같은지. `days/queries.rs` 만 고치면 실패.
+#[test]
+fn perf_sql_copies_match_queries() {
+    let source = normalize_sql(include_str!("../src/days/queries.rs"));
+    for (name, copy) in [
+        ("list", PERF_LIST_SQL),
+        ("previews", PERF_PREVIEWS_SQL),
+        ("detail", PERF_DETAIL_SQL),
+    ] {
+        assert!(
+            source.contains(&normalize_sql(copy)),
+            "PERF_{} 사본이 days/queries.rs 와 다름",
+            name.to_uppercase()
+        );
+    }
+}
+
 const PERF_LIST_SQL: &str = r#"WITH f AS (
     SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date
     FROM assets a
@@ -869,16 +1035,23 @@ const PERF_LIST_SQL: &str = r#"WITH f AS (
       AND ($2::uuid IS NULL OR EXISTS (
             SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $2))
 ),
+s AS (
+    SELECT s.id, s.entry_date FROM stories s
+    WHERE $2::uuid IS NULL OR EXISTS (
+          SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)
+),
+m AS (
+    SELECT m.baby_id, m.achieved_on FROM milestones m
+    WHERE $2::uuid IS NULL OR m.baby_id = $2
+),
 page AS (
     SELECT u.date
     FROM (
         SELECT f.date FROM f
         UNION
-        SELECT s.entry_date FROM stories s
-        WHERE $2::uuid IS NULL OR EXISTS (
-              SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)
+        SELECT s.entry_date FROM s
         UNION
-        SELECT m.achieved_on FROM milestones m WHERE $2::uuid IS NULL OR m.baby_id = $2
+        SELECT m.achieved_on FROM m
     ) u
     WHERE ($3::date IS NULL OR u.date < $3)
       AND ($4::date IS NULL OR u.date >= $4)
@@ -894,36 +1067,42 @@ days AS (
            array_agg(f.id) AS asset_ids
     FROM f JOIN page p ON p.date = f.date
     GROUP BY f.date
+),
+tags AS (
+    SELECT d.date, ab.baby_id
+    FROM days d JOIN asset_babies ab ON ab.asset_id = ANY(d.asset_ids)
+    UNION
+    SELECT s.entry_date, sb.baby_id
+    FROM s JOIN page p ON p.date = s.entry_date JOIN story_babies sb ON sb.story_id = s.id
+    UNION
+    SELECT m.achieved_on, m.baby_id FROM m JOIN page p ON p.date = m.achieved_on
+),
+day_babies AS (
+    SELECT t.date, array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id) AS baby_ids
+    FROM tags t JOIN babies b ON b.id = t.baby_id
+    GROUP BY t.date
 )
 SELECT p.date AS date, COALESCE(d.photo_count, 0) AS photo_count,
        COALESCE(d.video_count, 0) AS video_count,
        COALESCE(d.uploader_ids, '{}') AS uploader_ids,
-       ARRAY(SELECT b.id FROM babies b
-             WHERE EXISTS (SELECT 1 FROM asset_babies ab
-                           WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
-                OR EXISTS (SELECT 1 FROM stories s
-                           JOIN story_babies sb ON sb.story_id = s.id
-                           WHERE sb.baby_id = b.id AND s.entry_date = p.date
-                             AND ($2::uuid IS NULL OR EXISTS (
-                                   SELECT 1 FROM story_babies fb
-                                   WHERE fb.story_id = s.id AND fb.baby_id = $2)))
-                OR EXISTS (SELECT 1 FROM milestones m
-                           WHERE m.baby_id = b.id AND m.achieved_on = p.date
-                             AND ($2::uuid IS NULL OR m.baby_id = $2))
-             ORDER BY b.sort_order, b.created_at, b.id) AS baby_ids,
+       COALESCE(db.baby_ids, '{}') AS baby_ids,
        (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
          AS like_count,
        (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
          AS comment_count
-FROM page p LEFT JOIN days d ON d.date = p.date
+FROM page p
+LEFT JOIN days d ON d.date = p.date
+LEFT JOIN day_babies db ON db.date = p.date
 ORDER BY p.date DESC"#;
 
-const PERF_PREVIEWS_SQL: &str = r#"SELECT p.id, p.kind, p.status, p.taken_at, p.local_date,
-       p.width, p.height, p.duration_ms, p.blurhash, p.dominant_color, p.uploaded_by,
+const PERF_PREVIEWS_SQL: &str = r#"SELECT p.id AS id, p.kind AS kind, p.status AS status,
+       p.taken_at AS taken_at, p.local_date AS local_date,
+       p.width, p.height, p.duration_ms, p.blurhash, p.dominant_color,
+       p.uploaded_by AS uploaded_by,
        COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
                  FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
                  WHERE ab.asset_id = p.id), '{}') AS baby_ids,
-       p.derivatives
+       p.derivatives AS derivatives
 FROM (
     SELECT a.id, a.kind, a.status, a.taken_at, a.width, a.height, a.duration_ms,
            a.blurhash, a.dominant_color, a.uploaded_by, a.derivatives,
