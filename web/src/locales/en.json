@@ -420,6 +420,12 @@
       "invalidLocale": "This language is not supported.",
       "notFound": "The user could not be found.",
       "roleNotAllowed": "You can't change to this role."
+    },
+    "story": {
+      "bodyInvalid": "Stories must be 1 to 5000 characters.",
+      "dateInvalid": "You can't choose a date after today.",
+      "notFound": "The story could not be found.",
+      "forbidden": "You can't edit this story."
     }
   },
   "favorites": {
@@ -602,5 +608,38 @@
     "expand": "Expand comments",
     "collapse": "Shrink comments",
     "close": "Close comments"
+  },
+  "stories": {
+    "newTitle": "Write a story",
+    "editTitle": "Edit story",
+    "post": "Post",
+    "date": "Date",
+    "body": "Story",
+    "placeholder": "What happened today?",
+    "counter": "{{count}}/5000",
+    "photos": "Photos",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos",
+    "photoItem": "Photo {{index}} of {{count}}",
+    "removePhoto": "Remove photo {{index}}",
+    "pickExisting": "Choose from uploads",
+    "uploadNew": "Upload new",
+    "uploadHint": "New photos also show on Home and are added to this story once they finish uploading.",
+    "pickTitle": "Choose photos",
+    "pickGrid": "Uploaded photos",
+    "otherDays": "Other days",
+    "thatDay": "That day",
+    "pickEmptyDay": "No photos from this day",
+    "pickEmptyAll": "No photos yet",
+    "pickedOrder": "picked {{index}}",
+    "pickDone_one": "Choose {{count}} photo",
+    "pickDone_other": "Choose {{count}} photos",
+    "discardTitle": "Discard this story?",
+    "discardDescription": "What you wrote won't be saved.",
+    "keepWriting": "Keep writing",
+    "discard": "Discard",
+    "uploadFailed": "Your story was saved, but the new photos couldn't be uploaded.",
+    "reorderHint": "Use the left and right arrow keys to reorder",
+    "moved": "Moved to {{index}} of {{count}}"
   }
 }

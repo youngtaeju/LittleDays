@@ -26,6 +26,7 @@ import { FeedPage } from '@/feed/FeedPage'
 import { pickBaby } from '@/babies/lastBaby'
 import { parseAgeParam } from '@/babies/useBabyStats'
 import { babiesQuery } from '@/timeline/useBabies'
+import { storyQuery } from '@/stories/useStory'
 import { isCalendarDate } from '@/lib/dates'
 import { uploadStore } from '@/upload/useUploadStore'
 
@@ -84,6 +85,14 @@ const TrashPage = lazyRouteComponent(
   'TrashPage',
 )
 const DayPage = lazyRouteComponent(() => import('@/feed/DayPage'), 'DayPage')
+const StoryNewPage = lazyRouteComponent(
+  () => import('@/stories/StoryEditor'),
+  'StoryNewPage',
+)
+const StoryEditPage = lazyRouteComponent(
+  () => import('@/stories/StoryEditor'),
+  'StoryEditPage',
+)
 const ViewerPage = lazyRouteComponent(
   () => import('@/viewer/ViewerPage'),
   'ViewerPage',
@@ -276,11 +285,39 @@ const ageAlbumRoute = createRoute({
   component: AgeAlbumPage,
 })
 
-// 이야기 쓰기 자리. 화면은 이야기 쓰기 작업에서 연결.
+// date: 그날 화면에서 진입 시 기본 날짜. 미래 날짜는 화면이 오늘로.
 const storyNewRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/stories/new',
+  validateSearch: (s: Record<string, unknown>): { date?: string } => ({
+    date:
+      typeof s.date === 'string' && isCalendarDate(s.date) ? s.date : undefined,
+  }),
   beforeLoad: requireRole('guardian'),
+  component: StoryNewPage,
+})
+
+// 이야기 상세 자리. 화면은 이야기 상세 작업에서 연결.
+const storyRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/stories/$id',
+})
+
+// 작성자만. 아니면 상세로. 조회 실패(오프라인 등)는 화면에서.
+const storyEditRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/stories/$id/edit',
+  beforeLoad: async ({ context, params }) => {
+    requireRole('guardian')({ context })
+    // 고치기 시작 값은 최신 상세.
+    const story = await context.queryClient
+      .query({ ...storyQuery(params.id), staleTime: 0 })
+      .catch(() => undefined)
+    if (story && context.me && story.author_id !== context.me.id) {
+      throw redirect({ to: '/stories/$id', params, replace: true })
+    }
+  },
+  component: StoryEditPage,
 })
 
 // 모든 멤버. 초대·역할 변경은 화면에서 관리자만.
@@ -399,6 +436,8 @@ const routeTree = rootRoute.addChildren([
       babyRoute,
       ageAlbumRoute,
       storyNewRoute,
+      storyRoute,
+      storyEditRoute,
       familyRoute,
       meRoute,
       meProfileRoute,

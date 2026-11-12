@@ -12,7 +12,7 @@ import { loadLastBabies, saveLastBabies } from './lastBabies'
 import type { PendingFile } from './picker'
 
 // 미리보기 칸. 주소는 화면에 있는 동안만 유지(닫기·빼기·올리기 때 해제).
-function Preview({ file }: { file: File }) {
+export function Preview({ file }: { file: File }) {
   const kind = mediaKind(file)
   // HEIC 는 대부분 브라우저가 못 그림. 그 밖은 시도 후 실패 시 형식 표시.
   const [failed, setFailed] = useState(isHeif(file))
@@ -71,7 +71,7 @@ function Preview({ file }: { file: File }) {
   )
 }
 
-function BabyPicker({
+export function BabyPicker({
   babies,
   selected,
   onToggle,

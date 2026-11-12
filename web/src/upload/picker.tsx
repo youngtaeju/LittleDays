@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import type { AttachTarget } from '@/api/types'
 import { hasRole, useMe } from '@/auth/session'
 import { babiesQuery } from '@/timeline/useBabies'
 import { mediaKind } from './fileKind'
@@ -87,21 +88,29 @@ export function UploadPickerProvider({ children }: { children: ReactNode }) {
   }
 
   // Uppy 는 첫 업로드 때 지연 로딩.
-  async function upload(groups: { files: File[]; babyIds: string[] }[]) {
+  async function upload(
+    groups: { files: File[]; babyIds: string[]; attach?: AttachTarget }[],
+  ) {
     try {
       const { getUploader } = await import('./uploader')
-      for (const g of groups) getUploader(qc).add(g.files, g.babyIds)
+      for (const g of groups) {
+        if (g.attach) getUploader(qc).add(g.files, g.babyIds, g.attach)
+        else getUploader(qc).add(g.files, g.babyIds)
+      }
     } catch {
       toast.error(t('errors.unknown'))
     }
   }
 
-  // 새로고침 전 파일과 같으면 원래 태그로 바로 이어 올림(지운 아기 제외). 나머지는 확인 시트.
+  // 새로고침 전 파일과 같으면 원래 태그, 붙일 대상으로 바로 이어 올림(지운 아기 제외). 나머지는 확인 시트.
   async function resume(files: File[]) {
     const waiting = uploadStore
       .getSnapshot()
       .filter((i) => i.status === 'resumable')
-    const groups = new Map<string, { files: File[]; babyIds: string[] }>()
+    const groups = new Map<
+      string,
+      { files: File[]; babyIds: string[]; attach?: AttachTarget }
+    >()
     const rest: File[] = []
     for (const file of files) {
       const item = waiting.find((i) => sameFile(i, file))
@@ -109,8 +118,9 @@ export function UploadPickerProvider({ children }: { children: ReactNode }) {
         rest.push(file)
         continue
       }
-      const key = JSON.stringify(item.resume.babyIds)
-      const g = groups.get(key) ?? { files: [], babyIds: item.resume.babyIds }
+      const { babyIds, attach } = item.resume
+      const key = JSON.stringify([babyIds, attach ?? null])
+      const g = groups.get(key) ?? { files: [], babyIds, attach }
       g.files.push(file)
       groups.set(key, g)
     }
@@ -122,6 +132,7 @@ export function UploadPickerProvider({ children }: { children: ReactNode }) {
     await upload(
       [...groups.values()].map((g) => ({
         files: g.files,
+        attach: g.attach,
         babyIds: babies
           ? g.babyIds.filter((id) => babies.some((b) => b.id === id))
           : g.babyIds,

@@ -92,6 +92,53 @@ describe('uploader', () => {
     up.uppy.cancelAll()
   })
 
+  // 붙일 대상은 finalize 본문과 이어올리기 기록에. tus 메타데이터에는 없음.
+  it('add_with_attach_finalizes_attach', async () => {
+    const up = getUploader(createTestQueryClient())
+    up.uppy.setOptions({ autoProceed: false })
+    const attach = { kind: 'story' as const, id: 's1' }
+    const [id] = up.add([photo('s.jpg')], ['b1'], attach)
+    if (!id) throw new Error('항목 없음')
+    expect(uploadStore.getSnapshot()[0]?.resume).toEqual({
+      size: 1,
+      lastModified: 1_700_000_000_000,
+      babyIds: ['b1'],
+      attach,
+    })
+    let body: unknown
+    mockFetch({
+      'POST /api/uploads/u1/finalize': async (req) => {
+        body = await req.json()
+        return json(201, assetFixture('x1'))
+      },
+    })
+    up.uppy.emit('upload-success', up.uppy.getFile(id), {
+      uploadURL: `${location.origin}/api/uploads/u1`,
+      status: 200,
+      body: { xhr: new XMLHttpRequest() },
+    })
+    await waitFor(() => {
+      expect(body).toEqual({
+        baby_ids: ['b1'],
+        file_modified_at: new Date(1_700_000_000_000).toISOString(),
+        attach,
+      })
+    })
+  })
+
+  // 큐에 이미 있는 파일을 붙일 대상과 함께 다시 추가하면 대상만 갱신.
+  it('readd_existing_sets_attach', () => {
+    const up = getUploader(createTestQueryClient())
+    up.uppy.setOptions({ autoProceed: false })
+    const [id] = up.add([photo('a.jpg')], ['b1'])
+    if (!id) throw new Error('항목 없음')
+    const attach = { kind: 'story' as const, id: 's1' }
+    expect(up.add([photo('a.jpg')], ['b1'], attach)).toEqual([id])
+    expect(up.uppy.getFile(id).meta.attach).toEqual(attach)
+    expect(uploadStore.getSnapshot()[0]?.resume?.attach).toEqual(attach)
+    up.uppy.cancelAll()
+  })
+
   it('invalidates_lists_once_when_queue_drains', async () => {
     const qc = createTestQueryClient()
     const invalidate = vi.spyOn(qc, 'invalidateQueries')

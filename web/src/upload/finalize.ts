@@ -1,6 +1,6 @@
 import { api, call } from '@/api/client'
 import { ApiError } from '@/api/errors'
-import type { Asset } from '@/api/types'
+import type { Asset, AttachTarget } from '@/api/types'
 
 export type FinalizeOutcome =
   | { kind: 'created'; asset: Asset }
@@ -20,10 +20,12 @@ function duplicateOf(
 }
 
 // uploadUrl = tus Location. 마지막 경로 조각이 업로드 ID.
+// attach: 자산 생성 뒤 서버가 연결. 대상 없음, 권한 없음이면 연결만 생략.
 export async function finalizeUpload(
   uploadUrl: string,
   babyIds: string[],
   lastModified: number,
+  attach?: AttachTarget,
 ): Promise<FinalizeOutcome> {
   const id = new URL(uploadUrl, location.origin).pathname.split('/').at(-1)
   try {
@@ -33,6 +35,7 @@ export async function finalizeUpload(
         body: {
           baby_ids: babyIds,
           file_modified_at: new Date(lastModified).toISOString(),
+          ...(attach && { attach }),
         },
       }),
     )
