@@ -27,7 +27,8 @@ function srcSet(item: AssetSummary): string | undefined {
 }
 
 // 기본 정사각 썸네일. 바탕은 dominant_color → blurhash → 썸네일 순으로 덮음.
-// baby: 뷰어 이전/다음이 같은 필터 목록을 따르도록 전달. from: 즐겨찾기 목록 기준 이전/다음.
+// baby: 뷰어 이전/다음이 같은 필터 목록을 따르도록 전달.
+// from, of: 이전/다음 기준 목록. 즐겨찾기, 또는 of 이야기/마일스톤의 사진 순서.
 // timezone: 인스턴스 시간대. 지정 시 라벨에 촬영 시각(HH:mm) 추가.
 // onSelect: 지정 시 뷰어 링크 대신 버튼(휴지통 등). 안정된 콜백 필요(memo). pressed: 여러 장 고르기의 선택 상태.
 // sizes: 지정 시 미리보기까지 후보(큰 칸). className: 비율·크기 덮어쓰기.
@@ -36,6 +37,7 @@ export const Tile = memo(function Tile({
   item,
   baby,
   from,
+  of,
   timezone,
   onSelect,
   pressed,
@@ -45,7 +47,8 @@ export const Tile = memo(function Tile({
 }: {
   item: AssetSummary
   baby?: string | undefined
-  from?: 'favorites'
+  from?: 'favorites' | 'story' | 'milestone'
+  of?: string
   timezone?: string | undefined
   onSelect?: (id: string) => void
   pressed?: boolean
@@ -141,7 +144,7 @@ export const Tile = memo(function Tile({
     <Link
       to="/photos/$id"
       params={{ id: item.id }}
-      search={{ baby, from }}
+      search={{ baby, from, of }}
       aria-label={label}
       className={cn(
         'relative block aspect-square overflow-hidden bg-muted focus-visible:z-10 focus-visible:-outline-offset-2',

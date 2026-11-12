@@ -4,6 +4,7 @@ import type {
   Baby,
   Comment,
   DaySummary,
+  Milestone,
   Role,
   Settings,
   Story,
@@ -148,6 +149,28 @@ export function storyFixture(id: string, over: Partial<Story> = {}): Story {
     comment_count: 0,
     assets: [],
     liked: false,
+    ...over,
+  }
+}
+
+// 사진 없는 미리 정한 마일스톤(첫 이). 기본 기록한 사람은 userFixture 공용 id.
+export function milestoneFixture(
+  id: string,
+  over: Partial<Milestone> = {},
+): Milestone {
+  return {
+    id,
+    baby_id: '00000000-0000-4000-8000-0000000000b1',
+    preset_key: 'first_tooth',
+    custom_label: null,
+    achieved_on: '2024-05-10',
+    note: null,
+    created_by: userFixture('guardian').id,
+    created_at: '2024-05-10T03:00:00Z',
+    updated_at: '2024-05-10T03:00:00Z',
+    previews: [],
+    asset_count: 0,
+    assets: [],
     ...over,
   }
 }

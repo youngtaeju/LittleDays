@@ -5,19 +5,7 @@ import IconStarFill from '~icons/material-symbols/star-rounded'
 import { useTranslation } from 'react-i18next'
 import { hasRole, useMe } from '@/auth/session'
 import { Button } from '@/components/ui/button'
-import { useUploadPicker } from '@/upload/picker'
 import { useNavItems } from './navItems'
-
-function UploadButton() {
-  const { t } = useTranslation()
-  const { open } = useUploadPicker()
-  return (
-    <Button onClick={open} className="w-full">
-      <IconAdd aria-hidden className="size-5" />
-      {t('nav.add')}
-    </Button>
-  )
-}
 
 // 보조 메뉴(탭에 없는 목적지). 여기 있는 주소에서는 주 메뉴 "나" 선택 표시 안 함.
 const MORE = [
@@ -32,8 +20,15 @@ const MORE = [
 const LINK =
   'flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted data-[status=active]:font-semibold data-[status=active]:text-accent-ink'
 
-// 1024px 이상 왼쪽 220px. 우리 집 이름, 탭과 같은 메뉴, 보조 메뉴(탭에 없는 목적지), 맨 아래 사진 올리기.
-export function Sidebar({ instanceName }: { instanceName?: string }) {
+// 1024px 이상 왼쪽 220px. 우리 집 이름, 탭과 같은 메뉴, 보조 메뉴(탭에 없는 목적지), 맨 아래 추가하기.
+// onAdd: 휴대폰 (+) 와 같은 셸의 추가 시트 열기.
+export function Sidebar({
+  instanceName,
+  onAdd,
+}: {
+  instanceName?: string
+  onAdd: () => void
+}) {
   const { t } = useTranslation()
   const { user } = useMe()
   const items = useNavItems()
@@ -96,7 +91,10 @@ export function Sidebar({ instanceName }: { instanceName?: string }) {
       </nav>
       {hasRole(user, 'guardian') && (
         <div className="mt-auto">
-          <UploadButton />
+          <Button onClick={onAdd} aria-haspopup="dialog" className="w-full">
+            <IconAdd aria-hidden className="size-5" />
+            {t('addSheet.open')}
+          </Button>
         </div>
       )}
     </div>

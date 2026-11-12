@@ -4,6 +4,8 @@ import Tus, { type TusBody, type TusOptions } from '@uppy/tus'
 import { errorBody } from '@/api/client'
 import { ApiError } from '@/api/errors'
 import type { AttachTarget } from '@/api/types'
+import { milestoneKey } from '@/milestones/useMilestones'
+import { storyKey } from '@/stories/useStory'
 import { fileMime } from './fileKind'
 import { finalizeUpload } from './finalize'
 import {
@@ -123,6 +125,16 @@ function createQueue(): Uploader {
     )
     // 같은 파일 다시 선택 허용. await 이후라 tus 이벤트 정리 완료(동기 제거 시 업로드 DELETE).
     if (uppy.checkIfFileAlreadyExists(id)) uppy.removeFile(id)
+    // 새 자산, 중복 모두 서버가 대상에 연결. 열린 이야기, 마일스톤 상세에 바로 반영.
+    if (
+      s.attach &&
+      (outcome.kind === 'created' || outcome.kind === 'duplicate')
+    ) {
+      const { kind, id: target } = s.attach
+      void queryClient?.invalidateQueries({
+        queryKey: kind === 'story' ? storyKey(target) : milestoneKey(target),
+      })
+    }
     switch (outcome.kind) {
       case 'created':
         sent.delete(id)

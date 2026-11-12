@@ -89,6 +89,10 @@ const StoryNewPage = lazyRouteComponent(
   () => import('@/stories/StoryEditor'),
   'StoryNewPage',
 )
+const StoryPage = lazyRouteComponent(
+  () => import('@/stories/StoryPage'),
+  'StoryPage',
+)
 const StoryEditPage = lazyRouteComponent(
   () => import('@/stories/StoryEditor'),
   'StoryEditPage',
@@ -128,14 +132,24 @@ function babySearch(s: Record<string, unknown>): { baby?: string } {
   return { baby: typeof s.baby === 'string' ? s.baby : undefined }
 }
 
-// 뷰어 전용. from = 이전/다음 목록(없으면 타임라인). 그 밖의 값은 버림.
+// 뷰어 전용. from = 이전/다음 목록(없으면 타임라인), of = 이야기, 마일스톤 id.
+// 그 밖의 값, of 없는 story/milestone 은 버림. of 는 story/milestone 일 때만.
 function viewerSearch(s: Record<string, unknown>): {
   baby?: string
-  from?: 'favorites'
+  from?: 'favorites' | 'story' | 'milestone'
+  of?: string
 } {
+  const of = typeof s.of === 'string' && s.of !== '' ? s.of : undefined
+  const from =
+    s.from === 'favorites'
+      ? 'favorites'
+      : (s.from === 'story' || s.from === 'milestone') && of
+        ? s.from
+        : undefined
   return {
     ...babySearch(s),
-    from: s.from === 'favorites' ? 'favorites' : undefined,
+    from,
+    of: from === 'story' || from === 'milestone' ? of : undefined,
   }
 }
 
@@ -297,10 +311,10 @@ const storyNewRoute = createRoute({
   component: StoryNewPage,
 })
 
-// 이야기 상세 자리. 화면은 이야기 상세 작업에서 연결.
 const storyRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/stories/$id',
+  component: StoryPage,
 })
 
 // 작성자만. 아니면 상세로. 조회 실패(오프라인 등)는 화면에서.

@@ -8,7 +8,9 @@ import {
   apiError,
   assetSummaryFixture,
   babyFixture,
+  milestoneFixture,
   settingsFixture,
+  storyFixture,
   userFixture,
 } from '@/test/fixtures'
 import { intersectAll } from '@/test/intersection'
@@ -223,5 +225,60 @@ describe('DayPage', () => {
       expect(router.state.location.pathname).toBe('/')
     })
     expect(router.state.location.search).toEqual({ baby: 'b' })
+  })
+
+  it('day_page_stories_after_grid', async () => {
+    renderDay({
+      day: () =>
+        json(
+          200,
+          detail({
+            milestones: [milestoneFixture('m1', { achieved_on: '2024-05-09' })],
+            stories: [
+              storyFixture('s1', {
+                entry_date: '2024-05-09',
+                body: '처음 뒤집었어요',
+              }),
+            ],
+          }),
+        ),
+    })
+    // 머리글 날짜 옆 마일스톤. 제목 이름은 날짜만.
+    await screen.findByRole('heading', { name: '2024년 5월 9일 목요일' })
+    const header = within(screen.getByRole('banner'))
+    expect(await header.findByText('· 🎉 첫 이')).toBeInTheDocument()
+
+    const tiles = await screen.findAllByRole('link', { name: /^사진,/ })
+    const story = screen.getByRole('link', {
+      name: 'guardian 이야기: 처음 뒤집었어요',
+    })
+    expect(story).toHaveAttribute('href', '/stories/s1')
+    const follows =
+      (tiles.at(-1)?.compareDocumentPosition(story) ?? 0) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    expect(follows).not.toBe(0)
+    // 사진이 있으면 마일스톤 한 줄 없음.
+    expect(screen.queryByText('guardian이(가) 기록')).toBeNull()
+  })
+
+  it('day_page_text_only', async () => {
+    renderDay({
+      day: () =>
+        json(
+          200,
+          detail({
+            photo_count: 0,
+            video_count: 0,
+            uploader_ids: [],
+            milestones: [milestoneFixture('m1', { achieved_on: '2024-05-09' })],
+          }),
+        ),
+      assets: () => ({ items: [], next_cursor: null }),
+    })
+    expect(await screen.findByText('guardian이(가) 기록')).toBeInTheDocument()
+    expect(screen.queryByText(ko.day.empty)).toBeNull()
+    expect(screen.queryByRole('link', { name: /^사진,/ })).toBeNull()
+    // 사진 없는 날은 사진 목록 불러오는 중 표시 없음.
+    expect(screen.queryByText(ko.common.loading)).toBeNull()
   })
 })

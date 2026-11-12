@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getRouteApi,
   useCanGoBack,
@@ -36,6 +36,7 @@ import {
 import { useFavorites } from '@/favorites/useFavorites'
 import { ageParts } from '@/feed/dayMeta'
 import { errorMessage } from '@/i18n'
+import { PortalThemeContext } from '@/lib/portalTheme'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { LikersSheet } from '@/reactions/LikersSheet'
@@ -44,7 +45,9 @@ import {
   useToggleFavorite,
   useToggleLike,
 } from '@/reactions/useReactions'
+import { milestoneQuery } from '@/milestones/useMilestones'
 import { useSettings } from '@/settings/useSettings'
+import { storyQuery } from '@/stories/useStory'
 import { Blurhash } from '@/timeline/Blurhash'
 import {
   largeUrl,
@@ -68,6 +71,12 @@ import { formatMoment, todayInZone } from './zoned'
 const route = getRouteApi('/authed/photos/$id')
 
 type Panel = 'info' | 'comments'
+
+// 이야기, 마일스톤 사진 목록은 한 번에 전부. 다음 페이지 없음.
+const NO_ITEMS: AssetSummary[] = []
+function noPage(): Promise<unknown> {
+  return Promise.resolve()
+}
 
 const FADE_MS = 200
 // 이만큼 끌면 바탕이 가장 옅어짐.
@@ -169,11 +178,25 @@ function PanelTab({
   )
 }
 
+// 포털로 뜨는 댓글, 누른 가족 시트와 메뉴도 테마와 무관하게 어둡게.
 export function ViewerPage() {
+  return (
+    <PortalThemeContext value="dark">
+      <Viewer />
+    </PortalThemeContext>
+  )
+}
+
+function Viewer() {
   const { t, i18n } = useTranslation()
   const { id } = route.useParams()
-  const { baby, from } = route.useSearch()
+  const { baby, from, of } = route.useSearch()
   const fromFavorites = from === 'favorites'
+  // 이야기, 마일스톤 출처. 이웃은 그 대상의 사진 순서(휴지통 제외, 서버 응답 순서).
+  const source =
+    (from === 'story' || from === 'milestone') && of
+      ? { kind: from, id: of }
+      : null
   const navigate = useNavigate()
   const router = useRouter()
   const canGoBack = useCanGoBack()
@@ -186,37 +209,59 @@ export function ViewerPage() {
   const asset = useAsset(id)
   const timeline = useTimeline(baby, {
     refetchOnMount: false,
-    enabled: !fromFavorites,
+    enabled: !fromFavorites && !source,
   })
   const favorites = useFavorites({
     refetchOnMount: false,
     enabled: fromFavorites,
   })
+  const story = useQuery({
+    ...storyQuery(source?.id ?? ''),
+    enabled: source?.kind === 'story',
+  })
+  const milestone = useQuery({
+    ...milestoneQuery(source?.id ?? ''),
+    enabled: source?.kind === 'milestone',
+  })
+  const sourceAssets = (source?.kind === 'story' ? story : milestone).data
+    ?.assets
   const {
     items,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,
     fetchNextPage,
-  } = fromFavorites ? favorites : timeline
+  } = fromFavorites
+    ? favorites
+    : source
+      ? {
+          items: sourceAssets ?? NO_ITEMS,
+          hasNextPage: false,
+          isFetchingNextPage: false,
+          isFetchNextPageError: false,
+          fetchNextPage: noPage,
+        }
+      : timeline
   const ids = useMemo(() => items.map((i) => i.id), [items])
   const listed = ids.includes(id)
   const found = neighbors(ids, id)
-  // ★ 를 꺼 즐겨찾기 목록에서 빠져도 열린 사진은 마지막으로 목록에 있던 때의 이웃 유지.
+  // ★ 를 꺼 즐겨찾기 목록에서 빠지거나 휴지통으로 옮겨 대상 사진에서 빠져도
+  // 열린 사진은 마지막으로 목록에 있던 때의 이웃 유지.
+  const keepsNeighbors = fromFavorites || source !== null
   const [kept, setKept] = useState<{
     id: string
     prev?: string
     next?: string
   } | null>(null)
   if (
-    fromFavorites &&
+    keepsNeighbors &&
     listed &&
     (kept?.id !== id || kept.prev !== found.prev || kept.next !== found.next)
   ) {
     setKept({ id, ...found })
   }
   const { prev, next } =
-    fromFavorites && !listed && kept?.id === id ? kept : found
+    keepsNeighbors && !listed && kept?.id === id ? kept : found
   // 상세 도착 전엔 목록 항목으로 표시. 넘길 때 빈 화면 방지.
   const media = asset.data ?? items.find((i) => i.id === id)
   const detail = asset.data
@@ -258,7 +303,9 @@ export function ViewerPage() {
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
   // 상세 도착 후 판단. 휴지통·다른 아기·이미 지나친 시각처럼 목록에 나올 수 없으면 순회 안 함.
   // 즐겨찾기 목록은 즐겨찾기한 시각 순서라 즐겨찾기 여부와 휴지통만 판단.
+  // 이야기, 마일스톤 사진은 한 번에 전부라 더 받을 목록 없음.
   const unlisted =
+    !source &&
     !listed &&
     detail !== undefined &&
     (fromFavorites
@@ -283,7 +330,7 @@ export function ViewerPage() {
     void navigate({
       to: '/photos/$id',
       params: { id: target },
-      search: { baby, from },
+      search: { baby, from, of },
       replace: true,
     })
   }
@@ -302,10 +349,12 @@ export function ViewerPage() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     closeTimer.current = window.setTimeout(
       () => {
-        // 직접 진입(앱 내 이전 기록 없음)이면 타임라인 또는 즐겨찾기 화면.
+        // 직접 진입(앱 내 이전 기록 없음)이면 즐겨찾기 화면, 그 이야기, 그 밖은 홈 타임라인.
         if (canGoBack) router.history.back()
         else if (fromFavorites) void navigate({ to: '/me/favorites' })
-        else void navigate({ to: '/', search: { baby } })
+        else if (source?.kind === 'story') {
+          void navigate({ to: '/stories/$id', params: { id: source.id } })
+        } else void navigate({ to: '/', search: { baby } })
       },
       reduce ? 0 : FADE_MS,
     )
@@ -325,8 +374,10 @@ export function ViewerPage() {
       ),
     onSuccess: (a) => {
       applyAsset(qc, a)
-      // 휴지통 사진은 즐겨찾기 목록에서 빠짐. 이동과 복구 모두 다시 조회.
+      // 휴지통 사진은 즐겨찾기 목록, 이야기와 마일스톤 사진에서 빠짐. 이동과 복구 모두 다시 조회.
       void qc.invalidateQueries({ queryKey: favoritesKey })
+      void qc.invalidateQueries({ queryKey: ['story'] })
+      void qc.invalidateQueries({ queryKey: ['milestone'] })
       toast(t('viewer.restored'))
     },
     onError: (e) => {
@@ -343,6 +394,8 @@ export function ViewerPage() {
       void qc.invalidateQueries({ queryKey: ['assets'] })
       void qc.invalidateQueries({ queryKey: ['days'] })
       void qc.invalidateQueries({ queryKey: favoritesKey })
+      void qc.invalidateQueries({ queryKey: ['story'] })
+      void qc.invalidateQueries({ queryKey: ['milestone'] })
       // 떠나는 항목이라 즉시 재조회 안 함.
       void qc.invalidateQueries({
         queryKey: assetKey(assetId),

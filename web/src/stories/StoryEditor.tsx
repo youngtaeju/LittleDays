@@ -362,12 +362,16 @@ function StoryForm({
         })
         if (!queued) toast.error(t('stories.uploadFailed'))
       }
-      await router.navigate({
-        to: '/stories/$id',
-        params: { id },
-        replace: true,
-        ignoreBlocker: true,
-      })
+      // 고치기는 상세로 되돌아감. 상세 위에 같은 상세를 쌓으면 지운 뒤 뒤로 가기가 같은 화면.
+      if (story && canGoBack) router.history.back({ ignoreBlocker: true })
+      else {
+        await router.navigate({
+          to: '/stories/$id',
+          params: { id },
+          replace: true,
+          ignoreBlocker: true,
+        })
+      }
     } catch (e) {
       setError(e)
       setSaving(false)

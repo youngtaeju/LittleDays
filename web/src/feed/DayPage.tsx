@@ -7,14 +7,16 @@ import { errorMessage } from '@/i18n'
 import { useUsers } from '@/members/useUsers'
 import { useSettings } from '@/settings/useSettings'
 import { Tile } from '@/timeline/Tile'
+import { StoryBlock } from '@/stories/StoryBlock'
 import { useTimeline } from '@/timeline/useTimeline'
-import { uploaderNames, uploaderText } from './dayMeta'
+import { MilestoneLine, uploaderNames, uploaderText } from './dayMeta'
 import { Cell } from './Mosaic'
 import { useDay } from './useDay'
 
 const route = getRouteApi('/authed/shell/days/$date')
 
-// 그날 화면. 머리글은 셸이 그림(DayHeader).
+// 그날 화면. 머리글은 셸이 그림(DayHeader). 사진 그리드 다음 이야기들(전체 본문).
+// 사진도 이야기도 없으면 마일스톤 한 줄.
 export function DayPage() {
   const { t } = useTranslation()
   const { date } = route.useParams()
@@ -22,6 +24,11 @@ export function DayPage() {
   const timezone = useSettings()?.timezone
   const users = useUsers().data?.users
   const day = useDay(date, baby)
+  // 사진 없는 날(글, 마일스톤만)은 사진 목록 요청 없음. 하루 응답 전엔 함께 요청.
+  const media = day.data
+    ? day.data.photo_count + day.data.video_count
+    : undefined
+  const hasMedia = media !== 0
   const {
     items,
     fetchNextPage,
@@ -32,7 +39,7 @@ export function DayPage() {
     status,
     error,
     refetch,
-  } = useTimeline(baby, { date })
+  } = useTimeline(baby, { date, enabled: hasMedia })
 
   // 화면 끝 1000px 전부터 다음 페이지. 실패 시 자동 재시도 대신 버튼.
   const sentinel = useRef<HTMLDivElement>(null)
@@ -82,14 +89,14 @@ export function DayPage() {
     )
   }
 
-  const { prev_date, next_date } = day.data
+  const { prev_date, next_date, stories } = day.data
   const uploader = uploaderText(t, uploaderNames(users, day.data.uploader_ids))
   return (
     <div>
       {uploader && (
         <p className="pb-3 text-sm text-muted-foreground">{uploader}</p>
       )}
-      {status === 'pending' && (
+      {hasMedia && status === 'pending' && (
         <p className="py-4 text-sm text-muted-foreground">
           {t('common.loading')}
         </p>
@@ -102,8 +109,9 @@ export function DayPage() {
           </Button>
         </div>
       )}
+      {/* 꺼진 쿼리도 이전 날 목록(placeholder)을 돌려줌. 사진 없는 날은 그리지 않음. */}
       <ul className="-mx-4 grid grid-cols-3 gap-[2px] sm:grid-cols-4 lg:grid-cols-6">
-        {items.map((item) => (
+        {(hasMedia ? items : []).map((item) => (
           <Cell key={item.id} item={item}>
             <Tile item={item} baby={baby} timezone={timezone} />
           </Cell>
@@ -122,6 +130,15 @@ export function DayPage() {
             {t('common.retry')}
           </Button>
         </div>
+      )}
+      {stories.length > 0 ? (
+        <div className="grid gap-4 pt-4">
+          {stories.map((story) => (
+            <StoryBlock key={story.id} story={story} />
+          ))}
+        </div>
+      ) : (
+        !hasMedia && <MilestoneLine day={day.data} users={users} />
       )}
       {(prev_date || next_date) && (
         <nav

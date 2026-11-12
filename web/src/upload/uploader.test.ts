@@ -126,6 +126,58 @@ describe('uploader', () => {
     })
   })
 
+  // 마무리(새 자산 또는 중복 연결) 뒤 붙인 대상 상세를 다시 받음. 붙일 대상 없으면 그대로.
+  it('attach_invalidates_target', async () => {
+    const qc = createTestQueryClient()
+    const invalidate = vi.spyOn(qc, 'invalidateQueries')
+    const up = getUploader(qc)
+    up.uppy.setOptions({ autoProceed: false })
+    const [s] = up.add([photo('s.jpg')], ['b1'], { kind: 'story', id: 's1' })
+    const [m] = up.add([photo('m.jpg')], ['b1'], {
+      kind: 'milestone',
+      id: 'm1',
+    })
+    const [plain] = up.add([photo('p.jpg')], ['b1'])
+    if (!s || !m || !plain) throw new Error('항목 없음')
+    mockFetch({
+      'POST /api/uploads/u1/finalize': () => json(201, assetFixture('x1')),
+      'POST /api/uploads/u2/finalize': () =>
+        json(409, {
+          error: 'asset.duplicate',
+          params: { asset_id: 'x0', in_trash: false },
+        }),
+      'POST /api/uploads/u3/finalize': () => json(201, assetFixture('x3')),
+    })
+    const success = (id: string, upload: string) => {
+      up.uppy.emit('upload-success', up.uppy.getFile(id), {
+        uploadURL: `${location.origin}/api/uploads/${upload}`,
+        status: 200,
+        body: { xhr: new XMLHttpRequest() },
+      })
+    }
+    const status = (id: string) =>
+      uploadStore.getSnapshot().find((i) => i.id === id)?.status
+
+    success(s, 'u1')
+    await waitFor(() => {
+      expect(status(s)).toBe('done')
+    })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['story', 's1'] })
+    success(m, 'u2')
+    await waitFor(() => {
+      expect(status(m)).toBe('duplicate')
+    })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['milestone', 'm1'] })
+    invalidate.mockClear()
+    success(plain, 'u3')
+    await waitFor(() => {
+      expect(status(plain)).toBe('done')
+    })
+    expect(invalidate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ['story', expect.anything()] }),
+    )
+  })
+
   // 큐에 이미 있는 파일을 붙일 대상과 함께 다시 추가하면 대상만 갱신.
   it('readd_existing_sets_attach', () => {
     const up = getUploader(createTestQueryClient())

@@ -17,7 +17,9 @@ import {
   babyFixture,
   commentFixture,
   dayFixture,
+  milestoneFixture,
   settingsFixture,
+  storyFixture,
   userFixture,
 } from '@/test/fixtures'
 import { renderApp } from '@/test/router'
@@ -1122,6 +1124,8 @@ describe('ViewerPage', () => {
     const sheet = await screen.findByRole('dialog', {
       name: ko.reactions.likersTitle,
     })
+    // 뷰어 위 시트는 앱 테마와 무관하게 어둡게.
+    expect(sheet).toHaveClass('dark')
     // 최신순.
     const items = await within(sheet).findAllByRole('listitem')
     expect(items).toHaveLength(2)
@@ -1455,6 +1459,106 @@ describe('ViewerPage', () => {
     })
     await new Promise((r) => setTimeout(r, 50))
     expect(screen.queryByText(ko.reactions.saveFailed)).toBeNull()
+  })
+
+  it('story_neighbors', async () => {
+    let timelineCalls = 0
+    const { router, user } = renderViewer({
+      path: '/photos/b?from=story&of=s',
+      extra: {
+        'GET /api/assets': () => {
+          timelineCalls += 1
+          return json(200, { items: [], next_cursor: null })
+        },
+        // 이야기 사진 순서. 타임라인 순서(a, b, c)와 다름.
+        'GET /api/stories/s': () =>
+          json(
+            200,
+            storyFixture('s', {
+              assets: ['c', 'b', 'a'].map((id) => assetSummaryFixture(id)),
+              asset_count: 3,
+            }),
+          ),
+        'GET /api/stories/s/comments': () =>
+          json(200, { items: [], next_cursor: null }),
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.prev })
+    expect(screen.getByRole('button', { name: ko.viewer.next })).toBeVisible()
+
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/a')
+    })
+    expect(router.state.location.search).toEqual({ from: 'story', of: 's' })
+    expect(screen.queryByRole('button', { name: ko.viewer.next })).toBeNull()
+
+    await user.keyboard('{ArrowLeft}')
+    await user.keyboard('{ArrowLeft}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    expect(timelineCalls).toBe(0)
+
+    // 직접 진입이면 닫기 → 그 이야기.
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/stories/s')
+    })
+  })
+
+  it('milestone_neighbors', async () => {
+    const { router, user } = renderViewer({
+      path: '/photos/a?from=milestone&of=m',
+      extra: {
+        'GET /api/milestones/m': () =>
+          json(
+            200,
+            milestoneFixture('m', {
+              assets: ['a', 'c'].map((id) => assetSummaryFixture(id)),
+              asset_count: 2,
+            }),
+          ),
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: ko.viewer.next }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    expect(router.state.location.search).toEqual({
+      from: 'milestone',
+      of: 'm',
+    })
+    expect(screen.queryByRole('button', { name: ko.viewer.next })).toBeNull()
+  })
+
+  it('story_from_without_of_dropped', async () => {
+    let timelineCalls = 0
+    const { router, user } = renderViewer({
+      path: '/photos/a?from=story',
+      extra: {
+        'GET /api/assets': () => {
+          timelineCalls += 1
+          return json(200, {
+            items: ['a', 'b', 'c'].map((id) => assetSummaryFixture(id)),
+            next_cursor: null,
+          })
+        },
+      },
+    })
+    // 미등록 GET /api/stories/... 호출 시 setup 이 실패 처리.
+    await screen.findByRole('button', { name: ko.viewer.info })
+    expect(router.state.location.search).toEqual({})
+    await user.click(
+      await screen.findByRole('button', { name: ko.viewer.next }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    expect(router.state.location.href).toBe('/photos/b')
+    expect(timelineCalls).toBe(1)
   })
 })
 

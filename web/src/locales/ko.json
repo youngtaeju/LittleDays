@@ -260,7 +260,13 @@
     "commentCount_one": "댓글 {{count}}개",
     "commentCount_other": "댓글 {{count}}개",
     "viewAll_one": "{{date}} {{count}}개 모두 보기",
-    "viewAll_other": "{{date}} {{count}}개 모두 보기"
+    "viewAll_other": "{{date}} {{count}}개 모두 보기",
+    "milestones": "· 🎉 {{names}}",
+    "milestonesMore_one": "· 🎉 {{names}} 외 {{count}}",
+    "milestonesMore_other": "· 🎉 {{names}} 외 {{count}}",
+    "recordedBy": "{{name}}가 기록",
+    "recordedBy_batchim": "{{name}}이 기록",
+    "recordedBy_unknown": "{{name}}이(가) 기록"
   },
   "day": {
     "back": "뒤로",
@@ -639,6 +645,46 @@
     "discard": "버리기",
     "uploadFailed": "이야기는 저장했지만 새 사진을 올리지 못했어요.",
     "reorderHint": "왼쪽, 오른쪽 화살표로 순서를 바꿔요",
-    "moved": "{{count}}장 중 {{index}}번째로 옮겼어요"
+    "moved": "{{count}}장 중 {{index}}번째로 옮겼어요",
+    "title": "이야기",
+    "back": "뒤로",
+    "menu": "이야기 메뉴",
+    "edit": "고치기",
+    "delete": "지우기",
+    "deleteTitle": "이야기를 지울까요?",
+    "deleteDescription": "지운 이야기는 되돌릴 수 없어요. 붙인 사진은 그대로 남아요.",
+    "deleted": "이야기를 지웠어요",
+    "more": "더 보기",
+    "open": "{{name}} 이야기: {{excerpt}}",
+    "photoGrid": "붙인 사진",
+    "less": "접기"
+  },
+  "milestones": {
+    "presets": {
+      "first_smile": "첫 웃음",
+      "neck_control": "목 가누기",
+      "rollover": "뒤집기",
+      "sit_alone": "혼자 앉기",
+      "crawl": "기기",
+      "stand_holding": "잡고 서기",
+      "walk_holding": "잡고 걷기",
+      "stand_alone": "혼자 서기",
+      "walk_alone": "혼자 걷기",
+      "run": "뛰기",
+      "stairs": "계단 오르기",
+      "first_word": "첫 말(엄마, 아빠)",
+      "two_words": "두 단어 말하기",
+      "wave_bye": "빠이빠이",
+      "clap": "박수",
+      "point": "손가락으로 가리키기",
+      "spoon_self": "혼자 숟가락질",
+      "first_tooth": "첫 이",
+      "first_solid_food": "이유식 시작",
+      "sleep_through": "통잠",
+      "potty": "배변 가리기",
+      "first_haircut": "첫 이발",
+      "first_trip": "첫 여행",
+      "first_daycare": "첫 등원"
+    }
   }
 }

@@ -3,8 +3,9 @@ import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 import IconComment from '~icons/material-symbols/chat-bubble-rounded'
 import IconLike from '~icons/material-symbols/favorite-rounded'
-import type { Baby, DaySummary, User } from '@/api/types'
+import type { Baby, DaySummary, MilestoneSummary, User } from '@/api/types'
 import { formatAgeLine, formatSpecialDay, specialDay } from '@/lib/age'
+import { milestoneLabel } from '@/milestones/labels'
 
 // 이름 끝 글자 받침으로 이/가 고르기(i18n context). 한글이 아니면 판단 불가.
 function josa(name: string): 'batchim' | 'unknown' | undefined {
@@ -26,6 +27,26 @@ export function uploaderText(t: TFunction, names: string[]): string | null {
     name: t('feed.pair', { a: first, b: second }),
     context: josa(second),
   })
+}
+
+// 마일스톤만 있는 날의 한 줄. 기록한 사람.
+export function recordedByText(t: TFunction, name: string): string {
+  return t('feed.recordedBy', { name, context: josa(name) })
+}
+
+// 머리글 날짜 옆. 앞 두 이름, 그 밖은 "외 N". 없으면 null.
+export function milestonesText(
+  t: TFunction,
+  milestones: Pick<MilestoneSummary, 'preset_key' | 'custom_label'>[],
+): string | null {
+  if (milestones.length === 0) return null
+  const names = milestones
+    .slice(0, 2)
+    .map((m) => milestoneLabel(t, m))
+    .join(', ')
+  return milestones.length > 2
+    ? t('feed.milestonesMore', { names, count: milestones.length - 2 })
+    : t('feed.milestones', { names })
 }
 
 export type AgePart = { text: string; special: boolean }
@@ -134,5 +155,24 @@ export function ReactionCounts({
         </span>
       )}
     </span>
+  )
+}
+
+// 마일스톤만 있는 날 머리글 아래 한 줄. 첫 마일스톤의 메모, 없으면 기록한 사람.
+export function MilestoneLine({
+  day,
+  users,
+}: {
+  day: Pick<DaySummary, 'milestones'>
+  users: User[] | undefined
+}) {
+  const { t } = useTranslation()
+  const [first] = day.milestones
+  if (!first) return null
+  const name = users?.find((u) => u.id === first.created_by)?.display_name
+  const text = first.note ?? (name ? recordedByText(t, name) : null)
+  if (!text) return null
+  return (
+    <p className="pb-2 text-xs wrap-anywhere text-muted-foreground">{text}</p>
   )
 }

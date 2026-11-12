@@ -24,7 +24,7 @@ export function assetKey(id: string) {
   return ['asset', id] as const
 }
 
-// refetchOnMount false: 뷰어용. 이미 받은 페이지 전체 재조회 방지. enabled false: 뷰어가 다른 목록(즐겨찾기) 기준일 때.
+// refetchOnMount false: 뷰어용. 이미 받은 페이지 전체 재조회 방지. enabled false: 뷰어가 다른 목록(즐겨찾기, 이야기) 기준일 때, 사진 없는 날 화면.
 export function useTimeline(
   babyId: string | undefined,
   {

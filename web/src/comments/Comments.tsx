@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { usePortalTheme } from '@/lib/portalTheme'
 import { cn } from '@/lib/utils'
 import { useUsers } from '@/members/useUsers'
 import { likedByText } from '@/reactions/names'
@@ -39,6 +40,7 @@ export function CommentThread({ target }: { target: ReactionTarget }) {
   const [editing, setEditing] = useState<AnyComment | null>(null)
   const [deleting, setDeleting] = useState<AnyComment | null>(null)
   const remove = useDeleteComment(target)
+  const theme = usePortalTheme()
   // 이미 없는 댓글의 고치기/지우기 오류. 편집 모드, 대화상자를 닫은 뒤 입력칸 아래 표시.
   const [gone, setGone] = useState<unknown>(null)
   function onGone(e: unknown, id: string) {
@@ -118,7 +120,7 @@ export function CommentThread({ target }: { target: ReactionTarget }) {
           if (!open) setDeleting(null)
         }}
       >
-        <DialogContent className="dark text-foreground">
+        <DialogContent className={cn(theme, 'text-foreground')}>
           <DialogHeader>
             <DialogTitle>{t('comments.deleteTitle')}</DialogTitle>
             <DialogDescription>
@@ -172,6 +174,7 @@ export function CommentSheet({
 }) {
   const { t } = useTranslation()
   const [full, setFull] = useState(false)
+  const theme = usePortalTheme()
   const likes = useLikes(target, open && likeCount > 0)
   const users = useUsers().data?.users
   const dragStart = useRef<number | null>(null)
@@ -212,7 +215,8 @@ export function CommentSheet({
             e.preventDefault()
         }}
         className={cn(
-          'dark mx-auto flex w-full max-w-lg flex-col gap-0 text-foreground transition-[height] duration-200 ease-out motion-reduce:transition-none',
+          theme,
+          'mx-auto flex w-full max-w-lg flex-col gap-0 text-foreground transition-[height] duration-200 ease-out motion-reduce:transition-none',
           full ? 'h-dvh rounded-none' : 'h-[55dvh]',
         )}
       >

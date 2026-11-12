@@ -1,15 +1,20 @@
 import {
   BABY_NAME,
   createInvitePath,
+  createStory,
   FILES,
   OWNER,
   expect,
   expectNoHorizontalOverflow,
   expectThumbnailsLoaded,
+  listAssets,
+  resetStories,
+  STORY_FILE,
   test,
   tiles,
 } from './fixtures'
 import type { Page } from '@playwright/test'
+import type { Baby } from '@/api/types'
 
 type Point = { x: number; y: number }
 
@@ -266,4 +271,68 @@ test('viewer_zoom_and_dismiss', async ({ ownerPage: page }) => {
     { x: center.x, y: center.y + 200 },
   )
   await expect(page).toHaveURL(/\/$/)
+})
+
+// 영상 날에 사진 2장(다른 날)을 붙인 긴 이야기. 끝나면 지움(뒤 테스트의 하루 묶음 유지).
+test('story_screens_fit_width', async ({ ownerPage: page }) => {
+  // 앞 데스크톱 시도가 남긴 이야기 사진까지 정리.
+  await resetStories(page, STORY_FILE)
+  const assets = await listAssets(page)
+  const video = assets.find((a) => a.kind === 'video')
+  if (!video) throw new Error('영상 없음')
+  const res = await page.request.get('/api/babies')
+  const babies = (await res.json()) as Baby[]
+  // 띄어쓰기 없는 긴 낱말: 줄바꿈 누락 시 가로 넘침.
+  const body = `${'모래놀이'.repeat(40)} 바다에 다녀왔어요\n${'파도 소리 '.repeat(30)}`
+  const story = await createStory(page, {
+    entry_date: video.local_date,
+    body,
+    baby_ids: babies.map((b) => b.id),
+    asset_ids: assets.filter((a) => a.kind === 'photo').map((a) => a.id),
+  })
+  try {
+    // 홈: 영상 날 모자이크 → 메타 줄 → 이야기(3줄 접힘, 다른 날 썸네일).
+    await page.goto('/')
+    const card = page
+      .getByRole('main')
+      .getByRole('article')
+      .filter({ has: page.getByRole('link', { name: /^영상,/ }) })
+    await expect(card.getByText('사진 2장')).toBeVisible()
+    const more = card.getByRole('button', { name: '더 보기' })
+    await expect(more).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await more.click()
+    await expect(card.getByRole('button', { name: '접기' })).toBeFocused()
+    await expectNoHorizontalOverflow(page)
+
+    // 이야기 상세.
+    await card.getByRole('link', { name: / 이야기: / }).click()
+    await expect(page).toHaveURL(new RegExp(`/stories/${story.id}$`))
+    await expect(
+      page.getByRole('list', { name: '붙인 사진' }).locator('img'),
+    ).toHaveCount(2)
+    await expect(page.getByRole('textbox', { name: '댓글 입력' })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+
+    // 그날 화면(사진 그리드 뒤 이야기 전체).
+    await page.goto(`/days/${video.local_date}`)
+    await expect(page.getByRole('link', { name: / 이야기: / })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+
+    // 탭 바 (+) → 이야기 쓰기.
+    await page.goto('/')
+    await page
+      .getByTestId('tab-bar')
+      .getByRole('button', { name: '추가하기' })
+      .click()
+    await page
+      .getByRole('dialog', { name: '무엇을 남길까요?' })
+      .getByRole('button', { name: '이야기 쓰기' })
+      .click()
+    await expect(page).toHaveURL(/\/stories\/new$/)
+    await expect(page.getByRole('textbox', { name: '이야기' })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  } finally {
+    await resetStories(page, STORY_FILE)
+  }
 })

@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import path from 'node:path'
 import {
   test as base,
@@ -6,7 +7,14 @@ import {
   type Browser,
   type Page,
 } from '@playwright/test'
-import type { Asset, AssetPage, TrashItem } from '@/api/types'
+import type {
+  Asset,
+  AssetPage,
+  DayPage,
+  Story,
+  StorySummary,
+  TrashItem,
+} from '@/api/types'
 
 export { expect }
 
@@ -123,6 +131,81 @@ export async function trashAsset(page: Page, id: string): Promise<void> {
   expect(res.status()).toBeLessThan(300)
 }
 
+// 하루 목록을 끝까지 넘겨 이야기 전부. 이야기 목록 API 없음.
+export async function listStories(page: Page): Promise<StorySummary[]> {
+  const stories: StorySummary[] = []
+  let cursor: string | null = null
+  do {
+    const query: string = cursor ? `&cursor=${cursor}` : ''
+    const res = await page.request.get(`/api/days?limit=100${query}`)
+    expect(res.status()).toBe(200)
+    const body = (await res.json()) as DayPage
+    for (const d of body.items) stories.push(...d.stories)
+    cursor = body.next_cursor
+  } while (cursor)
+  return stories
+}
+
+export async function createStory(
+  page: Page,
+  data: {
+    entry_date: string
+    body: string
+    baby_ids: string[]
+    asset_ids: string[]
+  },
+): Promise<Story> {
+  const res = await page.request.post('/api/stories', {
+    data,
+    headers: CSRF,
+  })
+  expect(res.status(), await res.text()).toBe(201)
+  return (await res.json()) as Story
+}
+
+// 이야기에 새로 올려 붙인 사진 이름 앞부분. 정리 때 완전 삭제(다른 테스트의 사진 3장 전제 유지).
+export const STORY_FILE = 'story-e2e'
+
+// 이야기 전부와 이름이 prefix 로 시작하는 사진(완전 삭제) 정리. 공유 스택에서 앞 시도가 남긴 것 포함.
+export async function resetStories(
+  page: Page,
+  filePrefix?: string,
+): Promise<void> {
+  for (const s of await listStories(page)) {
+    const res = await page.request.delete(`/api/stories/${s.id}`, {
+      headers: CSRF,
+    })
+    expect(res.status()).toBeLessThan(300)
+  }
+  if (!filePrefix) return
+  for (const item of await listAssets(page)) {
+    const a = await getAsset(page, item.id)
+    if (!a.original_filename.startsWith(filePrefix)) continue
+    await trashAsset(page, a.id)
+    const res = await page.request.delete(`/api/assets/${a.id}/permanent`, {
+      headers: CSRF,
+    })
+    expect(res.status()).toBeLessThan(300)
+  }
+}
+
+// 내용만 다른 JPEG(새 사진으로 업로드). APPn(EXIF 등) 뒤에 주석 세그먼트, 화소와 촬영일은 그대로.
+export function uniqueJpeg(tag: string): Buffer {
+  const src = fs.readFileSync(FILES.jpg)
+  let at = 2
+  while (
+    src[at] === 0xff &&
+    (src[at + 1] ?? 0) >= 0xe0 &&
+    (src[at + 1] ?? 0) <= 0xef
+  ) {
+    at += 2 + src.readUInt16BE(at + 2)
+  }
+  const text = Buffer.from(tag, 'utf8')
+  const head = Buffer.from([0xff, 0xfe, 0, 0])
+  head.writeUInt16BE(text.length + 2, 2)
+  return Buffer.concat([src.subarray(0, at), head, text, src.subarray(at)])
+}
+
 // 휴지통 전부 복구. 앞 테스트가 휴지통 이동 후 실패해도 사진 3장 상태로 시작.
 async function restoreTrash(page: Page): Promise<void> {
   const res = await page.request.get('/api/trash?limit=500')
@@ -176,10 +259,15 @@ export const test = base.extend<{ ownerPage: Page }>({
   },
 })
 
-// 데스크톱 사이드바의 올리기 버튼. 빈 피드 안내 버튼과 이름이 같아 메뉴 영역 기준으로 한정.
-export function sidebarUpload(page: Page) {
-  return page
+// 데스크톱 사이드바 추가하기 → 추가 시트 → 사진/영상 올리기(기기 선택창). 선택창 대기는 호출 측.
+export async function sidebarUpload(page: Page): Promise<void> {
+  await page
     .getByRole('navigation', { name: '주 메뉴' })
     .locator('..')
-    .getByRole('button', { name: '사진 올리기' })
+    .getByRole('button', { name: '추가하기' })
+    .click()
+  await page
+    .getByRole('dialog', { name: '무엇을 남길까요?' })
+    .getByRole('button', { name: '사진·영상 올리기' })
+    .click()
 }

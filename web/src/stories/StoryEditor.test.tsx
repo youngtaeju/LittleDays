@@ -81,6 +81,12 @@ function setup(
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/babies': () => json(200, babies),
     'GET /api/users': () => json(200, { users: [ME, GRANDMA] }),
+    // 저장 뒤 도착하는 이야기 상세 화면.
+    'GET /api/stories/s1': () => json(200, storyFixture('s1')),
+    'GET /api/stories/s1/comments': () =>
+      json(200, { items: [], next_cursor: null }),
+    'GET /api/stories/s/comments': () =>
+      json(200, { items: [], next_cursor: null }),
     ...extra,
   })
   return renderApp(path)

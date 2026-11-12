@@ -1,4 +1,3 @@
-import { useNavigate } from '@tanstack/react-router'
 import IconPhoto from '~icons/material-symbols/add-photo-alternate-outline-rounded'
 import IconMilestone from '~icons/material-symbols/celebration-outline-rounded'
 import IconStory from '~icons/material-symbols/edit-note-rounded'
@@ -11,27 +10,26 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { useUploadPicker } from '@/upload/picker'
 
-// (+) 시트. 사진/영상 올리기, 이야기 쓰기, 키/몸무게 기록, 마일스톤 기록.
-// onGrowth, onMilestone 기본값은 아기 화면 이동(기록 시트 연결 전).
+// 추가 시트. 사진/영상 올리기, 이야기 쓰기, 키/몸무게 기록, 마일스톤 기록.
+// 항목 동작은 셸(AppShell)이 연결. 누르면 시트를 닫고 실행.
 export function AddSheet({
   open,
   onOpenChange,
+  onUpload,
+  onStory,
   onGrowth,
   onMilestone,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onGrowth?: () => void
-  onMilestone?: () => void
+  // 선택창은 누른 그 이벤트 안에서 열어야 휴대폰 브라우저가 허용. 동기 호출.
+  onUpload: () => void
+  onStory: () => void
+  onGrowth: () => void
+  onMilestone: () => void
 }) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const picker = useUploadPicker()
-  const toBabies = () => {
-    void navigate({ to: '/babies' })
-  }
   const items: {
     key: string
     label: string
@@ -42,28 +40,25 @@ export function AddSheet({
       key: 'upload',
       label: t('addSheet.upload'),
       icon: IconPhoto,
-      // 선택창은 누른 그 이벤트 안에서 열어야 휴대폰 브라우저가 허용.
-      run: picker.open,
+      run: onUpload,
     },
     {
       key: 'story',
       label: t('addSheet.story'),
       icon: IconStory,
-      run: () => {
-        void navigate({ to: '/stories/new' })
-      },
+      run: onStory,
     },
     {
       key: 'growth',
       label: t('addSheet.growth'),
       icon: IconGrowth,
-      run: onGrowth ?? toBabies,
+      run: onGrowth,
     },
     {
       key: 'milestone',
       label: t('addSheet.milestone'),
       icon: IconMilestone,
-      run: onMilestone ?? toBabies,
+      run: onMilestone,
     },
   ]
 
