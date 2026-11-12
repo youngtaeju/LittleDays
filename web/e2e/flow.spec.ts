@@ -6,9 +6,12 @@ import {
   OWNER,
   expect,
   expectThumbnailsLoaded,
+  firstBaby,
   getAsset,
   listAssets,
+  resetRecords,
   resetStories,
+  sidebarAdd,
   sidebarUpload,
   STORY_FILE,
   test,
@@ -584,6 +587,102 @@ test('story_round_trip', async ({
     await close()
     // 뒤 테스트(홈 사진 3장, 하루 묶음 수) 전제 유지.
     await resetStories(page, STORY_FILE)
+  }
+})
+
+// 키와 몸무게, 마일스톤을 추가 시트로 기록. 끝나면 지움(뒤 테스트의 하루 묶음 수 유지).
+test('records_round_trip', async ({ ownerPage: page }) => {
+  const baby = await firstBaby(page)
+  await resetRecords(page, baby.id)
+  try {
+    // 키와 몸무게(아기 1명이라 고르기 없음, 날짜 오늘).
+    await page.goto('/')
+    await sidebarAdd(page, '키·몸무게 기록')
+    const growth = page.getByRole('dialog', { name: '키·몸무게 기록' })
+    await growth.getByLabel('키(cm)').fill('88.5')
+    await growth.getByLabel('몸무게(kg)').fill('12.3')
+    await growth.getByRole('button', { name: '저장' }).click()
+    await expect(growth).toBeHidden()
+
+    // 아기 화면 차트에 점 하나.
+    await page.goto(`/babies/${baby.id}`)
+    const section = page.getByRole('region', { name: '성장' })
+    await expect(section.getByText(/^88\.5cm · 12\.3kg · /)).toBeVisible()
+    await expect(
+      section.getByTestId('growth-points').locator('circle'),
+    ).toHaveCount(1)
+
+    // 마일스톤 "혼자 걷기"(범위 안내, 날짜 오늘).
+    await sidebarAdd(page, '마일스톤 기록')
+    const picker = page.getByRole('dialog', { name: '마일스톤 기록' })
+    const walk = picker.getByRole('button', { name: /^혼자 걷기/ })
+    await expect(walk).toContainText('보통 8~18개월')
+    await walk.click()
+    const sheet = page.getByRole('dialog', { name: '혼자 걷기' })
+    await sheet.getByLabel('메모').fill('거실에서 세 걸음')
+    // 올린 사진에서 한 장(오늘 사진 없음 → 다른 날). 시트 위 시트.
+    await sheet.getByRole('button', { name: '올린 사진에서 고르기' }).click()
+    const assets = page.getByRole('dialog', { name: '사진 고르기' })
+    await assets.getByRole('button', { name: '다른 날' }).click()
+    await assets
+      .getByRole('button', { name: /^사진,/ })
+      .first()
+      .click()
+    await assets.getByRole('button', { name: '1장 고르기' }).click()
+    await expect(assets).toBeHidden()
+    await expect(
+      sheet.getByRole('list', { name: '사진' }).getByRole('listitem'),
+    ).toHaveCount(1)
+    await sheet.getByRole('button', { name: '저장' }).click()
+    await expect(sheet).toBeHidden()
+
+    // 아기 화면 타임라인.
+    const timeline = page
+      .getByRole('region', { name: '마일스톤' })
+      .getByRole('list', { name: '마일스톤 목록' })
+    await expect(timeline.getByRole('link')).toHaveCount(1)
+    await expect(timeline.getByRole('link')).toHaveAccessibleName(
+      /^혼자 걷기, /,
+    )
+
+    // 홈 머리글 날짜 옆 표시, 마일스톤만 있는 날 한 줄은 메모.
+    await page.goto('/')
+    const card = page
+      .getByRole('main')
+      .getByRole('article')
+      .filter({ hasText: '🎉 혼자 걷기' })
+    await expect(card).toBeVisible()
+    await expect(card.getByText('거실에서 세 걸음')).toBeVisible()
+
+    // 고르기 시트에서 같은 항목은 흐림 + 날짜. 누르면 상세.
+    await sidebarAdd(page, '마일스톤 기록')
+    const again = page
+      .getByRole('dialog', { name: '마일스톤 기록' })
+      .getByRole('button', { name: /^혼자 걷기/ })
+    await expect(again).toHaveAttribute('data-recorded', '')
+    await expect(again).toContainText('기록함')
+    await again.click()
+    await expect(page).toHaveURL(/\/milestones\/[0-9a-f-]+$/)
+    await expect(
+      page.getByRole('heading', { level: 1, name: '혼자 걷기' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('보통 8~18개월 · 아이마다 시기가 달라요'),
+    ).toBeVisible()
+    await expect(page.getByText('거실에서 세 걸음')).toBeVisible()
+
+    // 붙인 사진 → 마일스톤 출처 뷰어. 닫으면 상세.
+    const detailUrl = page.url()
+    await page
+      .getByRole('list', { name: '붙인 사진' })
+      .getByRole('link', { name: /^사진,/ })
+      .click()
+    await expect(page).toHaveURL(/\/photos\/[0-9a-f-]+\?from=milestone&of=/)
+    await expect(page.getByRole('button', { name: '닫기' })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(page).toHaveURL(detailUrl)
+  } finally {
+    await resetRecords(page, baby.id)
   }
 })
 

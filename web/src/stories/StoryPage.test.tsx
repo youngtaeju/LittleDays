@@ -262,10 +262,14 @@ describe('StoryPage', () => {
       author_id: me('guardian').id,
       baby_ids: [SKY.id],
     })
-    const { user, router } = setup({
+    let getsAfterDelete = 0
+    const { user, router, queryClient } = setup({
       extra: {
-        'GET /api/stories/s': () =>
-          current ? json(200, current) : apiError(404, 'story.notFound'),
+        'GET /api/stories/s': () => {
+          if (current) return json(200, current)
+          getsAfterDelete += 1
+          return apiError(404, 'story.notFound')
+        },
         'PATCH /api/stories/s': async (req) => {
           const patch = (await req.json()) as { body: string }
           current = current && { ...current, body: patch.body }
@@ -302,16 +306,30 @@ describe('StoryPage', () => {
     const dialog = await screen.findByRole('dialog', {
       name: ko.stories.deleteTitle,
     })
+    // 캐시 제거 시점의 화면. 상세가 남아 있으면 다시 받아 404 깜박임.
+    const removedAt: string[] = []
+    const remove = queryClient.removeQueries.bind(queryClient)
+    vi.spyOn(queryClient, 'removeQueries').mockImplementation((filters) => {
+      removedAt.push(router.state.resolvedLocation?.pathname ?? '')
+      remove(filters)
+    })
     await user.click(
       within(dialog).getByRole('button', { name: ko.stories.delete }),
     )
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/')
     })
+    await waitFor(() => {
+      expect(removedAt).toEqual(['/'])
+    })
     expect(screen.queryByText('고친 이야기')).toBeNull()
     expect(
       screen.queryByRole('dialog', { name: ko.stories.deleteTitle }),
     ).toBeNull()
+    // 떠나기 전 캐시를 지우면 남은 화면이 다시 받아 404(찾을 수 없음 깜박임).
+    await new Promise((r) => setTimeout(r, 50))
+    expect(getsAfterDelete).toBe(0)
+    expect(screen.queryByText(ko.errors.story.notFound)).toBeNull()
   })
 
   // 다른 가족이 지운 이야기. 남은 캐시 대신 찾을 수 없음.

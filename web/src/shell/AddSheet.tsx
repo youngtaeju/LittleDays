@@ -26,8 +26,9 @@ export function AddSheet({
   // 선택창은 누른 그 이벤트 안에서 열어야 휴대폰 브라우저가 허용. 동기 호출.
   onUpload: () => void
   onStory: () => void
-  onGrowth: () => void
-  onMilestone: () => void
+  // 키/몸무게, 마일스톤. 없으면 항목 숨김(기록할 수 있는 아기 없음).
+  onGrowth?: () => void
+  onMilestone?: () => void
 }) {
   const { t } = useTranslation()
   const items: {
@@ -48,18 +49,26 @@ export function AddSheet({
       icon: IconStory,
       run: onStory,
     },
-    {
-      key: 'growth',
-      label: t('addSheet.growth'),
-      icon: IconGrowth,
-      run: onGrowth,
-    },
-    {
-      key: 'milestone',
-      label: t('addSheet.milestone'),
-      icon: IconMilestone,
-      run: onMilestone,
-    },
+    ...(onGrowth
+      ? [
+          {
+            key: 'growth',
+            label: t('addSheet.growth'),
+            icon: IconGrowth,
+            run: onGrowth,
+          },
+        ]
+      : []),
+    ...(onMilestone
+      ? [
+          {
+            key: 'milestone',
+            label: t('addSheet.milestone'),
+            icon: IconMilestone,
+            run: onMilestone,
+          },
+        ]
+      : []),
   ]
 
   return (

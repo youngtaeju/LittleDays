@@ -73,10 +73,13 @@ function StoryMenu({ story }: { story: Story }) {
       setDeleting(false)
       void qc.invalidateQueries({ queryKey: ['days'] })
       toast(t('stories.deleted'))
+      // 다시 열면 캐시 대신 서버 응답(404). 화면을 떠난 뒤 제거(남은 화면의 재조회 404 깜박임 방지).
+      const unsubscribe = router.subscribe('onRendered', () => {
+        unsubscribe()
+        qc.removeQueries({ queryKey: storyKey(story.id) })
+      })
       if (canGoBack) router.history.back()
       else void router.navigate({ to: '/', replace: true })
-      // 다시 열면 캐시 대신 서버 응답(404).
-      qc.removeQueries({ queryKey: storyKey(story.id) })
     },
   })
 

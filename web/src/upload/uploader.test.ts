@@ -168,6 +168,8 @@ describe('uploader', () => {
       expect(status(m)).toBe('duplicate')
     })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['milestone', 'm1'] })
+    // 아기 화면 마일스톤 목록(썸네일)도.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['milestones'] })
     invalidate.mockClear()
     success(plain, 'u3')
     await waitFor(() => {
@@ -176,6 +178,7 @@ describe('uploader', () => {
     expect(invalidate).not.toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: ['story', expect.anything()] }),
     )
+    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ['milestones'] })
   })
 
   // 큐에 이미 있는 파일을 붙일 대상과 함께 다시 추가하면 대상만 갱신.

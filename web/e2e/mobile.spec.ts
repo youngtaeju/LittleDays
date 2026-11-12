@@ -1,13 +1,16 @@
 import {
   BABY_NAME,
   createInvitePath,
+  createRecords,
   createStory,
   FILES,
   OWNER,
   expect,
   expectNoHorizontalOverflow,
   expectThumbnailsLoaded,
+  firstBaby,
   listAssets,
+  resetRecords,
   resetStories,
   STORY_FILE,
   test,
@@ -334,5 +337,65 @@ test('story_screens_fit_width', async ({ ownerPage: page }) => {
     await expectNoHorizontalOverflow(page)
   } finally {
     await resetStories(page, STORY_FILE)
+  }
+})
+
+// 띄어쓰기 없는 긴 이름과 메모의 기록. 끝나면 지움(뒤 시도와 데스크톱 전제 유지).
+test('records_screens_fit_width', async ({ ownerPage: page }) => {
+  const baby = await firstBaby(page)
+  await resetRecords(page, baby.id)
+  const label = '처음으로바닷가모래사장을혼자서끝까지걸어갔어요'.slice(0, 30)
+  const note = '파도'.repeat(50)
+  try {
+    // 만들기 도중 실패해도 finally 가 정리.
+    const milestone = await createRecords(page, baby.id, {
+      growth: {
+        measured_on: '2025-03-01',
+        height_cm: 80.5,
+        weight_kg: 10.25,
+        note,
+      },
+      milestone: { custom_label: label, achieved_on: '2025-03-01', note },
+    })
+    // 아기 화면(성장, 마일스톤 타임라인).
+    await page.goto(`/babies/${baby.id}`)
+    const timeline = page.getByRole('list', { name: '마일스톤 목록' })
+    await expect(timeline.getByRole('link')).toHaveCount(1)
+    await expect(
+      page.getByTestId('growth-points').locator('circle'),
+    ).toHaveCount(1)
+    await expectNoHorizontalOverflow(page)
+
+    // 고르기 시트.
+    await page
+      .getByRole('region', { name: '마일스톤' })
+      .getByRole('button', { name: '마일스톤 기록하기' })
+      .click()
+    const picker = page.getByRole('dialog', { name: '마일스톤 기록' })
+    await expect(
+      picker.getByRole('button', { name: /^혼자 걷기/ }),
+    ).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    const box = await picker.boundingBox()
+    expect(box?.width ?? 0).toBeLessThanOrEqual(page.viewportSize()?.width ?? 0)
+    await page.keyboard.press('Escape')
+    await expect(picker).toBeHidden()
+
+    // 마일스톤 상세.
+    await timeline.getByRole('link').click()
+    await expect(page).toHaveURL(new RegExp(`/milestones/${milestone.id}$`))
+    await expect(page.getByText(note)).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+
+    // 성장 기록 목록.
+    await page.goto(`/babies/${baby.id}/growth`)
+    await expect(
+      page
+        .getByRole('list', { name: '키와 몸무게 기록' })
+        .getByRole('listitem'),
+    ).toHaveCount(1)
+    await expectNoHorizontalOverflow(page)
+  } finally {
+    await resetRecords(page, baby.id)
   }
 })

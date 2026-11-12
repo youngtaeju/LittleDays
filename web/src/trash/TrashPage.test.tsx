@@ -45,6 +45,18 @@ function renderTrash(
   return renderApp('/me/trash')
 }
 
+// 이야기, 마일스톤 상세와 아기별 마일스톤 목록(뷰어와 같은 범위).
+function expectRecordsInvalidated(invalidate: {
+  mock: { calls: unknown[][] }
+}) {
+  const keys = invalidate.mock.calls.map(
+    (c) => (c[0] as { queryKey: unknown }).queryKey,
+  )
+  expect(keys).toEqual(
+    expect.arrayContaining([['story'], ['milestone'], ['milestones']]),
+  )
+}
+
 describe('TrashPage', () => {
   it('retention_notice', async () => {
     renderTrash(
@@ -68,7 +80,7 @@ describe('TrashPage', () => {
   it('restore_item', async () => {
     let restored = false
     const posts: string[] = []
-    const { user } = renderTrash([trashItem()], {
+    const { user, queryClient } = renderTrash([trashItem()], {
       'GET /api/trash': () =>
         json(200, { items: restored ? [] : [trashItem()], next_cursor: null }),
       [`POST /api/assets/${ID}/restore`]: () => {
@@ -77,6 +89,7 @@ describe('TrashPage', () => {
         return json(200, assetFixture(ID))
       },
     })
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     await user.click(await screen.findByRole('button', { name: /^사진,/ }))
     const sheet = await screen.findByRole('dialog')
     expect(within(sheet).getByText(/삭제 시각/)).toBeInTheDocument()
@@ -87,17 +100,19 @@ describe('TrashPage', () => {
     })
     expect(posts).toEqual([ID])
     expect(await screen.findByText('휴지통이 비어 있어요.')).toBeInTheDocument()
+    expectRecordsInvalidated(invalidate)
   })
 
   it('permanent_requires_confirm', async () => {
     const deletes: string[] = []
-    const { user } = renderTrash([trashItem()], {
+    const { user, queryClient } = renderTrash([trashItem()], {
       [`DELETE /api/assets/${ID}/permanent`]: () => {
         deletes.push(ID)
         return json(204, null)
       },
       'GET /api/babies': () => json(200, []),
     })
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
     await user.click(await screen.findByRole('button', { name: /^사진,/ }))
     const sheet = await screen.findByRole('dialog')
     await user.click(within(sheet).getByRole('button', { name: '영구 삭제' }))
@@ -110,6 +125,7 @@ describe('TrashPage', () => {
       expect(deletes).toEqual([ID])
     })
     expect(await screen.findByText('영구 삭제했어요')).toBeInTheDocument()
+    expectRecordsInvalidated(invalidate)
   })
 
   it('empty_trash_reports_count', async () => {

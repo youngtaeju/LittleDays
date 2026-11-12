@@ -1,8 +1,4 @@
-import {
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Navigate,
   getRouteApi,
@@ -10,13 +6,11 @@ import {
   useCanGoBack,
   useRouter,
 } from '@tanstack/react-router'
-import IconAddPhoto from '~icons/material-symbols/add-a-photo-outline-rounded'
-import IconPhotos from '~icons/material-symbols/photo-library-outline-rounded'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, call } from '@/api/client'
-import type { AssetSummary, AttachTarget, Baby, Story, User } from '@/api/types'
+import type { Baby, Story, User } from '@/api/types'
 import { useMe } from '@/auth/session'
 import { MentionTextarea, type MentionValue } from '@/comments/MentionTextarea'
 import { toBody, toEditable } from '@/comments/mentions'
@@ -35,11 +29,17 @@ import { useUsers } from '@/members/useUsers'
 import { RoutePending } from '@/pages/RouteError'
 import { useSettingsQuery, useToday } from '@/settings/useSettings'
 import { useBabies } from '@/timeline/useBabies'
-import { mediaKind } from '@/upload/fileKind'
 import { BabyPicker } from '@/upload/UploadConfirm'
-import { ACCEPTED_FILE_TYPES } from '@/upload/useUploadStore'
-import { AssetPickerSheet } from './AssetPickerSheet'
-import { PhotoStrip, type StripItem } from './PhotoStrip'
+import {
+  PhotoField,
+  assetIds,
+  assetItem,
+  keepServerOnly,
+  queueFiles,
+  sameList,
+  stripFiles,
+} from './PhotoField'
+import type { StripItem } from './PhotoStrip'
 import { storyKey, storyQuery } from './useStory'
 
 // 서버와 같은 기준. 앞뒤 공백 제거 후 유니코드 문자 수.
@@ -55,43 +55,8 @@ interface Draft {
   items: StripItem[]
 }
 
-function assetItem(asset: AssetSummary): StripItem {
-  return { key: `a:${asset.id}`, kind: 'asset', asset }
-}
-
-function assetIds(items: readonly StripItem[]): string[] {
-  return items.flatMap((i) => (i.kind === 'asset' ? [i.asset.id] : []))
-}
-
 function sameSet(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((x) => b.includes(x))
-}
-
-function sameList(a: readonly string[], b: readonly string[]): boolean {
-  return a.length === b.length && a.every((x, i) => x === b[i])
-}
-
-function move<T>(list: readonly T[], from: number, to: number): T[] {
-  const next = [...list]
-  const [x] = next.splice(from, 1)
-  if (x !== undefined) next.splice(to, 0, x)
-  return next
-}
-
-// 업로드 큐는 지연 로딩. 실패 시 이야기는 저장된 채 안내만.
-async function queueFiles(
-  qc: QueryClient,
-  files: File[],
-  babyIds: string[],
-  attach: AttachTarget,
-): Promise<boolean> {
-  try {
-    const { getUploader } = await import('@/upload/uploader')
-    getUploader(qc).add(files, babyIds, attach)
-    return true
-  } catch {
-    return false
-  }
 }
 
 // /stories/new. 날짜 기본값 = ?date=(오늘 이전) 또는 인스턴스 오늘.
@@ -203,18 +168,15 @@ function StoryForm({
   const [babyIds, setBabyIds] = useState(initial.babyIds)
   const [value, setValue] = useState(initial.value)
   const [items, setItems] = useState(initial.items)
-  const [picking, setPicking] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const fileInput = useRef<HTMLInputElement>(null)
-  const nextKey = useRef(0)
 
   const body = toBody(value.text, value.picked).trim()
   const length = Array.from(body).length
   const over = length > MAX_CHARS
   const validDate = isCalendarDate(date)
   const future = validDate && date > today
-  const files = items.flatMap((i) => (i.kind === 'file' ? [i.file] : []))
+  const files = stripFiles(items)
   const ids = assetIds(items)
 
   const fieldsChanged = story
@@ -277,29 +239,6 @@ function StoryForm({
     setBabyIds(babies.filter((b) => next.includes(b.id)).map((b) => b.id))
   }
 
-  function addFiles(list: File[]) {
-    const media = list.filter((f) => mediaKind(f) !== null)
-    if (media.length < list.length) toast.error(t('upload.status.unsupported'))
-    if (media.length === 0) return
-    const added = media.map((file): StripItem => ({
-      key: `f:${String(nextKey.current++)}`,
-      kind: 'file',
-      file,
-    }))
-    setItems((prev) => [...prev, ...added])
-  }
-
-  // 고른 결과로 교체. 빠진 사진은 제거, 새로 고른 사진은 맨 뒤. 기기 파일은 그대로.
-  function applyPicked(assets: AssetSummary[]) {
-    const keep = new Set(assets.map((a) => a.id))
-    setItems((prev) => {
-      const kept = prev.filter((i) => i.kind === 'file' || keep.has(i.asset.id))
-      const have = new Set(assetIds(kept))
-      return [...kept, ...assets.filter((a) => !have.has(a.id)).map(assetItem)]
-    })
-    setPicking(false)
-  }
-
   async function create(): Promise<string> {
     const created = await call(
       api.POST('/api/stories', {
@@ -326,10 +265,7 @@ function StoryForm({
     if (fieldsChanged.body) patch.body = body
     if (fieldsChanged.assets) {
       const fresh = await qc.query({ ...storyQuery(s.id), staleTime: 0 })
-      const added = fresh.assets
-        .map((a) => a.id)
-        .filter((id) => !base.ids.includes(id) && !ids.includes(id))
-      patch.asset_ids = [...ids, ...added]
+      patch.asset_ids = keepServerOnly(ids, base.ids, fresh.assets)
     }
     if (Object.keys(patch).length === 0) return
     const updated = await call(
@@ -432,83 +368,14 @@ function StoryForm({
         )}
       </div>
 
-      <section className="grid gap-2">
-        {items.length > 0 && (
-          <>
-            <p className="flex justify-between text-[13px] font-bold">
-              {t('stories.photos')}
-              <span className="font-normal text-muted-foreground">
-                {t('stories.photoCount', { count: items.length })}
-              </span>
-            </p>
-            <PhotoStrip
-              items={items}
-              onRemove={(key) => {
-                setItems((prev) => prev.filter((i) => i.key !== key))
-              }}
-              onReorder={(key, to) => {
-                setItems((prev) => {
-                  const from = prev.findIndex((i) => i.key === key)
-                  return from < 0 ? prev : move(prev, from, to)
-                })
-              }}
-            />
-          </>
-        )}
-        <Button
-          variant="outline"
-          className="h-12 text-[15px] font-semibold"
-          onClick={() => {
-            setPicking(true)
-          }}
-        >
-          <IconPhotos aria-hidden className="size-5" />
-          {t('stories.pickExisting')}
-        </Button>
-        <Button
-          variant="outline"
-          className="h-12 text-[15px] font-semibold"
-          onClick={() => {
-            fileInput.current?.click()
-          }}
-        >
-          <IconAddPhoto aria-hidden className="size-5" />
-          {t('stories.uploadNew')}
-        </Button>
-        {files.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {t('stories.uploadHint')}
-          </p>
-        )}
-        <input
-          ref={fileInput}
-          type="file"
-          multiple
-          accept={ACCEPTED_FILE_TYPES.join(',')}
-          className="hidden"
-          tabIndex={-1}
-          aria-hidden
-          onChange={(e) => {
-            const list = [...(e.currentTarget.files ?? [])]
-            // 같은 파일 다시 선택 허용.
-            e.currentTarget.value = ''
-            addFiles(list)
-          }}
-        />
-      </section>
+      <PhotoField
+        items={items}
+        onChange={setItems}
+        date={validDate ? date : undefined}
+        hint={t('stories.uploadHint')}
+      />
 
       <FormError error={error} />
-
-      {picking && (
-        <AssetPickerSheet
-          date={validDate ? date : undefined}
-          selected={items.flatMap((i) => (i.kind === 'asset' ? [i.asset] : []))}
-          onDone={applyPicked}
-          onClose={() => {
-            setPicking(false)
-          }}
-        />
-      )}
 
       <Dialog
         open={asking || blocker.status === 'blocked'}

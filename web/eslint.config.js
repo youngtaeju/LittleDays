@@ -35,7 +35,9 @@ export default tseslint.config(
     },
   },
   {
-    files: ['*.config.js', 'public/*.js'],
+    files: ['*.config.js', 'public/*.js', 'scripts/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
   },
+  // 일회성 Node 스크립트(데이터 변환).
+  { files: ['scripts/*.mjs'], languageOptions: { globals: globals.node } },
 )

@@ -90,6 +90,12 @@ function renderBabies(
         },
       ]),
     ),
+    ...Object.fromEntries(
+      babies.flatMap((b) => [
+        [`GET /api/babies/${b.id}/growth`, () => json(200, [])],
+        [`GET /api/babies/${b.id}/milestones`, () => json(200, [])],
+      ]),
+    ),
   })
   return { ...renderApp(path), statsRequests }
 }

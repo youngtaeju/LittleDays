@@ -61,6 +61,17 @@ export function formatMonthDay(date: string, lng: string): string {
   }).format(new Date(`${date}T00:00:00Z`))
 }
 
+// 올해면 "11월 3일", 아니면 연도까지. today 는 인스턴스 오늘.
+export function formatShortDate(
+  date: string,
+  today: string,
+  lng: string,
+): string {
+  return date.slice(0, 4) === today.slice(0, 4)
+    ? formatMonthDay(date, lng)
+    : formatDate(date, lng)
+}
+
 // YYYY-MM-DD 달력 날짜 더하기.
 export function addDays(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`)

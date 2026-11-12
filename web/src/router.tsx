@@ -76,6 +76,10 @@ const AgeAlbumPage = lazyRouteComponent(
   () => import('@/babies/AgeAlbumPage'),
   'AgeAlbumPage',
 )
+const GrowthListPage = lazyRouteComponent(
+  () => import('@/growth/GrowthListPage'),
+  'GrowthListPage',
+)
 const FavoritesPage = lazyRouteComponent(
   () => import('@/favorites/FavoritesPage'),
   'FavoritesPage',
@@ -96,6 +100,10 @@ const StoryPage = lazyRouteComponent(
 const StoryEditPage = lazyRouteComponent(
   () => import('@/stories/StoryEditor'),
   'StoryEditPage',
+)
+const MilestonePage = lazyRouteComponent(
+  () => import('@/milestones/MilestonePage'),
+  'MilestonePage',
 )
 const ViewerPage = lazyRouteComponent(
   () => import('@/viewer/ViewerPage'),
@@ -299,6 +307,13 @@ const ageAlbumRoute = createRoute({
   component: AgeAlbumPage,
 })
 
+// 모든 멤버 읽기. 고치기와 지우기는 화면에서 보호자 이상만.
+const growthRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/babies/$id/growth',
+  component: GrowthListPage,
+})
+
 // date: 그날 화면에서 진입 시 기본 날짜. 미래 날짜는 화면이 오늘로.
 const storyNewRoute = createRoute({
   getParentRoute: () => shellRoute,
@@ -332,6 +347,13 @@ const storyEditRoute = createRoute({
     }
   },
   component: StoryEditPage,
+})
+
+// 모든 멤버 읽기. 고치기와 지우기는 화면에서 보호자 이상만.
+const milestoneRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/milestones/$id',
+  component: MilestonePage,
 })
 
 // 모든 멤버. 초대·역할 변경은 화면에서 관리자만.
@@ -449,9 +471,11 @@ const routeTree = rootRoute.addChildren([
       babiesRoute,
       babyRoute,
       ageAlbumRoute,
+      growthRoute,
       storyNewRoute,
       storyRoute,
       storyEditRoute,
+      milestoneRoute,
       familyRoute,
       meRoute,
       meProfileRoute,

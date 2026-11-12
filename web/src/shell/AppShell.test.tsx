@@ -6,6 +6,7 @@ import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
 import {
+  babyFixture,
   emptyFeedRoutes,
   settingsFixture,
   storyFixture,
@@ -20,6 +21,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  localStorage.clear()
   uploadStore.reset()
   vi.restoreAllMocks()
 })
@@ -146,7 +148,30 @@ describe('AppShell', () => {
   })
 
   it('add_sheet_items', async () => {
-    const { user, router } = await renderShell('guardian')
+    const sky = babyFixture()
+    const sea = babyFixture({
+      id: '00000000-0000-4000-8000-0000000000b2',
+      name: '바다',
+      birth_date: '2025-06-01',
+      sort_order: 1,
+    })
+    const due = babyFixture({
+      id: '00000000-0000-4000-8000-0000000000b3',
+      name: '별',
+      birth_date: '2099-01-01',
+      sort_order: 2,
+    })
+    // 마지막으로 본 아기가 기본 선택.
+    localStorage.setItem('ld.baby.last', sea.id)
+    const { user, router } = await renderShell(
+      'guardian',
+      '/',
+      [sky, sea, due],
+      {
+        [`GET /api/babies/${sea.id}/milestones`]: () => json(200, []),
+        [`GET /api/babies/${sky.id}/milestones`]: () => json(200, []),
+      },
+    )
     async function openSheet() {
       await user.click(
         within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
@@ -172,23 +197,78 @@ describe('AppShell', () => {
     })
     expect(sheet).not.toBeInTheDocument()
 
-    // 키/몸무게, 마일스톤은 기록 시트 연결 전까지 아기 화면.
+    // 키/몸무게는 기록 시트. 태어나지 않은 아기는 고를 수 없음.
     await router.navigate({ to: '/' })
     sheet = await openSheet()
     await user.click(
       within(sheet).getByRole('button', { name: ko.addSheet.growth }),
     )
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/babies')
+    const growth = await screen.findByRole('dialog', {
+      name: ko.growth.newTitle,
     })
-    await router.navigate({ to: '/' })
+    const picker = within(growth).getByRole('radiogroup', {
+      name: ko.growth.baby,
+    })
+    const radios = within(picker).getAllByRole('radio')
+    expect(radios.map((r) => r.textContent)).toEqual(['하늘', '바다'])
+    expect(within(picker).getByRole('radio', { name: '바다' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(router.state.location.pathname).toBe('/')
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(growth).not.toBeInTheDocument()
+    })
+
+    // 마일스톤은 고르기 시트. 아기 고르기는 키/몸무게와 같은 규칙.
     sheet = await openSheet()
     await user.click(
       within(sheet).getByRole('button', { name: ko.addSheet.milestone }),
     )
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/babies')
+    const milestone = await screen.findByRole('dialog', {
+      name: ko.milestones.pickerTitle,
     })
+    const babyRadios = within(milestone).getByRole('radiogroup', {
+      name: ko.milestones.baby,
+    })
+    expect(
+      within(babyRadios)
+        .getAllByRole('radio')
+        .map((r) => r.textContent),
+    ).toEqual(['하늘', '바다'])
+    expect(
+      within(babyRadios).getByRole('radio', { name: '바다' }),
+    ).toHaveAttribute('aria-checked', 'true')
+    expect(
+      await within(milestone).findByRole('button', {
+        name: ko.milestones.custom,
+      }),
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/')
+  })
+
+  // 태어난 아기가 없으면 키/몸무게, 마일스톤 항목 없음.
+  it('add_sheet_hides_records_without_born_baby', async () => {
+    const due = babyFixture({ birth_date: '2099-01-01' })
+    const { user } = await renderShell('guardian', '/', [due])
+    await user.click(
+      within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
+    )
+    const sheet = await screen.findByRole('dialog', {
+      name: ko.addSheet.title,
+    })
+    await waitFor(() => {
+      expect(
+        within(sheet).queryByRole('button', { name: ko.addSheet.growth }),
+      ).not.toBeInTheDocument()
+    })
+    expect(
+      within(sheet).queryByRole('button', { name: ko.addSheet.milestone }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(sheet).getByRole('button', { name: ko.addSheet.story }),
+    ).toBeInTheDocument()
   })
 
   // 데스크톱 사이드바도 휴대폰 (+) 와 같은 추가 시트.
