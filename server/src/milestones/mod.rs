@@ -34,6 +34,9 @@ pub struct MilestoneSummary {
     pub previews: Vec<AssetSummary>,
     /// 휴지통 제외.
     pub asset_count: i64,
+    pub created_by: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// 마일스톤 상세.
@@ -43,9 +46,6 @@ pub struct Milestone {
     pub summary: MilestoneSummary,
     /// 붙인 순서 전부. 휴지통 제외.
     pub assets: Vec<AssetSummary>,
-    pub created_by: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
 }
 
 /// 미리 정한 키가 목록에 없으면 400 `milestone.presetInvalid`.

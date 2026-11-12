@@ -2439,7 +2439,7 @@
           {
             "name": "baby_id",
             "in": "query",
-            "description": "해당 아기가 태그된 자산만.",
+            "description": "해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2469,7 +2469,7 @@
         ],
         "responses": {
           "200": {
-            "description": "휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD`",
+            "description": "사진 촬영일(휴지통 제외, 인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 합집합의 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD`",
             "content": {
               "application/json": {
                 "schema": {
@@ -2508,7 +2508,7 @@
           {
             "name": "date",
             "in": "path",
-            "description": "인스턴스 시간대 기준 촬영 날짜",
+            "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일",
             "required": true,
             "schema": {
               "type": "string",
@@ -2518,7 +2518,7 @@
           {
             "name": "baby_id",
             "in": "query",
-            "description": "해당 아기가 태그된 자산만.",
+            "description": "해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2528,7 +2528,7 @@
         ],
         "responses": {
           "200": {
-            "description": "그날 개수와 이전·다음 날",
+            "description": "그날 개수, 이야기, 마일스톤과 이전, 다음 날",
             "content": {
               "application/json": {
                 "schema": {
@@ -2558,7 +2558,7 @@
             }
           },
           "404": {
-            "description": "그날 휴지통 밖 자산 없음 (`day.notFound`)",
+            "description": "그날 휴지통 밖 사진, 이야기, 마일스톤 모두 없음 (`day.notFound`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -5343,6 +5343,23 @@
           }
         }
       },
+      "AttachTarget": {
+        "type": "object",
+        "description": "새 사진을 붙일 이야기 또는 마일스톤.",
+        "required": [
+          "kind",
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LinkKind"
+          }
+        }
+      },
       "AvatarCrop": {
         "type": "object",
         "description": "대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.\n`x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.",
@@ -5735,7 +5752,9 @@
           "like_count",
           "comment_count",
           "prev_date",
-          "next_date"
+          "next_date",
+          "stories",
+          "milestones"
         ],
         "properties": {
           "baby_ids": {
@@ -5744,7 +5763,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "그날 태그된 아기. 아기 표시 순서."
+            "description": "그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서."
           },
           "comment_count": {
             "type": "integer",
@@ -5754,12 +5773,19 @@
           "date": {
             "type": "string",
             "format": "date",
-            "description": "인스턴스 시간대 기준 촬영 날짜."
+            "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나."
           },
           "like_count": {
             "type": "integer",
             "format": "int64",
             "description": "그날 자산 하트 합계."
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneSummary"
+            },
+            "description": "그날 마일스톤. 기록 순."
           },
           "next_date": {
             "type": [
@@ -5767,7 +5793,7 @@
               "null"
             ],
             "format": "date",
-            "description": "더 최근의 사진 있는 날."
+            "description": "더 최근의 사진, 이야기, 마일스톤 있는 날."
           },
           "photo_count": {
             "type": "integer",
@@ -5779,7 +5805,14 @@
               "null"
             ],
             "format": "date",
-            "description": "더 과거의 사진 있는 날."
+            "description": "더 과거의 사진, 이야기, 마일스톤 있는 날."
+          },
+          "stories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorySummary"
+            },
+            "description": "그날 이야기. 쓴 시각 오래된 순."
           },
           "uploader_ids": {
             "type": "array",
@@ -5806,7 +5839,9 @@
           "baby_ids",
           "like_count",
           "comment_count",
-          "preview"
+          "preview",
+          "stories",
+          "milestones"
         ],
         "properties": {
           "baby_ids": {
@@ -5815,7 +5850,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "그날 태그된 아기. 아기 표시 순서."
+            "description": "그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서."
           },
           "comment_count": {
             "type": "integer",
@@ -5825,12 +5860,19 @@
           "date": {
             "type": "string",
             "format": "date",
-            "description": "인스턴스 시간대 기준 촬영 날짜."
+            "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나."
           },
           "like_count": {
             "type": "integer",
             "format": "int64",
             "description": "그날 자산 하트 합계."
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneSummary"
+            },
+            "description": "그날 마일스톤. 기록 순."
           },
           "photo_count": {
             "type": "integer",
@@ -5841,7 +5883,14 @@
             "items": {
               "$ref": "#/components/schemas/AssetSummary"
             },
-            "description": "그날 최신 3장. 촬영 시각 최신순."
+            "description": "그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열."
+          },
+          "stories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorySummary"
+            },
+            "description": "그날 이야기. 쓴 시각 오래된 순."
           },
           "uploader_ids": {
             "type": "array",
@@ -5937,6 +5986,17 @@
       "FinalizeRequest": {
         "type": "object",
         "properties": {
+          "attach": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AttachTarget",
+                "description": "맨 뒤에 붙일 이야기 또는 마일스톤. 대상이 없거나 고칠 권한이 없으면 연결만 건너뜀.\n중복 업로드(409)면 기존 사진이 휴지통 아닐 때 연결."
+              }
+            ]
+          },
           "baby_ids": {
             "type": "array",
             "items": {
@@ -6159,6 +6219,14 @@
           }
         }
       },
+      "LinkKind": {
+        "type": "string",
+        "description": "연결 대상 종류.",
+        "enum": [
+          "story",
+          "milestone"
+        ]
+      },
       "LoginRequest": {
         "type": "object",
         "required": [
@@ -6198,10 +6266,7 @@
           {
             "type": "object",
             "required": [
-              "assets",
-              "created_by",
-              "created_at",
-              "updated_at"
+              "assets"
             ],
             "properties": {
               "assets": {
@@ -6210,18 +6275,6 @@
                   "$ref": "#/components/schemas/AssetSummary"
                 },
                 "description": "붙인 순서 전부. 휴지통 제외."
-              },
-              "created_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "created_by": {
-                "type": "string",
-                "format": "uuid"
-              },
-              "updated_at": {
-                "type": "string",
-                "format": "date-time"
               }
             }
           }
@@ -6239,7 +6292,10 @@
           "achieved_on",
           "note",
           "previews",
-          "asset_count"
+          "asset_count",
+          "created_by",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "achieved_on": {
@@ -6252,6 +6308,14 @@
             "description": "휴지통 제외."
           },
           "baby_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
             "type": "string",
             "format": "uuid"
           },
@@ -6285,6 +6349,10 @@
               "$ref": "#/components/schemas/AssetSummary"
             },
             "description": "붙인 순서 앞 4장. 휴지통 제외."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -6496,7 +6564,9 @@
                 "baby_ids",
                 "like_count",
                 "comment_count",
-                "preview"
+                "preview",
+                "stories",
+                "milestones"
               ],
               "properties": {
                 "baby_ids": {
@@ -6505,7 +6575,7 @@
                     "type": "string",
                     "format": "uuid"
                   },
-                  "description": "그날 태그된 아기. 아기 표시 순서."
+                  "description": "그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서."
                 },
                 "comment_count": {
                   "type": "integer",
@@ -6515,12 +6585,19 @@
                 "date": {
                   "type": "string",
                   "format": "date",
-                  "description": "인스턴스 시간대 기준 촬영 날짜."
+                  "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나."
                 },
                 "like_count": {
                   "type": "integer",
                   "format": "int64",
                   "description": "그날 자산 하트 합계."
+                },
+                "milestones": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MilestoneSummary"
+                  },
+                  "description": "그날 마일스톤. 기록 순."
                 },
                 "photo_count": {
                   "type": "integer",
@@ -6531,7 +6608,14 @@
                   "items": {
                     "$ref": "#/components/schemas/AssetSummary"
                   },
-                  "description": "그날 최신 3장. 촬영 시각 최신순."
+                  "description": "그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열."
+                },
+                "stories": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StorySummary"
+                  },
+                  "description": "그날 이야기. 쓴 시각 오래된 순."
                 },
                 "uploader_ids": {
                   "type": "array",

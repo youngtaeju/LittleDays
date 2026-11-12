@@ -31,7 +31,7 @@ struct DaysQuery {
     cursor: Option<NaiveDate>,
     /// 1~100, 기본 20.
     limit: Option<i64>,
-    /// 해당 아기가 태그된 자산만.
+    /// 해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만.
     baby_id: Option<Uuid>,
     /// 이 날짜부터 (포함).
     from: Option<NaiveDate>,
@@ -42,7 +42,7 @@ struct DaysQuery {
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
 struct DayQuery {
-    /// 해당 아기가 태그된 자산만.
+    /// 해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만.
     baby_id: Option<Uuid>,
 }
 
@@ -51,7 +51,7 @@ struct DayQuery {
     path = "/api/days",
     params(DaysQuery),
     responses(
-        (status = 200, description = "휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD`", body = Page<DaySummary>),
+        (status = 200, description = "사진 촬영일(휴지통 제외, 인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 합집합의 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD`", body = Page<DaySummary>),
         (status = 400, description = "쿼리 오류 (`request.invalidQuery`)", body = ErrorBody),
         (status = 401, description = "인증 필요", body = ErrorBody),
     )
@@ -65,9 +65,10 @@ async fn list_days(
     if !(1..=MAX_LIMIT).contains(&limit) {
         return Err(AppError::bad_request("request.invalidQuery"));
     }
-    let tz = settings::queries::load(&state.pool).await?.timezone;
+    let mut conn = state.pool.acquire().await?;
+    let tz = settings::queries::load(&mut *conn).await?.timezone;
     let mut items = queries::list(
-        &state.pool,
+        &mut *conn,
         &tz,
         q.cursor,
         q.baby_id,
@@ -84,7 +85,7 @@ async fn list_days(
     };
 
     let dates: Vec<NaiveDate> = items.iter().map(|d| d.date).collect();
-    let mut previews = queries::previews(&state.pool, &tz, &dates, q.baby_id)
+    let mut previews = queries::previews(&mut *conn, &tz, &dates, q.baby_id)
         .await?
         .into_iter()
         .peekable();
@@ -94,6 +95,18 @@ async fn list_days(
             day.preview.push(p);
         }
     }
+    let (stories, milestones) = queries::records(&mut conn, &tz, &dates, q.baby_id).await?;
+    // 날짜 집합에서 온 기록이라 해당 날 항상 존재.
+    for s in stories {
+        if let Some(day) = items.iter_mut().find(|d| d.date == s.entry_date) {
+            day.stories.push(s);
+        }
+    }
+    for m in milestones {
+        if let Some(day) = items.iter_mut().find(|d| d.date == m.achieved_on) {
+            day.milestones.push(m);
+        }
+    }
     Ok(Json(Page { items, next_cursor }))
 }
 
@@ -101,14 +114,14 @@ async fn list_days(
     get,
     path = "/api/days/{date}",
     params(
-        ("date" = NaiveDate, Path, description = "인스턴스 시간대 기준 촬영 날짜"),
+        ("date" = NaiveDate, Path, description = "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일"),
         DayQuery,
     ),
     responses(
-        (status = 200, description = "그날 개수와 이전·다음 날", body = DayDetail),
+        (status = 200, description = "그날 개수, 이야기, 마일스톤과 이전, 다음 날", body = DayDetail),
         (status = 400, description = "날짜·쿼리 형식 오류 (`request.invalidPath`, `request.invalidQuery`)", body = ErrorBody),
         (status = 401, description = "인증 필요", body = ErrorBody),
-        (status = 404, description = "그날 휴지통 밖 자산 없음 (`day.notFound`)", body = ErrorBody),
+        (status = 404, description = "그날 휴지통 밖 사진, 이야기, 마일스톤 모두 없음 (`day.notFound`)", body = ErrorBody),
     )
 )]
 async fn get_day(
@@ -117,9 +130,11 @@ async fn get_day(
     Path(date): Path<NaiveDate>,
     Query(q): Query<DayQuery>,
 ) -> AppResult<Json<DayDetail>> {
-    let tz = settings::queries::load(&state.pool).await?.timezone;
-    let day = queries::detail(&state.pool, &tz, date, q.baby_id)
+    let mut conn = state.pool.acquire().await?;
+    let tz = settings::queries::load(&mut *conn).await?.timezone;
+    let mut day = queries::detail(&mut *conn, &tz, date, q.baby_id)
         .await?
         .ok_or(AppError::NotFound("day.notFound"))?;
+    (day.stories, day.milestones) = queries::records(&mut conn, &tz, &[date], q.baby_id).await?;
     Ok(Json(day))
 }

@@ -2,6 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use axum_test::{TestResponse, TestServer};
+use chrono::{DateTime, Utc};
 use common::{AssetSeed, XRW, XRW_VALUE, assert_error, insert_asset, media_app};
 use littledays::{
     babies::{self, BabyInput},
@@ -95,16 +96,46 @@ fn ids(v: &Value) -> Vec<String> {
         .collect()
 }
 
+fn ts(v: &Value) -> DateTime<Utc> {
+    v.as_str().unwrap().parse().unwrap()
+}
+
 fn strs(ids: &[Uuid]) -> Vec<String> {
     ids.iter().map(Uuid::to_string).collect()
 }
 
 #[test]
 fn preset_list_matches_spec() {
-    let keys = littledays::milestones::presets::PRESET_KEYS;
-    assert_eq!(keys.len(), 24);
-    assert_eq!(keys[0], "first_smile");
-    assert_eq!(keys[23], "first_daycare");
+    // 스펙 §8 표 순서
+    assert_eq!(
+        littledays::milestones::presets::PRESET_KEYS,
+        [
+            "first_smile",
+            "neck_control",
+            "rollover",
+            "sit_alone",
+            "crawl",
+            "stand_holding",
+            "walk_holding",
+            "stand_alone",
+            "walk_alone",
+            "run",
+            "stairs",
+            "first_word",
+            "two_words",
+            "wave_bye",
+            "clap",
+            "point",
+            "spoon_self",
+            "first_tooth",
+            "first_solid_food",
+            "sleep_through",
+            "potty",
+            "first_haircut",
+            "first_trip",
+            "first_daycare",
+        ]
+    );
 }
 
 #[sqlx::test]
@@ -472,7 +503,7 @@ async fn patch_switch_to_custom(pool: PgPool) {
     assert!(edited["note"].is_null());
     assert_eq!(edited["achieved_on"], "2024-06-01");
     assert_eq!(ids(&edited["assets"]), strs(&[a]));
-    assert!(edited["updated_at"].as_str() > m["updated_at"].as_str());
+    assert!(ts(&edited["updated_at"]) > ts(&m["updated_at"]));
     assert_eq!(edited["created_at"], m["created_at"]);
 
     let res = patch(

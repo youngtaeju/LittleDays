@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO milestones (id, baby_id, custom_label, achieved_on, created_by, created_at)\n         VALUES ($1, $2, 'first', $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef5ef9535873d93987b4e54836c95b362405495a084def78e795ad1c36e32026"
+}

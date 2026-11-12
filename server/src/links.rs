@@ -1,8 +1,11 @@
-//! 이야기/마일스톤 공용 사진 연결 규칙. 연결 테이블별 SQL 은 각 모듈의 `replace_assets`.
+//! 이야기/마일스톤 공용 사진 연결. 검사, 교체, 맨 뒤 추가, 조회.
+//! 휴지통 사진 연결은 응답에서 제외하되 복원 대비 유지.
 
 use std::collections::HashSet;
 
+use serde::Deserialize;
 use sqlx::{PgConnection, PgExecutor};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -15,8 +18,9 @@ pub const MAX_ASSETS: usize = 200;
 /// 요약의 미리보기 사진 수.
 pub const PREVIEW_LIMIT: i64 = 4;
 
-/// 연결 테이블 종류.
-#[derive(Debug, Clone, Copy)]
+/// 연결 대상 종류.
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum LinkKind {
     Story,
     Milestone,
@@ -38,7 +42,7 @@ pub fn dedup(ids: &[Uuid]) -> Vec<Uuid> {
 }
 
 /// 휴지통 아닌 사진 수. 트랜잭션 안에서 호출 시 커밋까지 완전 삭제 차단(연결 쓰기의 FK 위반 방지).
-async fn lock_visible_assets(exec: impl PgExecutor<'_>, ids: &[Uuid]) -> AppResult<usize> {
+pub async fn lock_visible_assets(exec: impl PgExecutor<'_>, ids: &[Uuid]) -> AppResult<usize> {
     let found = sqlx::query_scalar!(
         "SELECT id FROM assets WHERE id = ANY($1) AND deleted_at IS NULL FOR KEY SHARE",
         ids
@@ -58,6 +62,93 @@ pub async fn check_assets(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<Ve
         return Err(AppError::NotFound("asset.notFound"));
     }
     Ok(ids)
+}
+
+/// 휴지통 아닌 사진 연결 전체 교체, 목록 순서가 위치. 휴지통 사진 연결은 복원 대비 유지.
+pub async fn replace_assets(
+    conn: &mut PgConnection,
+    kind: LinkKind,
+    owner_id: Uuid,
+    asset_ids: &[Uuid],
+) -> AppResult<()> {
+    // 확인 뒤 휴지통으로 간 사진은 삭제에서 빠져 남음. 위치만 갱신.
+    match kind {
+        LinkKind::Story => {
+            sqlx::query!(
+                "DELETE FROM story_assets sa USING assets a
+                 WHERE sa.story_id = $1 AND a.id = sa.asset_id AND a.deleted_at IS NULL",
+                owner_id
+            )
+            .execute(&mut *conn)
+            .await?;
+            sqlx::query!(
+                "INSERT INTO story_assets (story_id, asset_id, position)
+                 SELECT $1, t.asset_id, (t.n - 1)::int
+                 FROM unnest($2::uuid[]) WITH ORDINALITY AS t(asset_id, n)
+                 ON CONFLICT (story_id, asset_id) DO UPDATE SET position = EXCLUDED.position",
+                owner_id,
+                asset_ids
+            )
+            .execute(&mut *conn)
+            .await?;
+        }
+        LinkKind::Milestone => {
+            sqlx::query!(
+                "DELETE FROM milestone_assets ma USING assets a
+                 WHERE ma.milestone_id = $1 AND a.id = ma.asset_id AND a.deleted_at IS NULL",
+                owner_id
+            )
+            .execute(&mut *conn)
+            .await?;
+            sqlx::query!(
+                "INSERT INTO milestone_assets (milestone_id, asset_id, position)
+                 SELECT $1, t.asset_id, (t.n - 1)::int
+                 FROM unnest($2::uuid[]) WITH ORDINALITY AS t(asset_id, n)
+                 ON CONFLICT (milestone_id, asset_id) DO UPDATE SET position = EXCLUDED.position",
+                owner_id,
+                asset_ids
+            )
+            .execute(&mut *conn)
+            .await?;
+        }
+    }
+    Ok(())
+}
+
+/// 맨 뒤 위치로 연결. 이미 연결된 사진은 그대로.
+/// 위치는 휴지통 포함 전체 연결의 최댓값 + 1. 동시 연결의 같은 위치는 (위치, 사진 id) 정렬로 허용.
+pub async fn append(
+    exec: impl PgExecutor<'_>,
+    kind: LinkKind,
+    owner_id: Uuid,
+    asset_id: Uuid,
+) -> AppResult<()> {
+    match kind {
+        LinkKind::Story => {
+            sqlx::query!(
+                "INSERT INTO story_assets (story_id, asset_id, position)
+             SELECT $1, $2, COALESCE(max(position), -1) + 1 FROM story_assets WHERE story_id = $1
+             ON CONFLICT DO NOTHING",
+                owner_id,
+                asset_id
+            )
+            .execute(exec)
+            .await?
+        }
+        LinkKind::Milestone => {
+            sqlx::query!(
+                "INSERT INTO milestone_assets (milestone_id, asset_id, position)
+             SELECT $1, $2, COALESCE(max(position), -1) + 1 FROM milestone_assets
+             WHERE milestone_id = $1
+             ON CONFLICT DO NOTHING",
+                owner_id,
+                asset_id
+            )
+            .execute(exec)
+            .await?
+        }
+    };
+    Ok(())
 }
 
 /// `assets_for` 결과에서 한 대상의 사진만 꺼냄.

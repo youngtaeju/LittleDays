@@ -31,6 +31,7 @@ pub async fn summaries_for(
 ) -> AppResult<Vec<MilestoneSummary>> {
     let rows = sqlx::query!(
         r#"SELECT m.id, m.baby_id, m.preset_key, m.custom_label, m.achieved_on, m.note,
+                  m.created_by, m.created_at, m.updated_at,
                   (SELECT count(*) FROM milestone_assets ma JOIN assets a ON a.id = ma.asset_id
                    WHERE ma.milestone_id = m.id AND a.deleted_at IS NULL) AS "asset_count!"
            FROM milestones m
@@ -59,6 +60,9 @@ pub async fn summaries_for(
             note: r.note,
             previews: links::take(&mut previews, r.id),
             asset_count: r.asset_count,
+            created_by: r.created_by,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
         })
         .collect())
 }
@@ -94,19 +98,7 @@ pub async fn get(
         .into_iter()
         .map(|(_, a)| a)
         .collect();
-    let meta = sqlx::query!(
-        "SELECT created_by, created_at, updated_at FROM milestones WHERE id = $1",
-        id
-    )
-    .fetch_one(&mut *conn)
-    .await?;
-    Ok(Some(Milestone {
-        summary,
-        assets,
-        created_by: meta.created_by,
-        created_at: meta.created_at,
-        updated_at: meta.updated_at,
-    }))
+    Ok(Some(Milestone { summary, assets }))
 }
 
 /// 고치기 전 상태.
@@ -181,33 +173,6 @@ pub async fn update(exec: impl PgExecutor<'_>, id: Uuid, v: Values<'_>) -> AppRe
     Ok(())
 }
 
-/// 휴지통 아닌 사진 연결 전체 교체, 목록 순서가 위치. 휴지통 사진 연결은 복원 대비 유지.
-pub async fn replace_assets(
-    conn: &mut PgConnection,
-    milestone_id: Uuid,
-    asset_ids: &[Uuid],
-) -> AppResult<()> {
-    sqlx::query!(
-        "DELETE FROM milestone_assets ma USING assets a
-         WHERE ma.milestone_id = $1 AND a.id = ma.asset_id AND a.deleted_at IS NULL",
-        milestone_id
-    )
-    .execute(&mut *conn)
-    .await?;
-    // 확인 뒤 휴지통으로 간 사진은 위 삭제에서 빠져 남음. 위치만 갱신.
-    sqlx::query!(
-        "INSERT INTO milestone_assets (milestone_id, asset_id, position)
-         SELECT $1, t.asset_id, (t.n - 1)::int
-         FROM unnest($2::uuid[]) WITH ORDINALITY AS t(asset_id, n)
-         ON CONFLICT (milestone_id, asset_id) DO UPDATE SET position = EXCLUDED.position",
-        milestone_id,
-        asset_ids
-    )
-    .execute(&mut *conn)
-    .await?;
-    Ok(())
-}
-
 /// 지웠으면 `true`. 연결은 cascade.
 pub async fn delete(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
     Ok(sqlx::query!("DELETE FROM milestones WHERE id = $1", id)
@@ -215,4 +180,14 @@ pub async fn delete(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
         .await?
         .rows_affected()
         > 0)
+}
+
+/// 있으면 `true`. 트랜잭션 안에서 호출 시 커밋까지 삭제 차단(사진 연결의 FK 위반 방지).
+pub async fn exists_for_link(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
+    Ok(
+        sqlx::query_scalar!("SELECT id FROM milestones WHERE id = $1 FOR KEY SHARE", id)
+            .fetch_optional(exec)
+            .await?
+            .is_some(),
+    )
 }

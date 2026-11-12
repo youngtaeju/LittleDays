@@ -39,6 +39,8 @@ function detail(over: Partial<DayDetail> = {}): DayDetail {
     comment_count: 0,
     prev_date: '2024-05-07',
     next_date: '2024-05-10',
+    stories: [],
+    milestones: [],
     ...over,
   }
 }

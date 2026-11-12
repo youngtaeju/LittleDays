@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM milestones\n         WHERE achieved_on = ANY($1) AND ($2::uuid IS NULL OR baby_id = $2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "DateArray",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c992684818428ce75c0dbf6c035887c4eae4060149548fc1ef1947e2ba6b2ec1"
+}

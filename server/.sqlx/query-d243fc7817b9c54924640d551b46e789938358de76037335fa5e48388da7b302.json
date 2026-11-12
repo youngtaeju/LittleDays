@@ -1,0 +1,72 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH f AS (\n               SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date\n               FROM assets a\n               WHERE a.deleted_at IS NULL\n                 AND ($3::uuid IS NULL OR EXISTS (\n                       SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $3))\n           ),\n           n AS (\n               SELECT COALESCE(bool_or(u.date = $2), false) AS found,\n                      max(u.date) FILTER (WHERE u.date < $2) AS prev_date,\n                      min(u.date) FILTER (WHERE u.date > $2) AS next_date\n               FROM (\n                   SELECT f.date FROM f\n                   UNION ALL\n                   SELECT s.entry_date FROM stories s\n                   WHERE $3::uuid IS NULL OR EXISTS (\n                         SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $3)\n                   UNION ALL\n                   SELECT m.achieved_on FROM milestones m WHERE $3::uuid IS NULL OR m.baby_id = $3\n               ) u\n           ),\n           d AS (\n               SELECT count(*) FILTER (WHERE f.kind = 'photo') AS photo_count,\n                      count(*) FILTER (WHERE f.kind = 'video') AS video_count,\n                      array_agg(DISTINCT f.uploaded_by) AS uploader_ids,\n                      array_agg(f.id) AS asset_ids\n               FROM f WHERE f.date = $2\n           )\n           SELECT n.found AS \"found!\", d.photo_count AS \"photo_count!\",\n                  d.video_count AS \"video_count!\",\n                  COALESCE(d.uploader_ids, '{}') AS \"uploader_ids!\",\n                  ARRAY(SELECT b.id FROM babies b\n                        WHERE EXISTS (SELECT 1 FROM asset_babies ab\n                                      WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))\n                           OR EXISTS (SELECT 1 FROM stories s\n                                      JOIN story_babies sb ON sb.story_id = s.id\n                                      WHERE sb.baby_id = b.id AND s.entry_date = $2\n                                        AND ($3::uuid IS NULL OR EXISTS (\n                                              SELECT 1 FROM story_babies fb\n                                              WHERE fb.story_id = s.id AND fb.baby_id = $3)))\n                           OR EXISTS (SELECT 1 FROM milestones m\n                                      WHERE m.baby_id = b.id AND m.achieved_on = $2\n                                        AND ($3::uuid IS NULL OR m.baby_id = $3))\n                        ORDER BY b.sort_order, b.created_at, b.id) AS \"baby_ids!\",\n                  (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))\n                    AS \"like_count!\",\n                  (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))\n                    AS \"comment_count!\",\n                  n.prev_date AS \"prev_date?\", n.next_date AS \"next_date?\"\n           FROM d, n",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "found!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 1,
+        "name": "photo_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "video_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "uploader_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "baby_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 5,
+        "name": "like_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "comment_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "prev_date?",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 8,
+        "name": "next_date?",
+        "type_info": "Date"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Date",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "d243fc7817b9c54924640d551b46e789938358de76037335fa5e48388da7b302"
+}

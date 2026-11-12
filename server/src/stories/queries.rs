@@ -87,22 +87,6 @@ pub async fn get(
     }))
 }
 
-/// 인스턴스 시간대 오늘 이전(오늘 포함)이면 `true`.
-pub async fn not_future(
-    exec: impl PgExecutor<'_>,
-    timezone: &str,
-    date: NaiveDate,
-) -> AppResult<bool> {
-    let ok = sqlx::query_scalar!(
-        r#"SELECT $2::date <= (now() AT TIME ZONE $1)::date AS "ok!""#,
-        timezone,
-        date
-    )
-    .fetch_one(exec)
-    .await?;
-    Ok(ok)
-}
-
 /// 작성자 id. 트랜잭션 안에서 행 잠금(동시 수정, 삭제 직렬화).
 /// 수정은 `FOR NO KEY UPDATE`(하트/댓글 삽입과 공존), 삭제(`delete = true`)는 `FOR UPDATE`.
 pub async fn lock_author(
@@ -183,33 +167,6 @@ pub async fn replace_babies(
     Ok(())
 }
 
-/// 휴지통 아닌 사진 연결 전체 교체, 목록 순서가 위치. 휴지통 사진 연결은 복원 대비 유지.
-pub async fn replace_assets(
-    conn: &mut PgConnection,
-    story_id: Uuid,
-    asset_ids: &[Uuid],
-) -> AppResult<()> {
-    sqlx::query!(
-        "DELETE FROM story_assets sa USING assets a
-         WHERE sa.story_id = $1 AND a.id = sa.asset_id AND a.deleted_at IS NULL",
-        story_id
-    )
-    .execute(&mut *conn)
-    .await?;
-    // 확인 뒤 휴지통으로 간 사진은 위 삭제에서 빠져 남음. 위치만 갱신.
-    sqlx::query!(
-        "INSERT INTO story_assets (story_id, asset_id, position)
-         SELECT $1, t.asset_id, (t.n - 1)::int
-         FROM unnest($2::uuid[]) WITH ORDINALITY AS t(asset_id, n)
-         ON CONFLICT (story_id, asset_id) DO UPDATE SET position = EXCLUDED.position",
-        story_id,
-        asset_ids
-    )
-    .execute(&mut *conn)
-    .await?;
-    Ok(())
-}
-
 /// 연결, 반응 행은 cascade.
 pub async fn delete(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<()> {
     sqlx::query!("DELETE FROM stories WHERE id = $1", id)
@@ -225,6 +182,17 @@ pub async fn require_exists(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<()
         .await?
         .map(|_| ())
         .ok_or(AppError::NotFound("story.notFound"))
+}
+
+/// 작성자 id. 트랜잭션 안에서 호출 시 커밋까지 삭제 차단(사진 연결의 FK 위반 방지).
+pub async fn author_for_link(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<Option<Uuid>> {
+    let author = sqlx::query_scalar!(
+        "SELECT author_id FROM stories WHERE id = $1 FOR KEY SHARE",
+        id
+    )
+    .fetch_optional(exec)
+    .await?;
+    Ok(author)
 }
 
 /// 이미 누른 상태면 그대로(시각 유지).

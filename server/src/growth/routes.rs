@@ -6,12 +6,11 @@ use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{
-    GrowthRecord, check_height, check_weight, normalize_note, present, queries, queries::Values,
-};
+use super::{GrowthRecord, check_height, check_weight, normalize_note, queries, queries::Values};
 use crate::{
     auth::extract::CurrentUser,
     error::{AppError, AppResult, ErrorBody},
+    records::{self, baby_birth_date, present},
     request::{Json as JsonBody, Path},
     settings,
     state::AppState,
@@ -58,7 +57,7 @@ async fn check_date(
     birth: NaiveDate,
     date: NaiveDate,
 ) -> AppResult<()> {
-    if date < birth || !queries::not_future(&mut *conn, timezone, date).await? {
+    if date < birth || !records::not_future(&mut *conn, timezone, date).await? {
         return Err(AppError::bad_request("growth.dateInvalid"));
     }
     Ok(())
@@ -89,7 +88,7 @@ async fn list_growth(
     _current: CurrentUser,
     Path(id): Path<Uuid>,
 ) -> AppResult<Json<Vec<GrowthRecord>>> {
-    queries::baby_birth_date(&state.pool, id)
+    baby_birth_date(&state.pool, id)
         .await?
         .ok_or(AppError::NotFound("babies.notFound"))?;
     Ok(Json(queries::list(&state.pool, id).await?))
@@ -116,7 +115,7 @@ async fn create_growth(
 ) -> AppResult<(StatusCode, Json<GrowthRecord>)> {
     current.require(Role::Guardian)?;
     let mut tx = state.pool.begin().await?;
-    let birth = queries::baby_birth_date(&mut *tx, baby_id)
+    let birth = baby_birth_date(&mut *tx, baby_id)
         .await?
         .ok_or(AppError::NotFound("babies.notFound"))?;
     check_values(req.height_cm, req.weight_kg)?;
@@ -179,7 +178,7 @@ async fn update_growth(
     };
     let measured_on = req.measured_on.unwrap_or(old.measured_on);
     if req.measured_on.is_some() {
-        let birth = queries::baby_birth_date(&mut *tx, old.baby_id)
+        let birth = baby_birth_date(&mut *tx, old.baby_id)
             .await?
             .ok_or(AppError::NotFound("growth.notFound"))?;
         let timezone = settings::queries::load(&mut *tx).await?.timezone;

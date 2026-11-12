@@ -1,16 +1,17 @@
 //! 성장 기록. 아기별 키와 몸무게, 같은 날 여러 건 허용.
 
 use chrono::{DateTime, NaiveDate, Utc};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    error::{AppError, AppResult},
+    records::normalize_note_or,
+};
 
 pub mod queries;
 pub mod routes;
-
-const MAX_NOTE_CHARS: usize = 100;
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct GrowthRecord {
@@ -28,15 +29,6 @@ pub struct GrowthRecord {
     pub created_by: Uuid,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-/// 필드 생략과 `null` 구분. 생략 `None`, `null` `Some(None)`.
-pub(crate) fn present<'de, T, D>(d: D) -> Result<Option<Option<T>>, D::Error>
-where
-    T: Deserialize<'de>,
-    D: Deserializer<'de>,
-{
-    Option::<T>::deserialize(d).map(Some)
 }
 
 /// 범위 안이고 소수 `scale` 자리 이내면 통과. 반올림 비교라 0.57 같은 값도 안전.
@@ -67,15 +59,6 @@ pub(crate) fn normalize_note(raw: &str) -> AppResult<Option<&str>> {
     normalize_note_or(raw, "growth.noteInvalid")
 }
 
-/// `normalize_note` 의 오류 키 지정판. 마일스톤 공용.
-pub(crate) fn normalize_note_or<'a>(raw: &'a str, key: &'static str) -> AppResult<Option<&'a str>> {
-    let note = raw.trim();
-    if note.chars().count() > MAX_NOTE_CHARS {
-        return Err(AppError::bad_request(key));
-    }
-    Ok((!note.is_empty()).then_some(note))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -94,12 +77,5 @@ mod tests {
         for h in [76.25, 19.9, 150.1, f64::NAN] {
             assert!(check_height(h).is_err(), "{h}");
         }
-    }
-
-    #[test]
-    fn note_normalized() {
-        assert_eq!(normalize_note("  ").unwrap(), None);
-        assert_eq!(normalize_note(" a ").unwrap(), Some("a"));
-        assert!(normalize_note(&"가".repeat(101)).is_err());
     }
 }

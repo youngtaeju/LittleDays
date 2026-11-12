@@ -16,6 +16,7 @@ pub mod media;
 pub mod milestones;
 pub mod openapi;
 pub mod reactions;
+pub mod records;
 pub mod request;
 pub mod routes;
 pub mod security;

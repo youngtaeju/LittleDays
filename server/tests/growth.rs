@@ -2,6 +2,7 @@ mod common;
 
 use axum::http::StatusCode;
 use axum_test::{TestResponse, TestServer};
+use chrono::{DateTime, Utc};
 use common::{XRW, XRW_VALUE, assert_error, media_app};
 use littledays::{
     babies::{self, BabyInput},
@@ -153,7 +154,19 @@ async fn value_bounds(pool: PgPool) {
     )
     .await;
     assert_error(&res, StatusCode::BAD_REQUEST, "growth.noteInvalid");
-    assert_eq!(list(&app.server, b).await.len(), 8);
+    let rows = list(&app.server, b).await;
+    assert_eq!(rows.len(), 8);
+    // numeric 저장 후 float8 변환 값 그대로
+    let weights: Vec<f64> = rows
+        .iter()
+        .filter_map(|r| r["weight_kg"].as_f64())
+        .collect();
+    assert_eq!(weights, [0.5, 50.0, 0.57, 1.15, 4.35]);
+    let heights: Vec<f64> = rows
+        .iter()
+        .filter_map(|r| r["height_cm"].as_f64())
+        .collect();
+    assert_eq!(heights, [20.0, 150.0, 76.2]);
 }
 
 #[sqlx::test]
@@ -257,7 +270,8 @@ async fn guardian_edits_others(pool: PgPool) {
     assert_eq!(edited["height_cm"], 60.0);
     assert_eq!(edited["measured_on"], "2024-03-02");
     assert_eq!(edited["created_by"], app.user.id.to_string());
-    assert!(edited["updated_at"].as_str() > rec["updated_at"].as_str());
+    let ts = |v: &Value| v.as_str().unwrap().parse::<DateTime<Utc>>().unwrap();
+    assert!(ts(&edited["updated_at"]) > ts(&rec["updated_at"]));
 
     let res = patch(&guardian, id, json!({"height_cm": 61.5})).await;
     res.assert_status_ok();

@@ -5,33 +5,6 @@ use uuid::Uuid;
 use super::GrowthRecord;
 use crate::error::AppResult;
 
-/// 아기 생일. 아기 없으면 `None`.
-pub async fn baby_birth_date(
-    exec: impl PgExecutor<'_>,
-    baby_id: Uuid,
-) -> AppResult<Option<NaiveDate>> {
-    Ok(
-        sqlx::query_scalar!("SELECT birth_date FROM babies WHERE id = $1", baby_id)
-            .fetch_optional(exec)
-            .await?,
-    )
-}
-
-/// 인스턴스 시간대 오늘 이전(포함)인지.
-pub async fn not_future(
-    exec: impl PgExecutor<'_>,
-    timezone: &str,
-    date: NaiveDate,
-) -> AppResult<bool> {
-    Ok(sqlx::query_scalar!(
-        r#"SELECT $2::date <= (now() AT TIME ZONE $1)::date AS "ok!""#,
-        timezone,
-        date
-    )
-    .fetch_one(exec)
-    .await?)
-}
-
 /// 측정일, 같은 날은 만든 순.
 pub async fn list(exec: impl PgExecutor<'_>, baby_id: Uuid) -> AppResult<Vec<GrowthRecord>> {
     Ok(sqlx::query_as!(

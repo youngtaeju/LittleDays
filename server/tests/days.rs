@@ -410,6 +410,334 @@ async fn day_counts_reactions(pool: PgPool) {
     assert_eq!(reaction_counts(&detail), (2, 1));
 }
 
+/// 이야기 직접 삽입. 쓴 시각 명시.
+async fn story(
+    pool: &PgPool,
+    author: Uuid,
+    date: &str,
+    babies: &[Uuid],
+    created_at: DateTime<Utc>,
+) -> Uuid {
+    let id = Uuid::now_v7();
+    let date: NaiveDate = date.parse().unwrap();
+    sqlx::query!(
+        "INSERT INTO stories (id, author_id, entry_date, body, created_at)
+         VALUES ($1, $2, $3, 'story', $4)",
+        id,
+        author,
+        date,
+        created_at
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query!(
+        "INSERT INTO story_babies (story_id, baby_id) SELECT $1, unnest($2::uuid[])",
+        id,
+        babies
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    id
+}
+
+/// 직접 입력 마일스톤 직접 삽입. 기록 시각 명시.
+async fn milestone(
+    pool: &PgPool,
+    baby: Uuid,
+    by: Uuid,
+    date: &str,
+    created_at: DateTime<Utc>,
+) -> Uuid {
+    let id = Uuid::now_v7();
+    let date: NaiveDate = date.parse().unwrap();
+    sqlx::query!(
+        "INSERT INTO milestones (id, baby_id, custom_label, achieved_on, created_by, created_at)
+         VALUES ($1, $2, 'first', $3, $4, $5)",
+        id,
+        baby,
+        date,
+        by,
+        created_at
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    id
+}
+
+fn record_ids(day: &Value, field: &str) -> Vec<Uuid> {
+    day[field]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["id"].as_str().unwrap().parse().unwrap())
+        .collect()
+}
+
+fn day_of<'a>(page: &'a Value, date: &str) -> &'a Value {
+    page["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["date"] == date)
+        .unwrap()
+}
+
+#[sqlx::test]
+async fn text_only_day_listed(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    set_timezone(&pool, "UTC").await;
+    let me = app.user.id;
+    let a = baby(&pool, "a").await;
+    let b = baby(&pool, "b").await;
+    photo(&pool, me, at(1, 12)).await;
+    photo(&pool, me, at(5, 12)).await;
+    let s = story(&pool, me, "2024-05-03", &[b], at(3, 9)).await;
+    let m = milestone(&pool, a, me, "2024-05-04", at(4, 9)).await;
+
+    let page: Value = app.server.get("/api/days").await.json();
+    assert_eq!(
+        dates(&page),
+        ["2024-05-05", "2024-05-04", "2024-05-03", "2024-05-01"]
+    );
+    for date in ["2024-05-04", "2024-05-03"] {
+        let day = day_of(&page, date);
+        assert_eq!(day["photo_count"], 0, "{date}");
+        assert_eq!(day["video_count"], 0, "{date}");
+        assert_eq!(day["preview"], json!([]), "{date}");
+        assert_eq!(day["uploader_ids"], json!([]), "{date}");
+        assert_eq!(reaction_counts(day), (0, 0), "{date}");
+    }
+    // 아기는 이야기 태그, 마일스톤 아기에서
+    assert_eq!(uuids(&day_of(&page, "2024-05-03")["baby_ids"]), [b]);
+    assert_eq!(uuids(&day_of(&page, "2024-05-04")["baby_ids"]), [a]);
+    assert_eq!(day_of(&page, "2024-05-05")["baby_ids"], json!([]));
+    assert_eq!(record_ids(day_of(&page, "2024-05-03"), "stories"), [s]);
+    assert_eq!(day_of(&page, "2024-05-03")["milestones"], json!([]));
+    assert_eq!(record_ids(day_of(&page, "2024-05-04"), "milestones"), [m]);
+    assert_eq!(day_of(&page, "2024-05-04")["stories"], json!([]));
+    assert_eq!(day_of(&page, "2024-05-05")["stories"], json!([]));
+
+    let res = app.server.get("/api/days/2024-05-03").await;
+    res.assert_status_ok();
+    let detail: Value = res.json();
+    assert_eq!(detail["photo_count"], 0);
+    assert_eq!(detail["video_count"], 0);
+    assert_eq!(detail["uploader_ids"], json!([]));
+    assert_eq!(uuids(&detail["baby_ids"]), [b]);
+    assert_eq!(detail["prev_date"], "2024-05-01");
+    assert_eq!(detail["next_date"], "2024-05-04");
+    assert_eq!(record_ids(&detail, "stories"), [s]);
+    assert_eq!(detail["stories"][0]["entry_date"], "2024-05-03");
+    assert_eq!(detail["milestones"], json!([]));
+
+    let detail: Value = app.server.get("/api/days/2024-05-04").await.json();
+    assert_eq!(uuids(&detail["baby_ids"]), [a]);
+    assert_eq!(record_ids(&detail, "milestones"), [m]);
+    assert_eq!(detail["milestones"][0]["achieved_on"], "2024-05-04");
+    assert_eq!(detail["prev_date"], "2024-05-03");
+    assert_eq!(detail["next_date"], "2024-05-05");
+
+    let first: Value = app.server.get("/api/days/2024-05-01").await.json();
+    assert_eq!(first["next_date"], "2024-05-03");
+    assert_eq!(first["stories"], json!([]));
+    let res = app.server.get("/api/days/2024-05-02").await;
+    assert_error(&res, StatusCode::NOT_FOUND, "day.notFound");
+}
+
+#[sqlx::test]
+async fn day_has_stories_and_milestones(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    set_timezone(&pool, "UTC").await;
+    let (_, dad) = app.login_as("dad", Role::Guardian).await;
+    let me = app.user.id;
+    let a = baby(&pool, "a").await;
+    photo(&pool, me, at(2, 12)).await;
+    photo(&pool, me, at(1, 12)).await;
+    // 쓴 시각 역순 삽입. 응답은 쓴 시각 오래된 순.
+    let late = story(&pool, dad.id, "2024-05-02", &[a], at(9, 10)).await;
+    let early = story(&pool, me, "2024-05-02", &[], at(3, 10)).await;
+    let m_late = milestone(&pool, a, dad.id, "2024-05-02", at(9, 11)).await;
+    let m_early = milestone(&pool, a, me, "2024-05-02", at(4, 11)).await;
+
+    let page: Value = app.server.get("/api/days").await.json();
+    assert_eq!(dates(&page), ["2024-05-02", "2024-05-01"]);
+    let day = &page["items"][0];
+    assert_eq!(day["photo_count"], 1);
+    assert_eq!(record_ids(day, "stories"), [early, late]);
+    assert_eq!(record_ids(day, "milestones"), [m_early, m_late]);
+    assert_eq!(uuids(&day["stories"][1]["baby_ids"]), [a]);
+    assert_eq!(page["items"][1]["stories"], json!([]));
+    assert_eq!(page["items"][1]["milestones"], json!([]));
+
+    let detail: Value = app.server.get("/api/days/2024-05-02").await.json();
+    assert_eq!(record_ids(&detail, "stories"), [early, late]);
+    assert_eq!(record_ids(&detail, "milestones"), [m_early, m_late]);
+    assert_eq!(detail["prev_date"], "2024-05-01");
+}
+
+#[sqlx::test]
+async fn days_baby_filter_records(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    set_timezone(&pool, "UTC").await;
+    let me = app.user.id;
+    let a = baby(&pool, "a").await;
+    let b = baby(&pool, "b").await;
+    // 05-03: 태그 없는 이야기만, 05-02: b 마일스톤만
+    let untagged = story(&pool, me, "2024-05-03", &[], at(3, 9)).await;
+    let mb = milestone(&pool, b, me, "2024-05-02", at(3, 10)).await;
+    // 05-01: a 이야기, a 와 b 마일스톤, 태그 없는 이야기
+    let sa = story(&pool, me, "2024-05-01", &[a], at(3, 11)).await;
+    let untagged_1 = story(&pool, me, "2024-05-01", &[], at(3, 12)).await;
+    let ma = milestone(&pool, a, me, "2024-05-01", at(3, 13)).await;
+    let mb_1 = milestone(&pool, b, me, "2024-05-01", at(3, 14)).await;
+
+    let all: Value = app.server.get("/api/days").await.json();
+    assert_eq!(dates(&all), ["2024-05-03", "2024-05-02", "2024-05-01"]);
+    assert_eq!(record_ids(&all["items"][0], "stories"), [untagged]);
+    assert_eq!(record_ids(&all["items"][1], "milestones"), [mb]);
+    assert_eq!(record_ids(&all["items"][2], "stories"), [sa, untagged_1]);
+    assert_eq!(record_ids(&all["items"][2], "milestones"), [ma, mb_1]);
+    assert_eq!(all["items"][0]["baby_ids"], json!([]));
+    assert_eq!(uuids(&all["items"][1]["baby_ids"]), [b]);
+    assert_eq!(uuids(&all["items"][2]["baby_ids"]), [a, b]);
+
+    let for_a: Value = app
+        .server
+        .get("/api/days")
+        .add_query_param("baby_id", a)
+        .await
+        .json();
+    assert_eq!(dates(&for_a), ["2024-05-01"]);
+    assert_eq!(record_ids(&for_a["items"][0], "stories"), [sa]);
+    assert_eq!(record_ids(&for_a["items"][0], "milestones"), [ma]);
+    assert_eq!(uuids(&for_a["items"][0]["baby_ids"]), [a]);
+
+    let for_b: Value = app
+        .server
+        .get("/api/days")
+        .add_query_param("baby_id", b)
+        .await
+        .json();
+    assert_eq!(dates(&for_b), ["2024-05-02", "2024-05-01"]);
+    assert_eq!(for_b["items"][1]["stories"], json!([]));
+    assert_eq!(record_ids(&for_b["items"][1], "milestones"), [mb_1]);
+    assert_eq!(uuids(&for_b["items"][1]["baby_ids"]), [b]);
+
+    let res = app
+        .server
+        .get("/api/days/2024-05-03")
+        .add_query_param("baby_id", a)
+        .await;
+    assert_error(&res, StatusCode::NOT_FOUND, "day.notFound");
+    let detail: Value = app
+        .server
+        .get("/api/days/2024-05-01")
+        .add_query_param("baby_id", a)
+        .await
+        .json();
+    assert_eq!(record_ids(&detail, "stories"), [sa]);
+    assert_eq!(record_ids(&detail, "milestones"), [ma]);
+    assert_eq!(uuids(&detail["baby_ids"]), [a]);
+    assert!(detail["prev_date"].is_null());
+    assert!(detail["next_date"].is_null());
+    let detail: Value = app
+        .server
+        .get("/api/days/2024-05-01")
+        .add_query_param("baby_id", b)
+        .await
+        .json();
+    assert_eq!(detail["stories"], json!([]));
+    assert_eq!(detail["next_date"], "2024-05-02");
+}
+
+#[sqlx::test]
+async fn days_cursor_union(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    set_timezone(&pool, "UTC").await;
+    let me = app.user.id;
+    let a = baby(&pool, "a").await;
+    // 같은 날 사진과 이야기는 한 번만
+    photo(&pool, me, at(1, 12)).await;
+    story(&pool, me, "2024-05-01", &[], at(1, 13)).await;
+    photo(&pool, me, at(4, 12)).await;
+    story(&pool, me, "2024-05-03", &[], at(3, 12)).await;
+    milestone(&pool, a, me, "2024-05-02", at(2, 12)).await;
+    milestone(&pool, a, me, "2024-05-05", at(5, 12)).await;
+
+    let mut got = Vec::new();
+    let mut cursors = Vec::new();
+    let mut cursor: Option<String> = None;
+    loop {
+        let mut req = app.server.get("/api/days").add_query_param("limit", 2);
+        if let Some(c) = &cursor {
+            req = req.add_query_param("cursor", c);
+        }
+        let page: Value = req.await.json();
+        got.extend(dates(&page));
+        match page["next_cursor"].as_str() {
+            Some(c) => {
+                cursors.push(c.to_string());
+                cursor = Some(c.to_string());
+            }
+            None => break,
+        }
+    }
+    assert_eq!(
+        got,
+        [
+            "2024-05-05",
+            "2024-05-04",
+            "2024-05-03",
+            "2024-05-02",
+            "2024-05-01"
+        ]
+    );
+    assert_eq!(cursors, ["2024-05-04", "2024-05-02"]);
+
+    let page: Value = app
+        .server
+        .get("/api/days")
+        .add_query_param("from", "2024-05-02")
+        .add_query_param("to", "2024-05-03")
+        .await
+        .json();
+    assert_eq!(dates(&page), ["2024-05-03", "2024-05-02"]);
+    assert!(page["next_cursor"].is_null());
+}
+
+#[sqlx::test]
+async fn days_union_follows_instance_timezone(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    set_timezone(&pool, "Asia/Seoul").await;
+    let me = app.user.id;
+    // UTC 05-01 15:30 = 현지 05-02 00:30. 이야기는 현지 날짜 그대로
+    let p = photo(
+        &pool,
+        me,
+        Utc.with_ymd_and_hms(2024, 5, 1, 15, 30, 0).unwrap(),
+    )
+    .await;
+    let s = story(&pool, me, "2024-05-02", &[], at(2, 1)).await;
+
+    let page: Value = app.server.get("/api/days").await.json();
+    assert_eq!(dates(&page), ["2024-05-02"]);
+    let day = &page["items"][0];
+    assert_eq!(day["photo_count"], 1);
+    assert_eq!(preview_ids(day), [p]);
+    assert_eq!(record_ids(day, "stories"), [s]);
+
+    let detail: Value = app.server.get("/api/days/2024-05-02").await.json();
+    assert_eq!(detail["photo_count"], 1);
+    assert_eq!(record_ids(&detail, "stories"), [s]);
+    assert!(detail["prev_date"].is_null());
+    assert!(detail["next_date"].is_null());
+    let res = app.server.get("/api/days/2024-05-01").await;
+    assert_error(&res, StatusCode::NOT_FOUND, "day.notFound");
+}
+
 #[sqlx::test]
 async fn days_invalid_query(pool: PgPool) {
     let app = media_app(&pool, Role::Family).await;
@@ -534,30 +862,61 @@ async fn days_perf_10k(pool: PgPool) {
     }
 }
 
-const PERF_LIST_SQL: &str = r#"WITH days AS (
-    SELECT (a.taken_at AT TIME ZONE $1)::date AS date,
-           count(*) FILTER (WHERE a.kind = 'photo') AS photo_count,
-           count(*) FILTER (WHERE a.kind = 'video') AS video_count,
-           array_agg(DISTINCT a.uploaded_by) AS uploader_ids,
-           array_agg(a.id) AS asset_ids
+const PERF_LIST_SQL: &str = r#"WITH f AS (
+    SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date
     FROM assets a
     WHERE a.deleted_at IS NULL
       AND ($2::uuid IS NULL OR EXISTS (
             SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $2))
-      AND ($3::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date < $3)
-      AND ($4::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date >= $4)
-      AND ($5::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date <= $5)
-    GROUP BY 1
-    ORDER BY 1 DESC
+),
+page AS (
+    SELECT u.date
+    FROM (
+        SELECT f.date FROM f
+        UNION
+        SELECT s.entry_date FROM stories s
+        WHERE $2::uuid IS NULL OR EXISTS (
+              SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)
+        UNION
+        SELECT m.achieved_on FROM milestones m WHERE $2::uuid IS NULL OR m.baby_id = $2
+    ) u
+    WHERE ($3::date IS NULL OR u.date < $3)
+      AND ($4::date IS NULL OR u.date >= $4)
+      AND ($5::date IS NULL OR u.date <= $5)
+    ORDER BY u.date DESC
     LIMIT $6
+),
+days AS (
+    SELECT f.date,
+           count(*) FILTER (WHERE f.kind = 'photo') AS photo_count,
+           count(*) FILTER (WHERE f.kind = 'video') AS video_count,
+           array_agg(DISTINCT f.uploaded_by) AS uploader_ids,
+           array_agg(f.id) AS asset_ids
+    FROM f JOIN page p ON p.date = f.date
+    GROUP BY f.date
 )
-SELECT d.date, d.photo_count, d.video_count, d.uploader_ids,
+SELECT p.date AS date, COALESCE(d.photo_count, 0) AS photo_count,
+       COALESCE(d.video_count, 0) AS video_count,
+       COALESCE(d.uploader_ids, '{}') AS uploader_ids,
        ARRAY(SELECT b.id FROM babies b
              WHERE EXISTS (SELECT 1 FROM asset_babies ab
                            WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
-             ORDER BY b.sort_order, b.created_at, b.id) AS baby_ids
-FROM days d
-ORDER BY d.date DESC"#;
+                OR EXISTS (SELECT 1 FROM stories s
+                           JOIN story_babies sb ON sb.story_id = s.id
+                           WHERE sb.baby_id = b.id AND s.entry_date = p.date
+                             AND ($2::uuid IS NULL OR EXISTS (
+                                   SELECT 1 FROM story_babies fb
+                                   WHERE fb.story_id = s.id AND fb.baby_id = $2)))
+                OR EXISTS (SELECT 1 FROM milestones m
+                           WHERE m.baby_id = b.id AND m.achieved_on = p.date
+                             AND ($2::uuid IS NULL OR m.baby_id = $2))
+             ORDER BY b.sort_order, b.created_at, b.id) AS baby_ids,
+       (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
+         AS like_count,
+       (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
+         AS comment_count
+FROM page p LEFT JOIN days d ON d.date = p.date
+ORDER BY p.date DESC"#;
 
 const PERF_PREVIEWS_SQL: &str = r#"SELECT p.id, p.kind, p.status, p.taken_at, p.local_date,
        p.width, p.height, p.duration_ms, p.blurhash, p.dominant_color, p.uploaded_by,
@@ -580,26 +939,53 @@ FROM (
 WHERE p.rn <= 3
 ORDER BY p.local_date DESC, p.taken_at DESC, p.id DESC"#;
 
-const PERF_DETAIL_SQL: &str = r#"SELECT d.photo_count, d.video_count,
+const PERF_DETAIL_SQL: &str = r#"WITH f AS (
+    SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date
+    FROM assets a
+    WHERE a.deleted_at IS NULL
+      AND ($3::uuid IS NULL OR EXISTS (
+            SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $3))
+),
+n AS (
+    SELECT COALESCE(bool_or(u.date = $2), false) AS found,
+           max(u.date) FILTER (WHERE u.date < $2) AS prev_date,
+           min(u.date) FILTER (WHERE u.date > $2) AS next_date
+    FROM (
+        SELECT f.date FROM f
+        UNION ALL
+        SELECT s.entry_date FROM stories s
+        WHERE $3::uuid IS NULL OR EXISTS (
+              SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $3)
+        UNION ALL
+        SELECT m.achieved_on FROM milestones m WHERE $3::uuid IS NULL OR m.baby_id = $3
+    ) u
+),
+d AS (
+    SELECT count(*) FILTER (WHERE f.kind = 'photo') AS photo_count,
+           count(*) FILTER (WHERE f.kind = 'video') AS video_count,
+           array_agg(DISTINCT f.uploaded_by) AS uploader_ids,
+           array_agg(f.id) AS asset_ids
+    FROM f WHERE f.date = $2
+)
+SELECT n.found AS found, d.photo_count AS photo_count,
+       d.video_count AS video_count,
        COALESCE(d.uploader_ids, '{}') AS uploader_ids,
        ARRAY(SELECT b.id FROM babies b
              WHERE EXISTS (SELECT 1 FROM asset_babies ab
                            WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
+                OR EXISTS (SELECT 1 FROM stories s
+                           JOIN story_babies sb ON sb.story_id = s.id
+                           WHERE sb.baby_id = b.id AND s.entry_date = $2
+                             AND ($3::uuid IS NULL OR EXISTS (
+                                   SELECT 1 FROM story_babies fb
+                                   WHERE fb.story_id = s.id AND fb.baby_id = $3)))
+                OR EXISTS (SELECT 1 FROM milestones m
+                           WHERE m.baby_id = b.id AND m.achieved_on = $2
+                             AND ($3::uuid IS NULL OR m.baby_id = $3))
              ORDER BY b.sort_order, b.created_at, b.id) AS baby_ids,
-       d.prev_date, d.next_date
-FROM (
-    SELECT count(*) FILTER (WHERE f.date = $2 AND f.kind = 'photo') AS photo_count,
-           count(*) FILTER (WHERE f.date = $2 AND f.kind = 'video') AS video_count,
-           array_agg(DISTINCT f.uploaded_by) FILTER (WHERE f.date = $2) AS uploader_ids,
-           array_agg(f.id) FILTER (WHERE f.date = $2) AS asset_ids,
-           max(f.date) FILTER (WHERE f.date < $2) AS prev_date,
-           min(f.date) FILTER (WHERE f.date > $2) AS next_date
-    FROM (
-        SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date
-        FROM assets a
-        WHERE a.deleted_at IS NULL
-          AND ($3::uuid IS NULL OR EXISTS (
-                SELECT 1 FROM asset_babies ab
-                WHERE ab.asset_id = a.id AND ab.baby_id = $3))
-    ) f
-) d"#;
+       (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
+         AS like_count,
+       (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
+         AS comment_count,
+       n.prev_date AS prev_date, n.next_date AS next_date
+FROM d, n"#;

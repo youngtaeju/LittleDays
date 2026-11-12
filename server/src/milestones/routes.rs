@@ -10,8 +10,8 @@ use super::{Milestone, MilestoneSummary, check_label_pair, queries, queries::Val
 use crate::{
     auth::extract::CurrentUser,
     error::{AppError, AppResult, ErrorBody},
-    growth::{self, present},
-    links,
+    links::{self, LinkKind},
+    records::{self, baby_birth_date, present},
     request::{Json as JsonBody, Path},
     settings,
     state::AppState,
@@ -62,14 +62,14 @@ async fn check_date(
     birth: NaiveDate,
     date: NaiveDate,
 ) -> AppResult<()> {
-    if date < birth || !growth::queries::not_future(&mut *conn, timezone, date).await? {
+    if date < birth || !records::not_future(&mut *conn, timezone, date).await? {
         return Err(AppError::bad_request("milestone.dateInvalid"));
     }
     Ok(())
 }
 
 fn normalize_note(raw: &str) -> AppResult<Option<&str>> {
-    growth::normalize_note_or(raw, "milestone.noteInvalid")
+    records::normalize_note_or(raw, "milestone.noteInvalid")
 }
 
 #[utoipa::path(
@@ -89,7 +89,7 @@ async fn list_milestones(
     Path(id): Path<Uuid>,
 ) -> AppResult<Json<Vec<MilestoneSummary>>> {
     let mut tx = state.pool.begin().await?;
-    growth::queries::baby_birth_date(&mut *tx, id)
+    baby_birth_date(&mut *tx, id)
         .await?
         .ok_or(AppError::NotFound("babies.notFound"))?;
     let timezone = settings::queries::load(&mut *tx).await?.timezone;
@@ -119,7 +119,7 @@ async fn create_milestone(
 ) -> AppResult<(StatusCode, Json<Milestone>)> {
     current.require(Role::Guardian)?;
     let mut tx = state.pool.begin().await?;
-    let birth = growth::queries::baby_birth_date(&mut *tx, baby_id)
+    let birth = baby_birth_date(&mut *tx, baby_id)
         .await?
         .ok_or(AppError::NotFound("babies.notFound"))?;
     let (preset_key, custom_label) =
@@ -148,7 +148,7 @@ async fn create_milestone(
         current.user.id,
     )
     .await?;
-    queries::replace_assets(&mut tx, id, &asset_ids).await?;
+    links::replace_assets(&mut tx, LinkKind::Milestone, id, &asset_ids).await?;
     let milestone = queries::get(&mut tx, &timezone, id)
         .await?
         .ok_or(AppError::NotFound("milestone.notFound"))?;
@@ -222,7 +222,7 @@ async fn update_milestone(
     let timezone = settings::queries::load(&mut *tx).await?.timezone;
     let achieved_on = req.achieved_on.unwrap_or(old.achieved_on);
     if req.achieved_on.is_some() {
-        let birth = growth::queries::baby_birth_date(&mut *tx, old.baby_id)
+        let birth = baby_birth_date(&mut *tx, old.baby_id)
             .await?
             .ok_or(AppError::NotFound("milestone.notFound"))?;
         check_date(&mut tx, &timezone, birth, achieved_on).await?;
@@ -243,7 +243,7 @@ async fn update_milestone(
     )
     .await?;
     if let Some(ids) = &asset_ids {
-        queries::replace_assets(&mut tx, id, ids).await?;
+        links::replace_assets(&mut tx, LinkKind::Milestone, id, ids).await?;
     }
     let milestone = queries::get(&mut tx, &timezone, id)
         .await?

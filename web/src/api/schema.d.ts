@@ -1000,6 +1000,12 @@ export interface components {
             /** Format: int32 */
             width: number | null;
         };
+        /** @description 새 사진을 붙일 이야기 또는 마일스톤. */
+        AttachTarget: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["LinkKind"];
+        };
         /**
          * @description 대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.
          *     `x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.
@@ -1141,7 +1147,7 @@ export interface components {
         };
         /** @description 그날 화면 머리글과 이전·다음 날. */
         DayDetail: {
-            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            /** @description 그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서. */
             baby_ids: string[];
             /**
              * Format: int64
@@ -1150,7 +1156,7 @@ export interface components {
             comment_count: number;
             /**
              * Format: date
-             * @description 인스턴스 시간대 기준 촬영 날짜.
+             * @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나.
              */
             date: string;
             /**
@@ -1158,18 +1164,22 @@ export interface components {
              * @description 그날 자산 하트 합계.
              */
             like_count: number;
+            /** @description 그날 마일스톤. 기록 순. */
+            milestones: components["schemas"]["MilestoneSummary"][];
             /**
              * Format: date
-             * @description 더 최근의 사진 있는 날.
+             * @description 더 최근의 사진, 이야기, 마일스톤 있는 날.
              */
             next_date: string | null;
             /** Format: int64 */
             photo_count: number;
             /**
              * Format: date
-             * @description 더 과거의 사진 있는 날.
+             * @description 더 과거의 사진, 이야기, 마일스톤 있는 날.
              */
             prev_date: string | null;
+            /** @description 그날 이야기. 쓴 시각 오래된 순. */
+            stories: components["schemas"]["StorySummary"][];
             /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
             uploader_ids: string[];
             /** Format: int64 */
@@ -1177,7 +1187,7 @@ export interface components {
         };
         /** @description 홈 피드의 하루 묶음. */
         DaySummary: {
-            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            /** @description 그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서. */
             baby_ids: string[];
             /**
              * Format: int64
@@ -1186,7 +1196,7 @@ export interface components {
             comment_count: number;
             /**
              * Format: date
-             * @description 인스턴스 시간대 기준 촬영 날짜.
+             * @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나.
              */
             date: string;
             /**
@@ -1194,10 +1204,14 @@ export interface components {
              * @description 그날 자산 하트 합계.
              */
             like_count: number;
+            /** @description 그날 마일스톤. 기록 순. */
+            milestones: components["schemas"]["MilestoneSummary"][];
             /** Format: int64 */
             photo_count: number;
-            /** @description 그날 최신 3장. 촬영 시각 최신순. */
+            /** @description 그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열. */
             preview: components["schemas"]["AssetSummary"][];
+            /** @description 그날 이야기. 쓴 시각 오래된 순. */
+            stories: components["schemas"]["StorySummary"][];
             /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
             uploader_ids: string[];
             /** Format: int64 */
@@ -1222,6 +1236,7 @@ export interface components {
             params: Record<string, never>;
         };
         FinalizeRequest: {
+            attach?: null | components["schemas"]["AttachTarget"];
             /** @description 태그할 아기. 모르는 ID 가 하나라도 있으면 거부. */
             baby_ids?: string[];
             /**
@@ -1299,6 +1314,11 @@ export interface components {
             /** Format: uuid */
             user_id: string;
         };
+        /**
+         * @description 연결 대상 종류.
+         * @enum {string}
+         */
+        LinkKind: "story" | "milestone";
         LoginRequest: {
             password: string;
             username: string;
@@ -1312,12 +1332,6 @@ export interface components {
         Milestone: components["schemas"]["MilestoneSummary"] & {
             /** @description 붙인 순서 전부. 휴지통 제외. */
             assets: components["schemas"]["AssetSummary"][];
-            /** Format: date-time */
-            created_at: string;
-            /** Format: uuid */
-            created_by: string;
-            /** Format: date-time */
-            updated_at: string;
         };
         /** @description 아기 화면, 하루 목록용 마일스톤. */
         MilestoneSummary: {
@@ -1330,6 +1344,10 @@ export interface components {
             asset_count: number;
             /** Format: uuid */
             baby_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            created_by: string;
             /** @description 미리 정한 항목이면 `null`. */
             custom_label: string | null;
             /** Format: uuid */
@@ -1339,6 +1357,8 @@ export interface components {
             preset_key: string | null;
             /** @description 붙인 순서 앞 4장. 휴지통 제외. */
             previews: components["schemas"]["AssetSummary"][];
+            /** Format: date-time */
+            updated_at: string;
         };
         /** @description 월별 자산 수. */
         MonthCount: {
@@ -1403,7 +1423,7 @@ export interface components {
         /** @description 커서 페이지. */
         Page_DaySummary: {
             items: {
-                /** @description 그날 태그된 아기. 아기 표시 순서. */
+                /** @description 그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서. */
                 baby_ids: string[];
                 /**
                  * Format: int64
@@ -1412,7 +1432,7 @@ export interface components {
                 comment_count: number;
                 /**
                  * Format: date
-                 * @description 인스턴스 시간대 기준 촬영 날짜.
+                 * @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나.
                  */
                 date: string;
                 /**
@@ -1420,10 +1440,14 @@ export interface components {
                  * @description 그날 자산 하트 합계.
                  */
                 like_count: number;
+                /** @description 그날 마일스톤. 기록 순. */
+                milestones: components["schemas"]["MilestoneSummary"][];
                 /** Format: int64 */
                 photo_count: number;
-                /** @description 그날 최신 3장. 촬영 시각 최신순. */
+                /** @description 그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열. */
                 preview: components["schemas"]["AssetSummary"][];
+                /** @description 그날 이야기. 쓴 시각 오래된 순. */
+                stories: components["schemas"]["StorySummary"][];
                 /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
                 uploader_ids: string[];
                 /** Format: int64 */
@@ -3780,7 +3804,7 @@ export interface operations {
                 cursor?: string;
                 /** @description 1~100, 기본 20. */
                 limit?: number;
-                /** @description 해당 아기가 태그된 자산만. */
+                /** @description 해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만. */
                 baby_id?: string;
                 /** @description 이 날짜부터 (포함). */
                 from?: string;
@@ -3793,7 +3817,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD` */
+            /** @description 사진 촬영일(휴지통 제외, 인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 합집합의 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD` */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3825,19 +3849,19 @@ export interface operations {
     get_day: {
         parameters: {
             query?: {
-                /** @description 해당 아기가 태그된 자산만. */
+                /** @description 해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만. */
                 baby_id?: string;
             };
             header?: never;
             path: {
-                /** @description 인스턴스 시간대 기준 촬영 날짜 */
+                /** @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 */
                 date: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description 그날 개수와 이전·다음 날 */
+            /** @description 그날 개수, 이야기, 마일스톤과 이전, 다음 날 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3864,7 +3888,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description 그날 휴지통 밖 자산 없음 (`day.notFound`) */
+            /** @description 그날 휴지통 밖 사진, 이야기, 마일스톤 모두 없음 (`day.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
