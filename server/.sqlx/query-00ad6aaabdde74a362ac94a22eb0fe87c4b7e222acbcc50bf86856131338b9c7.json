@@ -1,0 +1,63 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH f AS (\n               SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date\n               FROM assets a\n               WHERE a.deleted_at IS NULL\n                 AND ($2::uuid IS NULL OR EXISTS (\n                       SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $2))\n           ),\n           s AS (\n               SELECT s.id, s.entry_date FROM stories s\n               WHERE $2::uuid IS NULL OR EXISTS (\n                     SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)\n           ),\n           m AS (\n               SELECT m.baby_id, m.achieved_on FROM milestones m\n               WHERE $2::uuid IS NULL OR m.baby_id = $2\n           ),\n           page AS (\n               SELECT u.date\n               FROM (\n                   SELECT f.date FROM f\n                   UNION\n                   SELECT s.entry_date FROM s\n                   UNION\n                   SELECT m.achieved_on FROM m\n               ) u\n               WHERE ($3::date IS NULL OR u.date < $3)\n                 AND ($4::date IS NULL OR u.date >= $4)\n                 AND ($5::date IS NULL OR u.date <= $5)\n               ORDER BY u.date DESC\n               LIMIT $6\n           ),\n           days AS (\n               SELECT f.date,\n                      count(*) FILTER (WHERE f.kind = 'photo') AS photo_count,\n                      count(*) FILTER (WHERE f.kind = 'video') AS video_count,\n                      array_agg(DISTINCT f.uploaded_by) AS uploader_ids,\n                      array_agg(f.id) AS asset_ids\n               FROM f JOIN page p ON p.date = f.date\n               GROUP BY f.date\n           ),\n           tags AS (\n               SELECT d.date, ab.baby_id\n               FROM days d JOIN asset_babies ab ON ab.asset_id = ANY(d.asset_ids)\n               UNION\n               SELECT s.entry_date, sb.baby_id\n               FROM s JOIN page p ON p.date = s.entry_date JOIN story_babies sb ON sb.story_id = s.id\n               UNION\n               SELECT m.achieved_on, m.baby_id FROM m JOIN page p ON p.date = m.achieved_on\n           ),\n           day_babies AS (\n               SELECT t.date, array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id) AS baby_ids\n               FROM tags t JOIN babies b ON b.id = t.baby_id\n               GROUP BY t.date\n           )\n           SELECT p.date AS \"date!\", COALESCE(d.photo_count, 0) AS \"photo_count!\",\n                  COALESCE(d.video_count, 0) AS \"video_count!\",\n                  COALESCE(d.uploader_ids, '{}') AS \"uploader_ids!\",\n                  COALESCE(db.baby_ids, '{}') AS \"baby_ids!\",\n                  (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))\n                    AS \"like_count!\",\n                  (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))\n                    AS \"comment_count!\"\n           FROM page p\n           LEFT JOIN days d ON d.date = p.date\n           LEFT JOIN day_babies db ON db.date = p.date\n           ORDER BY p.date DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 1,
+        "name": "photo_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "video_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "uploader_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "baby_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 5,
+        "name": "like_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "comment_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Date",
+        "Date",
+        "Date",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "00ad6aaabdde74a362ac94a22eb0fe87c4b7e222acbcc50bf86856131338b9c7"
+}

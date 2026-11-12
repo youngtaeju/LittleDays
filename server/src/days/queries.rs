@@ -13,6 +13,8 @@ use crate::{
 /// 날짜 내림차순 하루 묶음. `preview`, `stories`, `milestones` 는 비어 있음(호출 측이 채움).
 /// 날짜는 사진 촬영일, 이야기 날짜, 마일스톤 달성일 합집합. `cursor` 미만, `from`~`to` 포함 범위.
 /// `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
+/// `baby_ids` 는 날짜별 집계 조인. 행마다 babies 를 도는 상관 하위 질의는 통계 없는 작은 DB 에서
+/// 비용 추정이 JIT 기준 초과(요청마다 JIT 컴파일 수백 ms).
 pub async fn list(
     exec: impl PgExecutor<'_>,
     timezone: &str,
@@ -30,16 +32,23 @@ pub async fn list(
                  AND ($2::uuid IS NULL OR EXISTS (
                        SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $2))
            ),
+           s AS (
+               SELECT s.id, s.entry_date FROM stories s
+               WHERE $2::uuid IS NULL OR EXISTS (
+                     SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)
+           ),
+           m AS (
+               SELECT m.baby_id, m.achieved_on FROM milestones m
+               WHERE $2::uuid IS NULL OR m.baby_id = $2
+           ),
            page AS (
                SELECT u.date
                FROM (
                    SELECT f.date FROM f
                    UNION
-                   SELECT s.entry_date FROM stories s
-                   WHERE $2::uuid IS NULL OR EXISTS (
-                         SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)
+                   SELECT s.entry_date FROM s
                    UNION
-                   SELECT m.achieved_on FROM milestones m WHERE $2::uuid IS NULL OR m.baby_id = $2
+                   SELECT m.achieved_on FROM m
                ) u
                WHERE ($3::date IS NULL OR u.date < $3)
                  AND ($4::date IS NULL OR u.date >= $4)
@@ -55,28 +64,32 @@ pub async fn list(
                       array_agg(f.id) AS asset_ids
                FROM f JOIN page p ON p.date = f.date
                GROUP BY f.date
+           ),
+           tags AS (
+               SELECT d.date, ab.baby_id
+               FROM days d JOIN asset_babies ab ON ab.asset_id = ANY(d.asset_ids)
+               UNION
+               SELECT s.entry_date, sb.baby_id
+               FROM s JOIN page p ON p.date = s.entry_date JOIN story_babies sb ON sb.story_id = s.id
+               UNION
+               SELECT m.achieved_on, m.baby_id FROM m JOIN page p ON p.date = m.achieved_on
+           ),
+           day_babies AS (
+               SELECT t.date, array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id) AS baby_ids
+               FROM tags t JOIN babies b ON b.id = t.baby_id
+               GROUP BY t.date
            )
            SELECT p.date AS "date!", COALESCE(d.photo_count, 0) AS "photo_count!",
                   COALESCE(d.video_count, 0) AS "video_count!",
                   COALESCE(d.uploader_ids, '{}') AS "uploader_ids!",
-                  ARRAY(SELECT b.id FROM babies b
-                        WHERE EXISTS (SELECT 1 FROM asset_babies ab
-                                      WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
-                           OR EXISTS (SELECT 1 FROM stories s
-                                      JOIN story_babies sb ON sb.story_id = s.id
-                                      WHERE sb.baby_id = b.id AND s.entry_date = p.date
-                                        AND ($2::uuid IS NULL OR EXISTS (
-                                              SELECT 1 FROM story_babies fb
-                                              WHERE fb.story_id = s.id AND fb.baby_id = $2)))
-                           OR EXISTS (SELECT 1 FROM milestones m
-                                      WHERE m.baby_id = b.id AND m.achieved_on = p.date
-                                        AND ($2::uuid IS NULL OR m.baby_id = $2))
-                        ORDER BY b.sort_order, b.created_at, b.id) AS "baby_ids!",
+                  COALESCE(db.baby_ids, '{}') AS "baby_ids!",
                   (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
                     AS "like_count!",
                   (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
                     AS "comment_count!"
-           FROM page p LEFT JOIN days d ON d.date = p.date
+           FROM page p
+           LEFT JOIN days d ON d.date = p.date
+           LEFT JOIN day_babies db ON db.date = p.date
            ORDER BY p.date DESC"#,
         timezone,
         baby_id,

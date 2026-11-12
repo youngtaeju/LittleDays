@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE stories SET entry_date = CASE WHEN entry_date = $1 THEN $2 ELSE $1 END",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "03188be25dd4fd5b89c68b878322b85cda5a20230d6056bd120e41c1b6e2ebbd"
+}

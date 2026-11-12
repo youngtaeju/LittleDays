@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE assets SET taken_at = CASE WHEN taken_at < $1 THEN taken_at + interval '1 day'\n                                                  ELSE taken_at - interval '1 day' END",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "396648dbcf64a6eaf9d5cc37f5f5fb1a6482b719579520218bb07c18d1702e87"
+}
