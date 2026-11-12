@@ -32,7 +32,7 @@ export function isBorn(baby: Pick<Baby, 'birth_date'>, today: string): boolean {
   return baby.birth_date <= today
 }
 
-// 성장 기록 쓰기 권한. 보호자 이상, 태어난 아기.
+// 기록(성장, 마일스톤) 쓰기 권한. 보호자 이상, 태어난 아기.
 export function useCanRecord(baby: Baby): boolean {
   const { user } = useMe()
   const today = useToday()

@@ -91,9 +91,9 @@ function renderBabies(
       ]),
     ),
     ...Object.fromEntries(
-      babies.map((b) => [
-        `GET /api/babies/${b.id}/growth`,
-        () => json(200, []),
+      babies.flatMap((b) => [
+        [`GET /api/babies/${b.id}/growth`, () => json(200, [])],
+        [`GET /api/babies/${b.id}/milestones`, () => json(200, [])],
       ]),
     ),
   })

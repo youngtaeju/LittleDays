@@ -4,7 +4,7 @@ import Tus, { type TusBody, type TusOptions } from '@uppy/tus'
 import { errorBody } from '@/api/client'
 import { ApiError } from '@/api/errors'
 import type { AttachTarget } from '@/api/types'
-import { milestoneKey } from '@/milestones/useMilestones'
+import { milestoneKey, milestonesKeyRoot } from '@/milestones/useMilestones'
 import { storyKey } from '@/stories/useStory'
 import { fileMime } from './fileKind'
 import { finalizeUpload } from './finalize'
@@ -134,6 +134,10 @@ function createQueue(): Uploader {
       void queryClient?.invalidateQueries({
         queryKey: kind === 'story' ? storyKey(target) : milestoneKey(target),
       })
+      // 아기 화면 타임라인 썸네일. 대상 아기를 모르니 아기별 목록 전부.
+      if (kind === 'milestone') {
+        void queryClient?.invalidateQueries({ queryKey: milestonesKeyRoot })
+      }
     }
     switch (outcome.kind) {
       case 'created':

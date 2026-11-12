@@ -74,6 +74,7 @@ function renderBabies(
       [...babies, babyFixture({ id: 'new' })].flatMap((b) => [
         [`GET /api/babies/${b.id}/stats`, () => json(200, EMPTY_STATS)],
         [`GET /api/babies/${b.id}/growth`, () => json(200, [])],
+        [`GET /api/babies/${b.id}/milestones`, () => json(200, [])],
       ]),
     ),
     [`PUT /api/babies/${SKY.id}`]: async (req) => {

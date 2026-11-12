@@ -25,6 +25,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { MeSubPage } from '@/me/MeSubPage'
+import { milestonesKeyRoot } from '@/milestones/useMilestones'
 import { useSettings } from '@/settings/useSettings'
 import { babiesKey } from '@/timeline/useBabies'
 import { thumbUrl } from '@/timeline/media'
@@ -89,6 +90,10 @@ export function TrashPage() {
     void qc.invalidateQueries({ queryKey: trashKey })
     void qc.invalidateQueries({ queryKey: ['assets'] })
     void qc.invalidateQueries({ queryKey: ['days'] })
+    // 이야기와 마일스톤 사진(아기 화면 타임라인 포함). 복구되면 다시 보이고 완전 삭제되면 연결도 삭제.
+    void qc.invalidateQueries({ queryKey: ['story'] })
+    void qc.invalidateQueries({ queryKey: ['milestone'] })
+    void qc.invalidateQueries({ queryKey: milestonesKeyRoot })
     // 휴지통 이동 시 서버가 이미 대표사진 지정 해제. 영구 삭제 후 아기 캐시 재확인용.
     if (withBabies) void qc.invalidateQueries({ queryKey: babiesKey })
   }

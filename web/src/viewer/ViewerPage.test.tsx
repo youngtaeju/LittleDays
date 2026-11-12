@@ -1532,6 +1532,12 @@ describe('ViewerPage', () => {
       of: 'm',
     })
     expect(screen.queryByRole('button', { name: ko.viewer.next })).toBeNull()
+
+    // 직접 진입이면 닫기 → 그 마일스톤.
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/milestones/m')
+    })
   })
 
   it('story_from_without_of_dropped', async () => {

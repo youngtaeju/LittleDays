@@ -30,6 +30,11 @@ const UploadQueueSheet = lazy(() =>
 const GrowthSheet = lazy(() =>
   import('@/growth/GrowthSheet').then((m) => ({ default: m.GrowthSheet })),
 )
+const MilestonePickerSheet = lazy(() =>
+  import('@/milestones/MilestonePickerSheet').then((m) => ({
+    default: m.MilestonePickerSheet,
+  })),
+)
 
 function subscribeScroll(onChange: () => void): () => void {
   window.addEventListener('scroll', onChange, { passive: true })
@@ -44,7 +49,6 @@ function useScrolled(): boolean {
 }
 
 // 휴대폰 (+), 데스크톱 사이드바 공용 추가 시트 하나. 항목 동작 연결 지점.
-// 마일스톤은 기록 시트 연결 전까지 아기 화면.
 function ShellAddSheet({
   open,
   onOpenChange,
@@ -58,11 +62,9 @@ function ShellAddSheet({
   // 시트를 열 때만 조회(가족은 (+) 없음).
   const babies = useQuery({ ...babiesQuery, enabled: open }).data
   const [growthOpen, setGrowthOpen] = useState(false)
-  // 태어난 아기가 없으면 키/몸무게 항목 숨김. 목록 받기 전에는 표시(시트가 처리).
-  const canGrowth = !babies || babies.some((b) => isBorn(b, today))
-  const toBabies = () => {
-    void navigate({ to: '/babies' })
-  }
+  const [milestoneOpen, setMilestoneOpen] = useState(false)
+  // 태어난 아기가 없으면 키/몸무게, 마일스톤 항목 숨김. 목록 받기 전에는 표시(시트가 처리).
+  const canRecord = !babies || babies.some((b) => isBorn(b, today))
   return (
     <>
       <AddSheet
@@ -73,19 +75,34 @@ function ShellAddSheet({
           void navigate({ to: '/stories/new' })
         }}
         onGrowth={
-          canGrowth
+          canRecord
             ? () => {
                 setGrowthOpen(true)
               }
             : undefined
         }
-        onMilestone={toBabies}
+        onMilestone={
+          canRecord
+            ? () => {
+                setMilestoneOpen(true)
+              }
+            : undefined
+        }
       />
       {growthOpen && (
         <Suspense>
           <GrowthSheet
             onClose={() => {
               setGrowthOpen(false)
+            }}
+          />
+        </Suspense>
+      )}
+      {milestoneOpen && (
+        <Suspense>
+          <MilestonePickerSheet
+            onClose={() => {
+              setMilestoneOpen(false)
             }}
           />
         </Suspense>
@@ -106,11 +123,12 @@ export function AppShell() {
     from: '/authed/shell/babies/$id/age/$age',
     shouldThrow: false,
   })
-  // 나 탭 하위 화면(MeSubPage), 성장 기록 목록, 이야기 화면(쓰기, 상세, 고치기)은 자체 머리글. 셸 머리글은 오프라인 배너만.
+  // 나 탭 하위 화면(MeSubPage), 성장 기록 목록, 마일스톤 상세, 이야기 화면(쓰기, 상세, 고치기)은 자체 머리글. 셸 머리글은 오프라인 배너만.
   const ownHeader = useRouterState({
     select: (s) =>
       /^\/me\/[^/]/.test(s.location.pathname) ||
       /^\/babies\/[^/]+\/growth$/.test(s.location.pathname) ||
+      /^\/milestones\/[^/]+$/.test(s.location.pathname) ||
       /^\/stories\/[^/]+(\/edit)?$/.test(s.location.pathname),
   })
   // 이야기 쓰기와 고치기는 전체 화면. 휴대폰 하단 탭 없음.

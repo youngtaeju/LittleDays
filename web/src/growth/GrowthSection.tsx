@@ -6,20 +6,13 @@ import { useTranslation } from 'react-i18next'
 import type { Baby } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
-import { formatDate, formatMonthDay } from '@/lib/dates'
+import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useToday } from '@/settings/useSettings'
 import { GrowthChart } from './GrowthChart'
 import { GrowthSheet } from './GrowthSheet'
 import type { GrowthKind } from './lms'
 import { formatValues, isBorn, useCanRecord, useGrowth } from './useGrowth'
-
-// 올해면 "11월 3일", 아니면 연도까지.
-function formatShortDate(date: string, today: string, lng: string): string {
-  return date.slice(0, 4) === today.slice(0, 4)
-    ? formatMonthDay(date, lng)
-    : formatDate(date, lng)
-}
 
 // 아기 화면 "성장". 최근 값, 키/몸무게 탭, 차트, 기록 추가와 전체 보기.
 export function GrowthSection({ baby }: { baby: Baby }) {

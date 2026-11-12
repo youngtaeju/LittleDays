@@ -57,6 +57,7 @@ function renderAlbum(path: string) {
     'GET /api/users': () => json(200, { users: [userFixture('guardian')] }),
     [`GET /api/babies/${SKY.id}/stats`]: () => json(200, STATS),
     [`GET /api/babies/${SKY.id}/growth`]: () => json(200, []),
+    [`GET /api/babies/${SKY.id}/milestones`]: () => json(200, []),
     'GET /api/days': (req) => {
       dayRequests.push(new URL(req.url))
       return json(200, {

@@ -45,7 +45,7 @@ import {
   useToggleFavorite,
   useToggleLike,
 } from '@/reactions/useReactions'
-import { milestoneQuery } from '@/milestones/useMilestones'
+import { milestoneQuery, milestonesKeyRoot } from '@/milestones/useMilestones'
 import { useSettings } from '@/settings/useSettings'
 import { storyQuery } from '@/stories/useStory'
 import { Blurhash } from '@/timeline/Blurhash'
@@ -349,11 +349,13 @@ function Viewer() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     closeTimer.current = window.setTimeout(
       () => {
-        // 직접 진입(앱 내 이전 기록 없음)이면 즐겨찾기 화면, 그 이야기, 그 밖은 홈 타임라인.
+        // 직접 진입(앱 내 이전 기록 없음)이면 즐겨찾기 화면, 그 이야기나 마일스톤, 그 밖은 홈 타임라인.
         if (canGoBack) router.history.back()
         else if (fromFavorites) void navigate({ to: '/me/favorites' })
         else if (source?.kind === 'story') {
           void navigate({ to: '/stories/$id', params: { id: source.id } })
+        } else if (source?.kind === 'milestone') {
+          void navigate({ to: '/milestones/$id', params: { id: source.id } })
         } else void navigate({ to: '/', search: { baby } })
       },
       reduce ? 0 : FADE_MS,
@@ -374,10 +376,11 @@ function Viewer() {
       ),
     onSuccess: (a) => {
       applyAsset(qc, a)
-      // 휴지통 사진은 즐겨찾기 목록, 이야기와 마일스톤 사진에서 빠짐. 이동과 복구 모두 다시 조회.
+      // 휴지통 사진은 즐겨찾기 목록, 이야기와 마일스톤 사진(아기 화면 타임라인 포함)에서 빠짐. 이동과 복구 모두 다시 조회.
       void qc.invalidateQueries({ queryKey: favoritesKey })
       void qc.invalidateQueries({ queryKey: ['story'] })
       void qc.invalidateQueries({ queryKey: ['milestone'] })
+      void qc.invalidateQueries({ queryKey: milestonesKeyRoot })
       toast(t('viewer.restored'))
     },
     onError: (e) => {
@@ -396,6 +399,7 @@ function Viewer() {
       void qc.invalidateQueries({ queryKey: favoritesKey })
       void qc.invalidateQueries({ queryKey: ['story'] })
       void qc.invalidateQueries({ queryKey: ['milestone'] })
+      void qc.invalidateQueries({ queryKey: milestonesKeyRoot })
       // 떠나는 항목이라 즉시 재조회 안 함.
       void qc.invalidateQueries({
         queryKey: assetKey(assetId),

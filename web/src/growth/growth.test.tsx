@@ -104,6 +104,7 @@ function renderGrowth(
             return json(200, b.id === SKY.id ? (opts.records ?? RECORDS) : [])
           },
         ],
+        [`GET /api/babies/${b.id}/milestones`, () => json(200, [])],
       ]),
     ),
     ...opts.extra,

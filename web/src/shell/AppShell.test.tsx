@@ -163,7 +163,15 @@ describe('AppShell', () => {
     })
     // 마지막으로 본 아기가 기본 선택.
     localStorage.setItem('ld.baby.last', sea.id)
-    const { user, router } = await renderShell('guardian', '/', [sky, sea, due])
+    const { user, router } = await renderShell(
+      'guardian',
+      '/',
+      [sky, sea, due],
+      {
+        [`GET /api/babies/${sea.id}/milestones`]: () => json(200, []),
+        [`GET /api/babies/${sky.id}/milestones`]: () => json(200, []),
+      },
+    )
     async function openSheet() {
       await user.click(
         within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
@@ -213,18 +221,35 @@ describe('AppShell', () => {
       expect(growth).not.toBeInTheDocument()
     })
 
-    // 마일스톤은 기록 시트 연결 전까지 아기 화면(마지막 본 아기).
+    // 마일스톤은 고르기 시트. 아기 고르기는 키/몸무게와 같은 규칙.
     sheet = await openSheet()
     await user.click(
       within(sheet).getByRole('button', { name: ko.addSheet.milestone }),
     )
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(`/babies/${sea.id}`)
+    const milestone = await screen.findByRole('dialog', {
+      name: ko.milestones.pickerTitle,
     })
+    const babyRadios = within(milestone).getByRole('radiogroup', {
+      name: ko.milestones.baby,
+    })
+    expect(
+      within(babyRadios)
+        .getAllByRole('radio')
+        .map((r) => r.textContent),
+    ).toEqual(['하늘', '바다'])
+    expect(
+      within(babyRadios).getByRole('radio', { name: '바다' }),
+    ).toHaveAttribute('aria-checked', 'true')
+    expect(
+      await within(milestone).findByRole('button', {
+        name: ko.milestones.custom,
+      }),
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/')
   })
 
-  // 태어난 아기가 없으면 키/몸무게 항목 없음.
-  it('add_sheet_hides_growth_without_born_baby', async () => {
+  // 태어난 아기가 없으면 키/몸무게, 마일스톤 항목 없음.
+  it('add_sheet_hides_records_without_born_baby', async () => {
     const due = babyFixture({ birth_date: '2099-01-01' })
     const { user } = await renderShell('guardian', '/', [due])
     await user.click(
@@ -239,7 +264,10 @@ describe('AppShell', () => {
       ).not.toBeInTheDocument()
     })
     expect(
-      within(sheet).getByRole('button', { name: ko.addSheet.milestone }),
+      within(sheet).queryByRole('button', { name: ko.addSheet.milestone }),
+    ).not.toBeInTheDocument()
+    expect(
+      within(sheet).getByRole('button', { name: ko.addSheet.story }),
     ).toBeInTheDocument()
   })
 

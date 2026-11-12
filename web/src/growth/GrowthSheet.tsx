@@ -3,11 +3,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api, call } from '@/api/client'
 import type { Baby, GrowthRecord } from '@/api/types'
+import { BabyRadioGroup } from '@/babies/BabyRadioGroup'
 import { pickBaby } from '@/babies/lastBaby'
 import { Field, FormError } from '@/components/Field'
 import { Button } from '@/components/ui/button'
 import { isCalendarDate } from '@/lib/dates'
-import { cn } from '@/lib/utils'
 import { useToday } from '@/settings/useSettings'
 import { useBabies } from '@/timeline/useBabies'
 import { AdaptiveSheet } from '@/upload/AdaptiveSheet'
@@ -225,39 +225,12 @@ function GrowthForm({
       }}
     >
       {!fixed && babies.length > 1 && (
-        <div
-          role="radiogroup"
-          aria-label={t('growth.baby')}
-          className="flex flex-wrap gap-x-2"
-        >
-          {babies.map((b) => {
-            const on = b.id === selectedId
-            return (
-              // 터치 영역 44px, 보이는 칩은 그 안.
-              <button
-                key={b.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => {
-                  setSelectedId(b.id)
-                }}
-                className="flex h-11 max-w-48 items-center rounded-full"
-              >
-                <span
-                  className={cn(
-                    'truncate rounded-full px-3 py-1 text-sm',
-                    on
-                      ? 'bg-primary font-semibold text-primary-foreground'
-                      : 'bg-muted',
-                  )}
-                >
-                  {b.name}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+        <BabyRadioGroup
+          label={t('growth.baby')}
+          babies={babies}
+          selected={selectedId}
+          onSelect={setSelectedId}
+        />
       )}
       <Field
         label={t('growth.date')}

@@ -10,7 +10,10 @@ import {
 import type {
   Asset,
   AssetPage,
+  Baby,
   DayPage,
+  GrowthRecord,
+  MilestoneSummary,
   Story,
   StorySummary,
   TrashItem,
@@ -189,6 +192,76 @@ export async function resetStories(
   }
 }
 
+// 첫 가입 때 만든 아기(BABY_NAME).
+export async function firstBaby(page: Page): Promise<Baby> {
+  const res = await page.request.get('/api/babies')
+  expect(res.status()).toBe(200)
+  const babies = (await res.json()) as Baby[]
+  const baby = babies.find((b) => b.name === BABY_NAME)
+  if (!baby) throw new Error('아기 없음')
+  return baby
+}
+
+// 그 아기의 성장 기록과 마일스톤 전부 삭제. 공유 스택에서 앞 시도가 남긴 것 포함.
+export async function resetRecords(page: Page, babyId: string): Promise<void> {
+  const growth = await page.request.get(`/api/babies/${babyId}/growth`)
+  expect(growth.status()).toBe(200)
+  for (const r of (await growth.json()) as GrowthRecord[]) {
+    const res = await page.request.delete(`/api/growth/${r.id}`, {
+      headers: CSRF,
+    })
+    expect(res.status()).toBeLessThan(300)
+  }
+  const milestones = await page.request.get(`/api/babies/${babyId}/milestones`)
+  expect(milestones.status()).toBe(200)
+  for (const m of (await milestones.json()) as MilestoneSummary[]) {
+    const res = await page.request.delete(`/api/milestones/${m.id}`, {
+      headers: CSRF,
+    })
+    expect(res.status()).toBeLessThan(300)
+  }
+}
+
+// API 로 기록 만들기. 화면 폭 검사용.
+export async function createRecords(
+  page: Page,
+  babyId: string,
+  data: {
+    growth: {
+      measured_on: string
+      height_cm: number | null
+      weight_kg: number | null
+      note: string | null
+    }
+    milestone: { custom_label: string; achieved_on: string; note: string }
+  },
+): Promise<MilestoneSummary> {
+  const g = await page.request.post(`/api/babies/${babyId}/growth`, {
+    data: data.growth,
+    headers: CSRF,
+  })
+  expect(g.status(), await g.text()).toBe(201)
+  const m = await page.request.post(`/api/babies/${babyId}/milestones`, {
+    data: { ...data.milestone, asset_ids: [] },
+    headers: CSRF,
+  })
+  expect(m.status(), await m.text()).toBe(201)
+  return (await m.json()) as MilestoneSummary
+}
+
+// 데스크톱 사이드바 추가하기 → 추가 시트 항목.
+export async function sidebarAdd(page: Page, item: string): Promise<void> {
+  await page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .locator('..')
+    .getByRole('button', { name: '추가하기' })
+    .click()
+  await page
+    .getByRole('dialog', { name: '무엇을 남길까요?' })
+    .getByRole('button', { name: item })
+    .click()
+}
+
 // 내용만 다른 JPEG(새 사진으로 업로드). APPn(EXIF 등) 뒤에 주석 세그먼트, 화소와 촬영일은 그대로.
 export function uniqueJpeg(tag: string): Buffer {
   const src = fs.readFileSync(FILES.jpg)
@@ -261,13 +334,5 @@ export const test = base.extend<{ ownerPage: Page }>({
 
 // 데스크톱 사이드바 추가하기 → 추가 시트 → 사진/영상 올리기(기기 선택창). 선택창 대기는 호출 측.
 export async function sidebarUpload(page: Page): Promise<void> {
-  await page
-    .getByRole('navigation', { name: '주 메뉴' })
-    .locator('..')
-    .getByRole('button', { name: '추가하기' })
-    .click()
-  await page
-    .getByRole('dialog', { name: '무엇을 남길까요?' })
-    .getByRole('button', { name: '사진·영상 올리기' })
-    .click()
+  await sidebarAdd(page, '사진·영상 올리기')
 }

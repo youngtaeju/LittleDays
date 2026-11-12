@@ -101,6 +101,10 @@ const StoryEditPage = lazyRouteComponent(
   () => import('@/stories/StoryEditor'),
   'StoryEditPage',
 )
+const MilestonePage = lazyRouteComponent(
+  () => import('@/milestones/MilestonePage'),
+  'MilestonePage',
+)
 const ViewerPage = lazyRouteComponent(
   () => import('@/viewer/ViewerPage'),
   'ViewerPage',
@@ -345,6 +349,13 @@ const storyEditRoute = createRoute({
   component: StoryEditPage,
 })
 
+// 모든 멤버 읽기. 고치기와 지우기는 화면에서 보호자 이상만.
+const milestoneRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/milestones/$id',
+  component: MilestonePage,
+})
+
 // 모든 멤버. 초대·역할 변경은 화면에서 관리자만.
 const familyRoute = createRoute({
   getParentRoute: () => shellRoute,
@@ -464,6 +475,7 @@ const routeTree = rootRoute.addChildren([
       storyNewRoute,
       storyRoute,
       storyEditRoute,
+      milestoneRoute,
       familyRoute,
       meRoute,
       meProfileRoute,

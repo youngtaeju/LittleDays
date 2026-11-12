@@ -70,7 +70,7 @@ function GrowthList({ baby }: { baby: Baby }) {
   const rows = [...(growth.data ?? [])].reverse()
 
   return (
-    <div className="-mt-4 grid gap-4">
+    <div className="-mt-4 grid grid-cols-1 gap-4">
       <header className="sticky top-0 z-10 -mx-4 flex min-h-14 items-center gap-1 bg-background px-2 py-1">
         <Button
           variant="ghost"
@@ -129,7 +129,7 @@ function GrowthList({ baby }: { baby: Baby }) {
                     {formatValues(t, i18n.language, r)}
                   </span>
                   {r.note && (
-                    <span className="block text-sm break-words text-muted-foreground">
+                    <span className="block text-sm wrap-anywhere text-muted-foreground">
                       {r.note}
                     </span>
                   )}
