@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO growth_records\n             (id, baby_id, measured_on, height_cm, weight_kg, note, created_by)\n           VALUES ($1, $2, $3, $4::float8::numeric(4,1), $5::float8::numeric(5,2), $6, $7)\n           RETURNING id, baby_id, measured_on, height_cm::float8 AS height_cm,\n                     weight_kg::float8 AS weight_kg, note, created_by, created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "baby_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "measured_on",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "height_cm",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "weight_kg",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date",
+        "Float8",
+        "Float8",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null,
+      null,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b8233af41b5ae17f3275f73855c0ac06151612ae2d9ac3a85942daf2b4ff0102"
+}

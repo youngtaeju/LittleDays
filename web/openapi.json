@@ -1926,6 +1926,294 @@
         }
       }
     },
+    "/api/babies/{id}/growth": {
+      "get": {
+        "operationId": "list_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "측정일 오래된 순, 같은 날은 만든 순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GrowthRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGrowthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "기록됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/babies/{id}/milestones": {
+      "get": {
+        "operationId": "list_milestones",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "달성일 오래된 순, 같은 날은 만든 순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MilestoneSummary"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "create_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "아기 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "기록됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "아기 없음 (`babies.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/babies/{id}/stats": {
       "get": {
         "operationId": "baby_stats",
@@ -2151,7 +2439,7 @@
           {
             "name": "baby_id",
             "in": "query",
-            "description": "해당 아기가 태그된 자산만.",
+            "description": "해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2181,7 +2469,7 @@
         ],
         "responses": {
           "200": {
-            "description": "휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD`",
+            "description": "사진 촬영일(휴지통 제외, 인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 합집합의 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD`",
             "content": {
               "application/json": {
                 "schema": {
@@ -2220,7 +2508,7 @@
           {
             "name": "date",
             "in": "path",
-            "description": "인스턴스 시간대 기준 촬영 날짜",
+            "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일",
             "required": true,
             "schema": {
               "type": "string",
@@ -2230,7 +2518,7 @@
           {
             "name": "baby_id",
             "in": "query",
-            "description": "해당 아기가 태그된 자산만.",
+            "description": "해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만.",
             "required": false,
             "schema": {
               "type": "string",
@@ -2240,7 +2528,7 @@
         ],
         "responses": {
           "200": {
-            "description": "그날 개수와 이전·다음 날",
+            "description": "그날 개수, 이야기, 마일스톤과 이전, 다음 날",
             "content": {
               "application/json": {
                 "schema": {
@@ -2270,7 +2558,7 @@
             }
           },
           "404": {
-            "description": "그날 휴지통 밖 자산 없음 (`day.notFound`)",
+            "description": "그날 휴지통 밖 사진, 이야기, 마일스톤 모두 없음 (`day.notFound`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2329,6 +2617,145 @@
           },
           "401": {
             "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/growth/{id}": {
+      "delete": {
+        "operationId": "delete_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "성장 기록 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "지워짐"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "기록 없음 (`growth.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "update_growth",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "성장 기록 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGrowthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "고쳐짐",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GrowthRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "기록 없음 (`growth.notFound`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2646,6 +3073,212 @@
           },
           "410": {
             "description": "만료, 사용됨, 회수됨",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/milestones/{id}": {
+      "get": {
+        "operationId": "get_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "마일스톤 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "마일스톤 상세",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "마일스톤 없음 (`milestone.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "마일스톤 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "지워짐"
+          },
+          "400": {
+            "description": "ID 형식 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "마일스톤 없음 (`milestone.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "update_milestone",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "마일스톤 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMilestoneRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "고쳐짐",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Milestone"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "마일스톤 없음 (`milestone.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -4710,6 +5343,23 @@
           }
         }
       },
+      "AttachTarget": {
+        "type": "object",
+        "description": "새 사진을 붙일 이야기 또는 마일스톤.",
+        "required": [
+          "kind",
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/LinkKind"
+          }
+        }
+      },
       "AvatarCrop": {
         "type": "object",
         "description": "대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.\n`x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.",
@@ -4937,6 +5587,42 @@
           }
         }
       },
+      "CreateGrowthRequest": {
+        "type": "object",
+        "required": [
+          "measured_on"
+        ],
+        "properties": {
+          "height_cm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "20.0~150.0 cm, 소수 1자리. 키와 몸무게 중 하나 이상 필수."
+          },
+          "measured_on": {
+            "type": "string",
+            "format": "date",
+            "description": "아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함)."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "앞뒤 공백 제거 후 100자 이하. 빈 값은 없음."
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "0.50~50.00 kg, 소수 2자리."
+          }
+        }
+      },
       "CreateInviteRequest": {
         "type": "object",
         "required": [
@@ -4972,6 +5658,49 @@
           "url": {
             "type": "string",
             "description": "`{PUBLIC_URL}/invite/{원문 토큰}`. 원문 토큰은 이 응답에서만 노출."
+          }
+        }
+      },
+      "CreateMilestoneRequest": {
+        "type": "object",
+        "required": [
+          "achieved_on",
+          "asset_ids"
+        ],
+        "properties": {
+          "achieved_on": {
+            "type": "string",
+            "format": "date",
+            "description": "아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함)."
+          },
+          "asset_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만, 200장 이하."
+          },
+          "custom_label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "직접 입력, 앞뒤 공백 제거 후 1~30자."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "앞뒤 공백 제거 후 100자 이하. 빈 값은 없음."
+          },
+          "preset_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "미리 정한 항목 키. `custom_label` 과 정확히 하나. 아기당 한 번."
           }
         }
       },
@@ -5023,7 +5752,9 @@
           "like_count",
           "comment_count",
           "prev_date",
-          "next_date"
+          "next_date",
+          "stories",
+          "milestones"
         ],
         "properties": {
           "baby_ids": {
@@ -5032,7 +5763,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "그날 태그된 아기. 아기 표시 순서."
+            "description": "그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서."
           },
           "comment_count": {
             "type": "integer",
@@ -5042,12 +5773,19 @@
           "date": {
             "type": "string",
             "format": "date",
-            "description": "인스턴스 시간대 기준 촬영 날짜."
+            "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나."
           },
           "like_count": {
             "type": "integer",
             "format": "int64",
             "description": "그날 자산 하트 합계."
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneSummary"
+            },
+            "description": "그날 마일스톤. 기록 순."
           },
           "next_date": {
             "type": [
@@ -5055,7 +5793,7 @@
               "null"
             ],
             "format": "date",
-            "description": "더 최근의 사진 있는 날."
+            "description": "더 최근의 사진, 이야기, 마일스톤 있는 날."
           },
           "photo_count": {
             "type": "integer",
@@ -5067,7 +5805,14 @@
               "null"
             ],
             "format": "date",
-            "description": "더 과거의 사진 있는 날."
+            "description": "더 과거의 사진, 이야기, 마일스톤 있는 날."
+          },
+          "stories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorySummary"
+            },
+            "description": "그날 이야기. 쓴 시각 오래된 순."
           },
           "uploader_ids": {
             "type": "array",
@@ -5094,7 +5839,9 @@
           "baby_ids",
           "like_count",
           "comment_count",
-          "preview"
+          "preview",
+          "stories",
+          "milestones"
         ],
         "properties": {
           "baby_ids": {
@@ -5103,7 +5850,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "description": "그날 태그된 아기. 아기 표시 순서."
+            "description": "그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서."
           },
           "comment_count": {
             "type": "integer",
@@ -5113,12 +5860,19 @@
           "date": {
             "type": "string",
             "format": "date",
-            "description": "인스턴스 시간대 기준 촬영 날짜."
+            "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나."
           },
           "like_count": {
             "type": "integer",
             "format": "int64",
             "description": "그날 자산 하트 합계."
+          },
+          "milestones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MilestoneSummary"
+            },
+            "description": "그날 마일스톤. 기록 순."
           },
           "photo_count": {
             "type": "integer",
@@ -5129,7 +5883,14 @@
             "items": {
               "$ref": "#/components/schemas/AssetSummary"
             },
-            "description": "그날 최신 3장. 촬영 시각 최신순."
+            "description": "그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열."
+          },
+          "stories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StorySummary"
+            },
+            "description": "그날 이야기. 쓴 시각 오래된 순."
           },
           "uploader_ids": {
             "type": "array",
@@ -5225,6 +5986,17 @@
       "FinalizeRequest": {
         "type": "object",
         "properties": {
+          "attach": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AttachTarget",
+                "description": "맨 뒤에 붙일 이야기 또는 마일스톤. 대상이 없거나 고칠 권한이 없으면 연결만 건너뜀.\n중복 업로드(409)면 기존 사진이 휴지통 아닐 때 연결."
+              }
+            ]
+          },
           "baby_ids": {
             "type": "array",
             "items": {
@@ -5240,6 +6012,68 @@
             ],
             "format": "date-time",
             "description": "클라이언트 파일 수정 시각. 촬영 메타데이터 없을 때 촬영일 후보."
+          }
+        }
+      },
+      "GrowthRecord": {
+        "type": "object",
+        "required": [
+          "id",
+          "baby_id",
+          "measured_on",
+          "height_cm",
+          "weight_kg",
+          "note",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "baby_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "height_cm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "cm, 소수 1자리. 없으면 `null`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "measured_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "kg, 소수 2자리. 없으면 `null`."
           }
         }
       },
@@ -5385,6 +6219,14 @@
           }
         }
       },
+      "LinkKind": {
+        "type": "string",
+        "description": "연결 대상 종류.",
+        "enum": [
+          "story",
+          "milestone"
+        ]
+      },
       "LoginRequest": {
         "type": "object",
         "required": [
@@ -5413,6 +6255,104 @@
           },
           "token": {
             "type": "string"
+          }
+        }
+      },
+      "Milestone": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MilestoneSummary"
+          },
+          {
+            "type": "object",
+            "required": [
+              "assets"
+            ],
+            "properties": {
+              "assets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AssetSummary"
+                },
+                "description": "붙인 순서 전부. 휴지통 제외."
+              }
+            }
+          }
+        ],
+        "description": "마일스톤 상세."
+      },
+      "MilestoneSummary": {
+        "type": "object",
+        "description": "아기 화면, 하루 목록용 마일스톤.",
+        "required": [
+          "id",
+          "baby_id",
+          "preset_key",
+          "custom_label",
+          "achieved_on",
+          "note",
+          "previews",
+          "asset_count",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "achieved_on": {
+            "type": "string",
+            "format": "date"
+          },
+          "asset_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "휴지통 제외."
+          },
+          "baby_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_by": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "custom_label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "미리 정한 항목이면 `null`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preset_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "직접 입력이면 `null`."
+          },
+          "previews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetSummary"
+            },
+            "description": "붙인 순서 앞 4장. 휴지통 제외."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -5624,7 +6564,9 @@
                 "baby_ids",
                 "like_count",
                 "comment_count",
-                "preview"
+                "preview",
+                "stories",
+                "milestones"
               ],
               "properties": {
                 "baby_ids": {
@@ -5633,7 +6575,7 @@
                     "type": "string",
                     "format": "uuid"
                   },
-                  "description": "그날 태그된 아기. 아기 표시 순서."
+                  "description": "그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서."
                 },
                 "comment_count": {
                   "type": "integer",
@@ -5643,12 +6585,19 @@
                 "date": {
                   "type": "string",
                   "format": "date",
-                  "description": "인스턴스 시간대 기준 촬영 날짜."
+                  "description": "사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나."
                 },
                 "like_count": {
                   "type": "integer",
                   "format": "int64",
                   "description": "그날 자산 하트 합계."
+                },
+                "milestones": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MilestoneSummary"
+                  },
+                  "description": "그날 마일스톤. 기록 순."
                 },
                 "photo_count": {
                   "type": "integer",
@@ -5659,7 +6608,14 @@
                   "items": {
                     "$ref": "#/components/schemas/AssetSummary"
                   },
-                  "description": "그날 최신 3장. 촬영 시각 최신순."
+                  "description": "그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열."
+                },
+                "stories": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StorySummary"
+                  },
+                  "description": "그날 이야기. 쓴 시각 오래된 순."
                 },
                 "uploader_ids": {
                   "type": "array",
@@ -6273,6 +7229,81 @@
           }
         ],
         "description": "휴지통 목록 항목."
+      },
+      "UpdateGrowthRequest": {
+        "type": "object",
+        "description": "보낸 필드만 교체. `null` 은 비움, 결과에 키나 몸무게 하나는 남아야 함.",
+        "properties": {
+          "height_cm": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "measured_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "weight_kg": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "UpdateMilestoneRequest": {
+        "type": "object",
+        "description": "보낸 필드만 교체. 결과에 `preset_key` 와 `custom_label` 중 정확히 하나가 남아야 함.",
+        "properties": {
+          "achieved_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "asset_ids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "전체 교체, 목록 순서가 붙일 순서."
+          },
+          "custom_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "preset_key": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "UpdateStoryRequest": {
         "type": "object",

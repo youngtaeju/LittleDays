@@ -381,3 +381,263 @@ async fn concurrent_finalize_same_bytes(pool: PgPool) {
         assert!(!temp_exists(&app, id));
     }
 }
+
+async fn create_baby(app: &MediaApp) -> Uuid {
+    let res = app
+        .server
+        .post("/api/babies")
+        .add_header(XRW, XRW_VALUE)
+        .json(&json!({ "name": "하늘", "birth_date": "2024-01-01" }))
+        .await;
+    res.assert_status(StatusCode::CREATED);
+    asset_id(&res.json())
+}
+
+async fn create_story(server: &TestServer, asset_ids: &[Uuid]) -> Uuid {
+    let res = server
+        .post("/api/stories")
+        .add_header(XRW, XRW_VALUE)
+        .json(&json!({
+            "entry_date": "2024-06-01",
+            "body": "이야기",
+            "baby_ids": [],
+            "asset_ids": asset_ids,
+        }))
+        .await;
+    res.assert_status(StatusCode::CREATED);
+    asset_id(&res.json())
+}
+
+async fn create_milestone(app: &MediaApp, baby: Uuid) -> Uuid {
+    let res = app
+        .server
+        .post(&format!("/api/babies/{baby}/milestones"))
+        .add_header(XRW, XRW_VALUE)
+        .json(&json!({ "custom_label": "첫 눈", "achieved_on": "2024-06-01", "asset_ids": [] }))
+        .await;
+    res.assert_status(StatusCode::CREATED);
+    asset_id(&res.json())
+}
+
+/// 위치 순 (asset_id, position). 휴지통 포함.
+async fn story_links(pool: &PgPool, story: Uuid) -> Vec<(Uuid, i32)> {
+    sqlx::query!(
+        "SELECT asset_id, position FROM story_assets WHERE story_id = $1 ORDER BY position",
+        story
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
+    .into_iter()
+    .map(|r| (r.asset_id, r.position))
+    .collect()
+}
+
+async fn milestone_links(pool: &PgPool, milestone: Uuid) -> Vec<(Uuid, i32)> {
+    sqlx::query!(
+        "SELECT asset_id, position FROM milestone_assets WHERE milestone_id = $1
+         ORDER BY position",
+        milestone
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
+    .into_iter()
+    .map(|r| (r.asset_id, r.position))
+    .collect()
+}
+
+async fn trash(pool: &PgPool, asset: Uuid) {
+    sqlx::query!("UPDATE assets SET deleted_at = now() WHERE id = $1", asset)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn attach_story(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let p1 = finalize_ok(&app, upload_bytes(&app, &fake_jpeg(), "1.jpg").await).await;
+    let p2 = finalize_ok(&app, upload_bytes(&app, &fake_jpeg(), "2.jpg").await).await;
+    let story = create_story(&app.server, &[p1, p2]).await;
+    // 휴지통 사진 위치도 맨 뒤 계산에 포함
+    trash(&pool, p2).await;
+
+    let upload = upload_bytes(&app, &fake_jpeg(), "3.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "story", "id": story } }),
+    )
+    .await;
+    res.assert_status(StatusCode::CREATED);
+    let p3 = asset_id(&res.json());
+    assert_eq!(story_links(&pool, story).await, [(p1, 0), (p2, 1), (p3, 2)]);
+
+    let detail: Value = app
+        .server
+        .get(&format!("/api/stories/{story}"))
+        .await
+        .json();
+    let shown: Vec<Uuid> = detail["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(asset_id)
+        .collect();
+    assert_eq!(shown, [p1, p3]);
+
+    let upload = upload_bytes(&app, &fake_jpeg(), "4.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "photo", "id": story } }),
+    )
+    .await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "request.invalidBody");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn attach_milestone(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let baby = create_baby(&app).await;
+    let milestone = create_milestone(&app, baby).await;
+
+    let mut ids = Vec::new();
+    for name in ["1.jpg", "2.jpg"] {
+        let upload = upload_bytes(&app, &fake_jpeg(), name).await;
+        let res = finalize(
+            &app,
+            upload,
+            json!({ "attach": { "kind": "milestone", "id": milestone } }),
+        )
+        .await;
+        res.assert_status(StatusCode::CREATED);
+        ids.push(asset_id(&res.json()));
+    }
+    assert_eq!(
+        milestone_links(&pool, milestone).await,
+        [(ids[0], 0), (ids[1], 1)]
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn attach_target_gone_skips(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let story = create_story(&app.server, &[]).await;
+    app.server
+        .delete(&format!("/api/stories/{story}"))
+        .add_header(XRW, XRW_VALUE)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+
+    for kind in ["story", "milestone"] {
+        let upload = upload_bytes(&app, &fake_jpeg(), "a.jpg").await;
+        let res = finalize(
+            &app,
+            upload,
+            json!({ "attach": { "kind": kind, "id": story } }),
+        )
+        .await;
+        res.assert_status(StatusCode::CREATED);
+        assert!(!upload_exists(&pool, upload).await);
+    }
+    assert_eq!(asset_count(&pool).await, 2);
+    let links = sqlx::query_scalar!(
+        r#"SELECT (SELECT count(*) FROM story_assets) + (SELECT count(*) FROM milestone_assets)
+             AS "n!""#
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(links, 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn attach_without_permission_skips(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let (dad, _) = app.login_as("dad", Role::Guardian).await;
+    let story = create_story(&dad, &[]).await;
+
+    let upload = upload_bytes(&app, &fake_jpeg(), "a.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "story", "id": story } }),
+    )
+    .await;
+    res.assert_status(StatusCode::CREATED);
+    assert_eq!(story_links(&pool, story).await, []);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn duplicate_attaches_existing(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let bytes = fake_jpeg();
+    let existing = finalize_ok(&app, upload_bytes(&app, &bytes, "a.jpg").await).await;
+    let other = finalize_ok(&app, upload_bytes(&app, &fake_jpeg(), "o.jpg").await).await;
+    let story = create_story(&app.server, &[other]).await;
+
+    let upload = upload_bytes(&app, &bytes, "b.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "story", "id": story } }),
+    )
+    .await;
+    assert_duplicate(&res, existing, false);
+    assert!(!upload_exists(&pool, upload).await);
+    assert_eq!(story_links(&pool, story).await, [(other, 0), (existing, 1)]);
+
+    // 이미 연결된 사진은 그대로
+    let upload = upload_bytes(&app, &bytes, "c.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "story", "id": story } }),
+    )
+    .await;
+    assert_duplicate(&res, existing, false);
+    assert_eq!(story_links(&pool, story).await, [(other, 0), (existing, 1)]);
+
+    // 휴지통 사진은 연결 안 함
+    let baby = create_baby(&app).await;
+    let milestone = create_milestone(&app, baby).await;
+    trash(&pool, existing).await;
+    let upload = upload_bytes(&app, &bytes, "d.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "milestone", "id": milestone } }),
+    )
+    .await;
+    assert_duplicate(&res, existing, true);
+    assert_eq!(milestone_links(&pool, milestone).await, []);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn concurrent_duplicate_attaches_once(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let story = create_story(&app.server, &[]).await;
+    let bytes = fake_jpeg();
+    let a = upload_bytes(&app, &bytes, "a.jpg").await;
+    let b = upload_bytes(&app, &bytes, "b.jpg").await;
+
+    let body = json!({ "attach": { "kind": "story", "id": story } });
+    let (ra, rb) = tokio::join!(
+        finalize(&app, a, body.clone()),
+        finalize(&app, b, body.clone())
+    );
+    let created = if ra.status_code() == StatusCode::CREATED {
+        assert_duplicate(&rb, asset_id(&ra.json()), false);
+        ra
+    } else {
+        assert_duplicate(&ra, asset_id(&rb.json()), false);
+        rb
+    };
+    assert_eq!(asset_count(&pool).await, 1);
+    assert_eq!(
+        story_links(&pool, story).await,
+        [(asset_id(&created.json()), 0)]
+    );
+}

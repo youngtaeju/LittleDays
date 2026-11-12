@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT m.id, m.baby_id, m.preset_key, m.custom_label, m.achieved_on, m.note,\n                  m.created_by, m.created_at, m.updated_at,\n                  (SELECT count(*) FROM milestone_assets ma JOIN assets a ON a.id = ma.asset_id\n                   WHERE ma.milestone_id = m.id AND a.deleted_at IS NULL) AS \"asset_count!\"\n           FROM milestones m\n           WHERE m.id = ANY($1)\n           ORDER BY m.created_at, m.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "baby_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "preset_key",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "custom_label",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "achieved_on",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "note",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "asset_count!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "3be248129f557d65dbf5b122182faa756d99ef54428e70e7407bb5f3a3612087"
+}

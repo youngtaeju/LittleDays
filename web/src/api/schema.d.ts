@@ -404,6 +404,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/babies/{id}/growth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_growth"];
+        put?: never;
+        post: operations["create_growth"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/babies/{id}/milestones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_milestones"];
+        put?: never;
+        post: operations["create_milestone"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/babies/{id}/stats": {
         parameters: {
             query?: never;
@@ -484,6 +516,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/growth/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["delete_growth"];
+        options?: never;
+        head?: never;
+        patch: operations["update_growth"];
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -562,6 +610,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/milestones/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_milestone"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_milestone"];
+        options?: never;
+        head?: never;
+        patch: operations["update_milestone"];
         trace?: never;
     };
     "/api/settings": {
@@ -936,6 +1000,12 @@ export interface components {
             /** Format: int32 */
             width: number | null;
         };
+        /** @description 새 사진을 붙일 이야기 또는 마일스톤. */
+        AttachTarget: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["LinkKind"];
+        };
         /**
          * @description 대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.
          *     `x`·`y` 는 가로·세로 길이 대비, `size` 는 짧은 변 대비.
@@ -1014,6 +1084,25 @@ export interface components {
             name: string;
             sex?: null | components["schemas"]["Sex"];
         };
+        CreateGrowthRequest: {
+            /**
+             * Format: double
+             * @description 20.0~150.0 cm, 소수 1자리. 키와 몸무게 중 하나 이상 필수.
+             */
+            height_cm?: number | null;
+            /**
+             * Format: date
+             * @description 아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함).
+             */
+            measured_on: string;
+            /** @description 앞뒤 공백 제거 후 100자 이하. 빈 값은 없음. */
+            note?: string | null;
+            /**
+             * Format: double
+             * @description 0.50~50.00 kg, 소수 2자리.
+             */
+            weight_kg?: number | null;
+        };
         CreateInviteRequest: {
             /**
              * Format: int32
@@ -1027,6 +1116,21 @@ export interface components {
             invite: components["schemas"]["Invite"];
             /** @description `{PUBLIC_URL}/invite/{원문 토큰}`. 원문 토큰은 이 응답에서만 노출. */
             url: string;
+        };
+        CreateMilestoneRequest: {
+            /**
+             * Format: date
+             * @description 아기 생일 이후(포함), 인스턴스 시간대 오늘 이전(포함).
+             */
+            achieved_on: string;
+            /** @description 붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만, 200장 이하. */
+            asset_ids: string[];
+            /** @description 직접 입력, 앞뒤 공백 제거 후 1~30자. */
+            custom_label?: string | null;
+            /** @description 앞뒤 공백 제거 후 100자 이하. 빈 값은 없음. */
+            note?: string | null;
+            /** @description 미리 정한 항목 키. `custom_label` 과 정확히 하나. 아기당 한 번. */
+            preset_key?: string | null;
         };
         CreateStoryRequest: {
             /** @description 붙일 순서. 휴지통 아닌 사진만, 중복은 한 번만. */
@@ -1043,7 +1147,7 @@ export interface components {
         };
         /** @description 그날 화면 머리글과 이전·다음 날. */
         DayDetail: {
-            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            /** @description 그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서. */
             baby_ids: string[];
             /**
              * Format: int64
@@ -1052,7 +1156,7 @@ export interface components {
             comment_count: number;
             /**
              * Format: date
-             * @description 인스턴스 시간대 기준 촬영 날짜.
+             * @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나.
              */
             date: string;
             /**
@@ -1060,18 +1164,22 @@ export interface components {
              * @description 그날 자산 하트 합계.
              */
             like_count: number;
+            /** @description 그날 마일스톤. 기록 순. */
+            milestones: components["schemas"]["MilestoneSummary"][];
             /**
              * Format: date
-             * @description 더 최근의 사진 있는 날.
+             * @description 더 최근의 사진, 이야기, 마일스톤 있는 날.
              */
             next_date: string | null;
             /** Format: int64 */
             photo_count: number;
             /**
              * Format: date
-             * @description 더 과거의 사진 있는 날.
+             * @description 더 과거의 사진, 이야기, 마일스톤 있는 날.
              */
             prev_date: string | null;
+            /** @description 그날 이야기. 쓴 시각 오래된 순. */
+            stories: components["schemas"]["StorySummary"][];
             /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
             uploader_ids: string[];
             /** Format: int64 */
@@ -1079,7 +1187,7 @@ export interface components {
         };
         /** @description 홈 피드의 하루 묶음. */
         DaySummary: {
-            /** @description 그날 태그된 아기. 아기 표시 순서. */
+            /** @description 그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서. */
             baby_ids: string[];
             /**
              * Format: int64
@@ -1088,7 +1196,7 @@ export interface components {
             comment_count: number;
             /**
              * Format: date
-             * @description 인스턴스 시간대 기준 촬영 날짜.
+             * @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나.
              */
             date: string;
             /**
@@ -1096,10 +1204,14 @@ export interface components {
              * @description 그날 자산 하트 합계.
              */
             like_count: number;
+            /** @description 그날 마일스톤. 기록 순. */
+            milestones: components["schemas"]["MilestoneSummary"][];
             /** Format: int64 */
             photo_count: number;
-            /** @description 그날 최신 3장. 촬영 시각 최신순. */
+            /** @description 그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열. */
             preview: components["schemas"]["AssetSummary"][];
+            /** @description 그날 이야기. 쓴 시각 오래된 순. */
+            stories: components["schemas"]["StorySummary"][];
             /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
             uploader_ids: string[];
             /** Format: int64 */
@@ -1124,6 +1236,7 @@ export interface components {
             params: Record<string, never>;
         };
         FinalizeRequest: {
+            attach?: null | components["schemas"]["AttachTarget"];
             /** @description 태그할 아기. 모르는 ID 가 하나라도 있으면 거부. */
             baby_ids?: string[];
             /**
@@ -1131,6 +1244,31 @@ export interface components {
              * @description 클라이언트 파일 수정 시각. 촬영 메타데이터 없을 때 촬영일 후보.
              */
             file_modified_at?: string | null;
+        };
+        GrowthRecord: {
+            /** Format: uuid */
+            baby_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            created_by: string;
+            /**
+             * Format: double
+             * @description cm, 소수 1자리. 없으면 `null`.
+             */
+            height_cm: number | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date */
+            measured_on: string;
+            note: string | null;
+            /** Format: date-time */
+            updated_at: string;
+            /**
+             * Format: double
+             * @description kg, 소수 2자리. 없으면 `null`.
+             */
+            weight_kg: number | null;
         };
         HealthResponse: {
             db: boolean;
@@ -1176,6 +1314,11 @@ export interface components {
             /** Format: uuid */
             user_id: string;
         };
+        /**
+         * @description 연결 대상 종류.
+         * @enum {string}
+         */
+        LinkKind: "story" | "milestone";
         LoginRequest: {
             password: string;
             username: string;
@@ -1184,6 +1327,38 @@ export interface components {
             /** Format: date-time */
             expires_at: string;
             token: string;
+        };
+        /** @description 마일스톤 상세. */
+        Milestone: components["schemas"]["MilestoneSummary"] & {
+            /** @description 붙인 순서 전부. 휴지통 제외. */
+            assets: components["schemas"]["AssetSummary"][];
+        };
+        /** @description 아기 화면, 하루 목록용 마일스톤. */
+        MilestoneSummary: {
+            /** Format: date */
+            achieved_on: string;
+            /**
+             * Format: int64
+             * @description 휴지통 제외.
+             */
+            asset_count: number;
+            /** Format: uuid */
+            baby_id: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            created_by: string;
+            /** @description 미리 정한 항목이면 `null`. */
+            custom_label: string | null;
+            /** Format: uuid */
+            id: string;
+            note: string | null;
+            /** @description 직접 입력이면 `null`. */
+            preset_key: string | null;
+            /** @description 붙인 순서 앞 4장. 휴지통 제외. */
+            previews: components["schemas"]["AssetSummary"][];
+            /** Format: date-time */
+            updated_at: string;
         };
         /** @description 월별 자산 수. */
         MonthCount: {
@@ -1248,7 +1423,7 @@ export interface components {
         /** @description 커서 페이지. */
         Page_DaySummary: {
             items: {
-                /** @description 그날 태그된 아기. 아기 표시 순서. */
+                /** @description 그날 사진 태그, 이야기 태그, 마일스톤 아기의 합집합. 아기 표시 순서. */
                 baby_ids: string[];
                 /**
                  * Format: int64
@@ -1257,7 +1432,7 @@ export interface components {
                 comment_count: number;
                 /**
                  * Format: date
-                 * @description 인스턴스 시간대 기준 촬영 날짜.
+                 * @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 중 하나.
                  */
                 date: string;
                 /**
@@ -1265,10 +1440,14 @@ export interface components {
                  * @description 그날 자산 하트 합계.
                  */
                 like_count: number;
+                /** @description 그날 마일스톤. 기록 순. */
+                milestones: components["schemas"]["MilestoneSummary"][];
                 /** Format: int64 */
                 photo_count: number;
-                /** @description 그날 최신 3장. 촬영 시각 최신순. */
+                /** @description 그날 최신 3장. 촬영 시각 최신순. 사진 없는 날은 빈 배열. */
                 preview: components["schemas"]["AssetSummary"][];
+                /** @description 그날 이야기. 쓴 시각 오래된 순. */
+                stories: components["schemas"]["StorySummary"][];
                 /** @description 그날 올린 사용자. 중복 없음, 순서 무의미. */
                 uploader_ids: string[];
                 /** Format: int64 */
@@ -1475,6 +1654,26 @@ export interface components {
              * @description 휴지통 이동 시각.
              */
             deleted_at: string;
+        };
+        /** @description 보낸 필드만 교체. `null` 은 비움, 결과에 키나 몸무게 하나는 남아야 함. */
+        UpdateGrowthRequest: {
+            /** Format: double */
+            height_cm?: number | null;
+            /** Format: date */
+            measured_on?: string | null;
+            note?: string | null;
+            /** Format: double */
+            weight_kg?: number | null;
+        };
+        /** @description 보낸 필드만 교체. 결과에 `preset_key` 와 `custom_label` 중 정확히 하나가 남아야 함. */
+        UpdateMilestoneRequest: {
+            /** Format: date */
+            achieved_on?: string | null;
+            /** @description 전체 교체, 목록 순서가 붙일 순서. */
+            asset_ids?: string[] | null;
+            custom_label?: string | null;
+            note?: string | null;
+            preset_key?: string | null;
         };
         /** @description 보낸 필드만 교체. */
         UpdateStoryRequest: {
@@ -3193,6 +3392,241 @@ export interface operations {
             };
         };
     };
+    list_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 측정일 오래된 순, 같은 날은 만든 순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrowthRecord"][];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGrowthRequest"];
+            };
+        };
+        responses: {
+            /** @description 기록됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrowthRecord"];
+                };
+            };
+            /** @description 값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_milestones: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 달성일 오래된 순, 같은 날은 만든 순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MilestoneSummary"][];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 아기 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMilestoneRequest"];
+            };
+        };
+        responses: {
+            /** @description 기록됨 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Milestone"];
+                };
+            };
+            /** @description 항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 아기 없음 (`babies.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     baby_stats: {
         parameters: {
             query?: never;
@@ -3370,7 +3804,7 @@ export interface operations {
                 cursor?: string;
                 /** @description 1~100, 기본 20. */
                 limit?: number;
-                /** @description 해당 아기가 태그된 자산만. */
+                /** @description 해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만. */
                 baby_id?: string;
                 /** @description 이 날짜부터 (포함). */
                 from?: string;
@@ -3383,7 +3817,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 휴지통 제외, 인스턴스 시간대 기준 촬영 날짜 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD` */
+            /** @description 사진 촬영일(휴지통 제외, 인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 합집합의 최신순. `next_cursor` 는 마지막 날짜 `YYYY-MM-DD` */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3415,19 +3849,19 @@ export interface operations {
     get_day: {
         parameters: {
             query?: {
-                /** @description 해당 아기가 태그된 자산만. */
+                /** @description 해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만. */
                 baby_id?: string;
             };
             header?: never;
             path: {
-                /** @description 인스턴스 시간대 기준 촬영 날짜 */
+                /** @description 사진 촬영일(인스턴스 시간대), 이야기 날짜, 마일스톤 달성일 */
                 date: string;
             };
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description 그날 개수와 이전·다음 날 */
+            /** @description 그날 개수, 이야기, 마일스톤과 이전, 다음 날 */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -3454,7 +3888,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorBody"];
                 };
             };
-            /** @description 그날 휴지통 밖 자산 없음 (`day.notFound`) */
+            /** @description 그날 휴지통 밖 사진, 이야기, 마일스톤 모두 없음 (`day.notFound`) */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -3499,6 +3933,126 @@ export interface operations {
             };
             /** @description 인증 필요 */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 성장 기록 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 기록 없음 (`growth.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_growth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 성장 기록 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGrowthRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrowthRecord"];
+                };
+            };
+            /** @description 값, 날짜, 메모 오류 (`growth.valueInvalid`, `growth.dateInvalid`, `growth.noteInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 기록 없음 (`growth.notFound`) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3787,6 +4341,185 @@ export interface operations {
             };
             /** @description 만료, 사용됨, 회수됨 */
             410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 마일스톤 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 마일스톤 상세 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Milestone"];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 마일스톤 없음 (`milestone.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 마일스톤 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 마일스톤 없음 (`milestone.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_milestone: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 마일스톤 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMilestoneRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Milestone"];
+                };
+            };
+            /** @description 항목, 날짜, 메모 오류 (`milestone.presetInvalid`, `milestone.labelInvalid`, `milestone.dateInvalid`, `milestone.noteInvalid`, 사진 200장 초과 `request.invalidBody`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`auth.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 마일스톤 없음 (`milestone.notFound`) 또는 사진 없음, 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 같은 아기에 같은 미리 정한 항목 (`milestone.duplicate`) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

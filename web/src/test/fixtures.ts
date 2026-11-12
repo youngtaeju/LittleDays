@@ -128,6 +128,8 @@ export function dayFixture(
     like_count: 0,
     comment_count: 0,
     preview: [assetSummaryFixture(`${date}-a`, { local_date: date })],
+    stories: [],
+    milestones: [],
     ...over,
   }
 }

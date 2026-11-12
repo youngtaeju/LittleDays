@@ -1,15 +1,18 @@
 use chrono::NaiveDate;
-use sqlx::PgExecutor;
+use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
 use super::{DayDetail, DaySummary};
 use crate::{
     assets::{AssetKind, AssetStatus, AssetSummary},
     error::AppResult,
+    milestones::{self, MilestoneSummary},
+    stories::{self, StorySummary},
 };
 
-/// 날짜 내림차순 하루 묶음. `preview` 는 비어 있음(호출 측이 `previews` 로 채움).
-/// `cursor` 미만, `from`~`to` 포함 범위. `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
+/// 날짜 내림차순 하루 묶음. `preview`, `stories`, `milestones` 는 비어 있음(호출 측이 채움).
+/// 날짜는 사진 촬영일, 이야기 날짜, 마일스톤 달성일 합집합. `cursor` 미만, `from`~`to` 포함 범위.
+/// `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
 pub async fn list(
     exec: impl PgExecutor<'_>,
     timezone: &str,
@@ -20,35 +23,61 @@ pub async fn list(
     limit: i64,
 ) -> AppResult<Vec<DaySummary>> {
     let rows = sqlx::query!(
-        r#"WITH days AS (
-               SELECT (a.taken_at AT TIME ZONE $1)::date AS date,
-                      count(*) FILTER (WHERE a.kind = 'photo') AS photo_count,
-                      count(*) FILTER (WHERE a.kind = 'video') AS video_count,
-                      array_agg(DISTINCT a.uploaded_by) AS uploader_ids,
-                      array_agg(a.id) AS asset_ids
+        r#"WITH f AS (
+               SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date
                FROM assets a
                WHERE a.deleted_at IS NULL
                  AND ($2::uuid IS NULL OR EXISTS (
                        SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $2))
-                 AND ($3::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date < $3)
-                 AND ($4::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date >= $4)
-                 AND ($5::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date <= $5)
-               GROUP BY 1
-               ORDER BY 1 DESC
+           ),
+           page AS (
+               SELECT u.date
+               FROM (
+                   SELECT f.date FROM f
+                   UNION
+                   SELECT s.entry_date FROM stories s
+                   WHERE $2::uuid IS NULL OR EXISTS (
+                         SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)
+                   UNION
+                   SELECT m.achieved_on FROM milestones m WHERE $2::uuid IS NULL OR m.baby_id = $2
+               ) u
+               WHERE ($3::date IS NULL OR u.date < $3)
+                 AND ($4::date IS NULL OR u.date >= $4)
+                 AND ($5::date IS NULL OR u.date <= $5)
+               ORDER BY u.date DESC
                LIMIT $6
+           ),
+           days AS (
+               SELECT f.date,
+                      count(*) FILTER (WHERE f.kind = 'photo') AS photo_count,
+                      count(*) FILTER (WHERE f.kind = 'video') AS video_count,
+                      array_agg(DISTINCT f.uploaded_by) AS uploader_ids,
+                      array_agg(f.id) AS asset_ids
+               FROM f JOIN page p ON p.date = f.date
+               GROUP BY f.date
            )
-           SELECT d.date AS "date!", d.photo_count AS "photo_count!",
-                  d.video_count AS "video_count!", d.uploader_ids AS "uploader_ids!",
+           SELECT p.date AS "date!", COALESCE(d.photo_count, 0) AS "photo_count!",
+                  COALESCE(d.video_count, 0) AS "video_count!",
+                  COALESCE(d.uploader_ids, '{}') AS "uploader_ids!",
                   ARRAY(SELECT b.id FROM babies b
                         WHERE EXISTS (SELECT 1 FROM asset_babies ab
                                       WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
+                           OR EXISTS (SELECT 1 FROM stories s
+                                      JOIN story_babies sb ON sb.story_id = s.id
+                                      WHERE sb.baby_id = b.id AND s.entry_date = p.date
+                                        AND ($2::uuid IS NULL OR EXISTS (
+                                              SELECT 1 FROM story_babies fb
+                                              WHERE fb.story_id = s.id AND fb.baby_id = $2)))
+                           OR EXISTS (SELECT 1 FROM milestones m
+                                      WHERE m.baby_id = b.id AND m.achieved_on = p.date
+                                        AND ($2::uuid IS NULL OR m.baby_id = $2))
                         ORDER BY b.sort_order, b.created_at, b.id) AS "baby_ids!",
                   (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
                     AS "like_count!",
                   (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
                     AS "comment_count!"
-           FROM days d
-           ORDER BY d.date DESC"#,
+           FROM page p LEFT JOIN days d ON d.date = p.date
+           ORDER BY p.date DESC"#,
         timezone,
         baby_id,
         cursor,
@@ -69,6 +98,8 @@ pub async fn list(
             like_count: r.like_count,
             comment_count: r.comment_count,
             preview: Vec::new(),
+            stories: Vec::new(),
+            milestones: Vec::new(),
         })
         .collect())
 }
@@ -113,7 +144,8 @@ pub async fn previews(
     Ok(rows)
 }
 
-/// 그날 개수와 이전·다음 날. 그날 자산이 없으면 `None`.
+/// 그날 개수와 이전, 다음 날. `stories`, `milestones` 는 비어 있음(호출 측이 채움).
+/// 그날 사진, 이야기, 마일스톤이 모두 없으면 `None`.
 pub async fn detail(
     exec: impl PgExecutor<'_>,
     timezone: &str,
@@ -121,40 +153,63 @@ pub async fn detail(
     baby_id: Option<Uuid>,
 ) -> AppResult<Option<DayDetail>> {
     let r = sqlx::query!(
-        r#"SELECT d.photo_count AS "photo_count!", d.video_count AS "video_count!",
+        r#"WITH f AS (
+               SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date
+               FROM assets a
+               WHERE a.deleted_at IS NULL
+                 AND ($3::uuid IS NULL OR EXISTS (
+                       SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $3))
+           ),
+           n AS (
+               SELECT COALESCE(bool_or(u.date = $2), false) AS found,
+                      max(u.date) FILTER (WHERE u.date < $2) AS prev_date,
+                      min(u.date) FILTER (WHERE u.date > $2) AS next_date
+               FROM (
+                   SELECT f.date FROM f
+                   UNION ALL
+                   SELECT s.entry_date FROM stories s
+                   WHERE $3::uuid IS NULL OR EXISTS (
+                         SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $3)
+                   UNION ALL
+                   SELECT m.achieved_on FROM milestones m WHERE $3::uuid IS NULL OR m.baby_id = $3
+               ) u
+           ),
+           d AS (
+               SELECT count(*) FILTER (WHERE f.kind = 'photo') AS photo_count,
+                      count(*) FILTER (WHERE f.kind = 'video') AS video_count,
+                      array_agg(DISTINCT f.uploaded_by) AS uploader_ids,
+                      array_agg(f.id) AS asset_ids
+               FROM f WHERE f.date = $2
+           )
+           SELECT n.found AS "found!", d.photo_count AS "photo_count!",
+                  d.video_count AS "video_count!",
                   COALESCE(d.uploader_ids, '{}') AS "uploader_ids!",
                   ARRAY(SELECT b.id FROM babies b
                         WHERE EXISTS (SELECT 1 FROM asset_babies ab
                                       WHERE ab.baby_id = b.id AND ab.asset_id = ANY(d.asset_ids))
+                           OR EXISTS (SELECT 1 FROM stories s
+                                      JOIN story_babies sb ON sb.story_id = s.id
+                                      WHERE sb.baby_id = b.id AND s.entry_date = $2
+                                        AND ($3::uuid IS NULL OR EXISTS (
+                                              SELECT 1 FROM story_babies fb
+                                              WHERE fb.story_id = s.id AND fb.baby_id = $3)))
+                           OR EXISTS (SELECT 1 FROM milestones m
+                                      WHERE m.baby_id = b.id AND m.achieved_on = $2
+                                        AND ($3::uuid IS NULL OR m.baby_id = $3))
                         ORDER BY b.sort_order, b.created_at, b.id) AS "baby_ids!",
                   (SELECT count(*) FROM asset_likes l WHERE l.asset_id = ANY(d.asset_ids))
                     AS "like_count!",
                   (SELECT count(*) FROM asset_comments c WHERE c.asset_id = ANY(d.asset_ids))
                     AS "comment_count!",
-                  d.prev_date AS "prev_date?", d.next_date AS "next_date?"
-           FROM (
-               SELECT count(*) FILTER (WHERE f.date = $2 AND f.kind = 'photo') AS photo_count,
-                      count(*) FILTER (WHERE f.date = $2 AND f.kind = 'video') AS video_count,
-                      array_agg(DISTINCT f.uploaded_by) FILTER (WHERE f.date = $2) AS uploader_ids,
-                      array_agg(f.id) FILTER (WHERE f.date = $2) AS asset_ids,
-                      max(f.date) FILTER (WHERE f.date < $2) AS prev_date,
-                      min(f.date) FILTER (WHERE f.date > $2) AS next_date
-               FROM (
-                   SELECT a.id, a.kind, a.uploaded_by, (a.taken_at AT TIME ZONE $1)::date AS date
-                   FROM assets a
-                   WHERE a.deleted_at IS NULL
-                     AND ($3::uuid IS NULL OR EXISTS (
-                           SELECT 1 FROM asset_babies ab
-                           WHERE ab.asset_id = a.id AND ab.baby_id = $3))
-               ) f
-           ) d"#,
+                  n.prev_date AS "prev_date?", n.next_date AS "next_date?"
+           FROM d, n"#,
         timezone,
         date,
         baby_id,
     )
     .fetch_one(exec)
     .await?;
-    if r.photo_count + r.video_count == 0 {
+    if !r.found {
         return Ok(None);
     }
     Ok(Some(DayDetail {
@@ -167,5 +222,39 @@ pub async fn detail(
         comment_count: r.comment_count,
         prev_date: r.prev_date,
         next_date: r.next_date,
+        stories: Vec::new(),
+        milestones: Vec::new(),
     }))
+}
+
+/// 날짜들의 이야기, 마일스톤. 날짜 구분 없이 각각 쓴 시각 오래된 순, 기록 순.
+/// 아기 필터는 그 아기 태그 이야기, 그 아기 마일스톤.
+pub async fn records(
+    conn: &mut PgConnection,
+    timezone: &str,
+    dates: &[NaiveDate],
+    baby_id: Option<Uuid>,
+) -> AppResult<(Vec<StorySummary>, Vec<MilestoneSummary>)> {
+    let story_ids = sqlx::query_scalar!(
+        "SELECT s.id FROM stories s
+         WHERE s.entry_date = ANY($1)
+           AND ($2::uuid IS NULL OR EXISTS (
+                 SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2))",
+        dates,
+        baby_id
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    let milestone_ids = sqlx::query_scalar!(
+        "SELECT id FROM milestones
+         WHERE achieved_on = ANY($1) AND ($2::uuid IS NULL OR baby_id = $2)",
+        dates,
+        baby_id
+    )
+    .fetch_all(&mut *conn)
+    .await?;
+    let stories = stories::queries::summaries_for(&mut *conn, timezone, &story_ids).await?;
+    let milestones =
+        milestones::queries::summaries_for(&mut *conn, timezone, &milestone_ids).await?;
+    Ok((stories, milestones))
 }

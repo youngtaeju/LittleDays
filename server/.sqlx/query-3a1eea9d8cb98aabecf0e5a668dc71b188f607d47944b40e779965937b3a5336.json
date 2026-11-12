@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE milestones SET preset_key = $2, custom_label = $3, achieved_on = $4, note = $5,\n                               updated_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Date",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3a1eea9d8cb98aabecf0e5a668dc71b188f607d47944b40e779965937b3a5336"
+}

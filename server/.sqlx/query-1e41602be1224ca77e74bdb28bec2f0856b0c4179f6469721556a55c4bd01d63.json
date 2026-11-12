@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM story_assets sa USING assets a\n                 WHERE sa.story_id = $1 AND a.id = sa.asset_id AND a.deleted_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1e41602be1224ca77e74bdb28bec2f0856b0c4179f6469721556a55c4bd01d63"
+}

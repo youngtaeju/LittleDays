@@ -7,6 +7,7 @@ use axum::{Json as AxumJson, extract::State, http::StatusCode};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use sqlx::PgConnection;
 use tokio::{io::AsyncReadExt, sync::OwnedMutexGuard};
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -22,13 +23,16 @@ use crate::{
     babies,
     error::{AppError, AppResult, ErrorBody},
     jobs::{self, Job},
+    links::{self, LinkKind},
     media::{
         hash::sha256_file,
         sniff::{MediaType, sniff},
         storage,
     },
+    milestones,
     request::{Json, Path},
     state::AppState,
+    stories,
     users::Role,
 };
 
@@ -46,6 +50,17 @@ pub struct FinalizeRequest {
     baby_ids: Vec<Uuid>,
     /// 클라이언트 파일 수정 시각. 촬영 메타데이터 없을 때 촬영일 후보.
     file_modified_at: Option<DateTime<Utc>>,
+    /// 맨 뒤에 붙일 이야기 또는 마일스톤. 대상이 없거나 고칠 권한이 없으면 연결만 건너뜀.
+    /// 중복 업로드(409)면 기존 사진이 휴지통 아닐 때 연결.
+    #[serde(default)]
+    attach: Option<AttachTarget>,
+}
+
+/// 새 사진을 붙일 이야기 또는 마일스톤.
+#[derive(Deserialize, ToSchema)]
+pub struct AttachTarget {
+    kind: LinkKind,
+    id: Uuid,
 }
 
 #[utoipa::path(
@@ -106,13 +121,7 @@ async fn finalize_upload(
     // 이후 트랜잭션~커밋·원위치 복구·락 해제는 분리 태스크에서 끝까지 실행.
     // 핸들러 취소(연결 끊김) 시 rename 후 롤백만 되고 복구가 안 돌면 원본 고아 + 업로드 영구 404.
     let asset = tokio::spawn(store_asset(
-        state,
-        guard,
-        upload,
-        req,
-        current.user.id,
-        media,
-        sha256,
+        state, guard, upload, req, current, media, sha256,
     ))
     .await
     .context("finalize task")??;
@@ -125,11 +134,12 @@ async fn store_asset(
     _guard: OwnedMutexGuard<()>,
     upload: Upload,
     req: FinalizeRequest,
-    user_id: Uuid,
+    current: CurrentUser,
     media: MediaType,
     sha256: [u8; 32],
 ) -> AppResult<Asset> {
     let id = upload.id;
+    let user_id = current.user.id;
     let temp = storage::upload_temp_path(&state.config.data_dir, id);
     let asset_id = Uuid::now_v7();
     // 원본 경로 YYYY/MM 과 행 created_at 일치용. DB 기본값 대신 명시.
@@ -163,6 +173,7 @@ async fn store_asset(
     if let Some(existing) = assets::queries::find_by_sha256(&mut *tx, &sha256).await? {
         if existing.status != AssetStatus::Failed {
             drop(tx);
+            attach_existing(&state, &current, req.attach.as_ref(), existing.id).await?;
             discard_upload(&state, id).await?;
             return Err(duplicate(&existing));
         }
@@ -181,12 +192,16 @@ async fn store_asset(
             let existing = assets::queries::find_by_sha256(&state.pool, &sha256)
                 .await?
                 .context("duplicate asset vanished after unique violation")?;
+            attach_existing(&state, &current, req.attach.as_ref(), existing.id).await?;
             discard_upload(&state, id).await?;
             return Err(duplicate(&existing));
         }
         other => other?,
     }
     assets::queries::add_babies(&mut *tx, asset_id, &req.baby_ids, user_id).await?;
+    if let Some(target) = &req.attach {
+        attach(&mut tx, &current, target, asset_id).await?;
+    }
     jobs::enqueue(&mut *tx, &Job::ProcessAsset { asset_id }).await?;
     queries::delete(&mut *tx, id).await?;
     let asset = assets::queries::get(&mut *tx, asset_id, user_id)
@@ -245,6 +260,47 @@ async fn store_asset(
     }
     state.upload_locks.remove(id);
     Ok(asset)
+}
+
+/// 대상이 있고 요청자가 고칠 수 있으면 맨 뒤에 연결, 아니면 건너뜀.
+/// 이야기는 작성자이고 guardian 이상, 마일스톤은 guardian 이상. 대상 행 잠금으로 동시 삭제 시 FK 위반 방지.
+async fn attach(
+    conn: &mut PgConnection,
+    current: &CurrentUser,
+    target: &AttachTarget,
+    asset_id: Uuid,
+) -> AppResult<()> {
+    let allowed = match target.kind {
+        LinkKind::Story => stories::queries::author_for_link(&mut *conn, target.id)
+            .await?
+            .is_some_and(|author| stories::can_edit(current, author)),
+        LinkKind::Milestone => {
+            current.require(Role::Guardian).is_ok()
+                && milestones::queries::exists_for_link(&mut *conn, target.id).await?
+        }
+    };
+    if allowed {
+        links::append(&mut *conn, target.kind, target.id, asset_id).await?;
+    }
+    Ok(())
+}
+
+/// 중복 업로드의 기존 사진 연결. 휴지통이면 건너뜀. 연결 실패 시 업로드 유지(재시도 가능).
+async fn attach_existing(
+    state: &AppState,
+    current: &CurrentUser,
+    target: Option<&AttachTarget>,
+    asset_id: Uuid,
+) -> AppResult<()> {
+    let Some(target) = target else {
+        return Ok(());
+    };
+    let mut tx = state.pool.begin().await?;
+    if links::lock_visible_assets(&mut *tx, &[asset_id]).await? == 1 {
+        attach(&mut tx, current, target, asset_id).await?;
+    }
+    tx.commit().await?;
+    Ok(())
 }
 
 /// mtime 을 현재로. 파일 소유자면 읽기 전용 fd 로 충분.

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO milestone_assets (milestone_id, asset_id, position)\n             SELECT $1, $2, COALESCE(max(position), -1) + 1 FROM milestone_assets\n             WHERE milestone_id = $1\n             ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "079570310687fd44e7f821331903f637fdb0f4ca67eb339ea0a39d326008bab7"
+}
