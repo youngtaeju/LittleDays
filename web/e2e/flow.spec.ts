@@ -817,7 +817,9 @@ test('tabs_navigation', async ({ ownerPage: page }) => {
   )
   await nav.getByRole('link', { name: '앨범' }).click()
   await expect(page).toHaveURL(/\/albums$/)
-  await expect(page.getByRole('heading', { name: '앨범' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { level: 1, name: '앨범' }),
+  ).toBeVisible()
   await nav.getByRole('link', { name: '나' }).click()
   await expect(page).toHaveURL(/\/me$/)
   await nav.getByRole('link', { name: '홈' }).click()

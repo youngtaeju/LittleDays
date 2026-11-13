@@ -126,7 +126,9 @@ test('browse_screens_fit_width', async ({ ownerPage: page }) => {
   await expectNoHorizontalOverflow(page)
 
   await page.goto('/albums')
-  await expect(page.getByRole('heading', { name: '앨범' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { level: 1, name: '앨범' }),
+  ).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })
 

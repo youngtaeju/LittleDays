@@ -1,4 +1,5 @@
 import type {
+  AlbumSummary,
   Asset,
   AssetSummary,
   Baby,
@@ -98,6 +99,26 @@ export function assetFixture(id: string, over: Partial<Asset> = {}): Asset {
     liked: false,
     favorited: false,
     album_ids: [],
+    ...over,
+  }
+}
+
+// 빈 앨범. 만든 사람은 userFixture 공용 id.
+export function albumFixture(
+  id: string,
+  over: Partial<AlbumSummary> = {},
+): AlbumSummary {
+  return {
+    id,
+    name: '첫 제주 여행',
+    cover: null,
+    photo_count: 0,
+    video_count: 0,
+    from: null,
+    to: null,
+    created_by: '00000000-0000-4000-8000-000000000001',
+    created_at: '2026-08-01T00:00:00Z',
+    updated_at: '2026-08-01T00:00:00Z',
     ...over,
   }
 }

@@ -58,6 +58,7 @@ describe('AppShell', () => {
     const { router } = await renderShell('guardian', '/me', [], {
       'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
       'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
+      'GET /api/albums': () => json(200, []),
     })
     // 하위 화면 자체 머리글(header)도 banner. 셸 머리글이 문서 순서상 먼저.
     const shellTitle = () => {

@@ -43,7 +43,12 @@ function EmptyState({ filtered }: { filtered: boolean }) {
     <div className="grid justify-items-center gap-2 py-16 text-center">
       <p className="text-base font-semibold">{t('feed.empty')}</p>
       <p className="text-sm text-muted-foreground">{t('feed.emptyHint')}</p>
-      <Button className="mt-2" onClick={picker.open}>
+      <Button
+        className="mt-2"
+        onClick={() => {
+          picker.open()
+        }}
+      >
         {t('nav.add')}
       </Button>
     </div>

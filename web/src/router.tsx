@@ -93,6 +93,10 @@ const VideosPage = lazyRouteComponent(
   () => import('@/albums/VideosPage'),
   'VideosPage',
 )
+const AlbumPage = lazyRouteComponent(
+  () => import('@/albums/AlbumPage'),
+  'AlbumPage',
+)
 const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
   'TrashPage',
@@ -172,24 +176,28 @@ function calendarSearch(s: Record<string, unknown>): {
   }
 }
 
-// 뷰어 전용. from = 이전/다음 목록(없으면 타임라인), of = 이야기, 마일스톤 id.
-// 그 밖의 값, of 없는 story/milestone 은 버림. of 는 story/milestone 일 때만.
+// 뷰어 전용. from = 이전/다음 목록(없으면 타임라인), of = 이야기, 마일스톤, 앨범 id.
+// 그 밖의 값, of 없는 story/milestone/album 은 버림. of 는 story/milestone/album 일 때만.
 function viewerSearch(s: Record<string, unknown>): {
   baby?: string
-  from?: 'favorites' | 'videos' | 'story' | 'milestone'
+  from?: 'favorites' | 'videos' | 'story' | 'milestone' | 'album'
   of?: string
 } {
   const of = typeof s.of === 'string' && s.of !== '' ? s.of : undefined
   const from =
     s.from === 'favorites' || s.from === 'videos'
       ? s.from
-      : (s.from === 'story' || s.from === 'milestone') && of
+      : (s.from === 'story' || s.from === 'milestone' || s.from === 'album') &&
+          of
         ? s.from
         : undefined
   return {
     ...babySearch(s),
     from,
-    of: from === 'story' || from === 'milestone' ? of : undefined,
+    of:
+      from === 'story' || from === 'milestone' || from === 'album'
+        ? of
+        : undefined,
   }
 }
 
@@ -467,6 +475,13 @@ const videosRoute = createRoute({
   component: VideosPage,
 })
 
+// 고정 경로(/albums/favorites, /albums/videos)가 먼저 매칭(라우터 순위).
+const albumRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/albums/$id',
+  component: AlbumPage,
+})
+
 const trashRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/me/trash',
@@ -549,6 +564,7 @@ const routeTree = rootRoute.addChildren([
       albumsRoute,
       favoritesRoute,
       videosRoute,
+      albumRoute,
       trashRoute,
     ]),
     photoRoute,
