@@ -27,6 +27,7 @@ import { pickBaby } from '@/babies/lastBaby'
 import { parseAgeParam } from '@/babies/useBabyStats'
 import { babiesQuery } from '@/timeline/useBabies'
 import { storyQuery } from '@/stories/useStory'
+import { isMonth } from '@/calendar/month'
 import { isCalendarDate } from '@/lib/dates'
 import { uploadStore } from '@/upload/useUploadStore'
 
@@ -89,6 +90,10 @@ const TrashPage = lazyRouteComponent(
   'TrashPage',
 )
 const DayPage = lazyRouteComponent(() => import('@/feed/DayPage'), 'DayPage')
+const CalendarPage = lazyRouteComponent(
+  () => import('@/calendar/CalendarPage'),
+  'CalendarPage',
+)
 const StoryNewPage = lazyRouteComponent(
   () => import('@/stories/StoryEditor'),
   'StoryNewPage',
@@ -138,6 +143,25 @@ function safeRedirect(v: unknown): string | undefined {
 // 홈·그날·뷰어 공용. baby = 목록·이전/다음 필터.
 function babySearch(s: Record<string, unknown>): { baby?: string } {
   return { baby: typeof s.baby === 'string' ? s.baby : undefined }
+}
+
+// 문자열 아닌 값(숫자로 해석된 202611 등)은 빈 문자열. 형식 검사에서 걸러짐.
+function searchText(v: unknown): string | undefined {
+  if (v === undefined) return undefined
+  return typeof v === 'string' ? v : ''
+}
+
+// 달력. month = YYYY-MM, date = 고른 날. 검사는 beforeLoad 와 화면에서.
+function calendarSearch(s: Record<string, unknown>): {
+  month?: string
+  date?: string
+  baby?: string
+} {
+  return {
+    ...babySearch(s),
+    month: searchText(s.month),
+    date: searchText(s.date),
+  }
 }
 
 // 뷰어 전용. from = 이전/다음 목록(없으면 타임라인), of = 이야기, 마일스톤 id.
@@ -262,6 +286,22 @@ const dayRoute = createRoute({
     }
   },
   component: DayPage,
+})
+
+// 형식, 실존 날짜가 아니면 search 없이 교체 이동. 이번 달 이후는 인스턴스 오늘 기준이라 화면에서.
+const calendarRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/calendar',
+  validateSearch: calendarSearch,
+  beforeLoad: ({ search }) => {
+    if (
+      (search.month !== undefined && !isMonth(search.month)) ||
+      (search.date !== undefined && !isCalendarDate(search.date))
+    ) {
+      throw redirect({ to: '/calendar', replace: true })
+    }
+  },
+  component: CalendarPage,
 })
 
 // 마지막 본 아기(없으면 첫째)로 교체 이동. 아기 없음·조회 실패는 화면에서.
@@ -468,6 +508,7 @@ const routeTree = rootRoute.addChildren([
     shellRoute.addChildren([
       homeRoute,
       dayRoute,
+      calendarRoute,
       babiesRoute,
       babyRoute,
       ageAlbumRoute,

@@ -276,6 +276,23 @@
     "next": "다음 날",
     "nav": "이전·다음 날"
   },
+  "calendar": {
+    "prevMonth": "이전 달",
+    "nextMonth": "다음 달",
+    "pickMonth": "달 고르기",
+    "dates": "{{month}} 날짜",
+    "stories_one": "이야기 {{count}}개",
+    "stories_other": "이야기 {{count}}개",
+    "milestones": "마일스톤 {{names}}",
+    "emptyDay": "이 날은 기록이 없어요",
+    "openDay": "그날 보기",
+    "totalPhotos_one": "사진 {{count}}",
+    "totalPhotos_other": "사진 {{count}}",
+    "totalVideos_one": "영상 {{count}}",
+    "totalVideos_other": "영상 {{count}}",
+    "totalDays_one": "기록한 날 {{count}}일",
+    "totalDays_other": "기록한 날 {{count}}일"
+  },
   "upload": {
     "queue": "업로드 목록",
     "summary": "{{total}}개 중 {{done}}개 완료",

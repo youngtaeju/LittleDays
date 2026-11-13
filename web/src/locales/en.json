@@ -276,6 +276,23 @@
     "next": "Next day",
     "nav": "Previous and next day"
   },
+  "calendar": {
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "pickMonth": "Choose a month",
+    "dates": "Days in {{month}}",
+    "stories_one": "{{count}} story",
+    "stories_other": "{{count}} stories",
+    "milestones": "Milestone: {{names}}",
+    "emptyDay": "Nothing recorded on this day",
+    "openDay": "View day",
+    "totalPhotos_one": "{{count}} photo",
+    "totalPhotos_other": "{{count}} photos",
+    "totalVideos_one": "{{count}} video",
+    "totalVideos_other": "{{count}} videos",
+    "totalDays_one": "{{count}} day recorded",
+    "totalDays_other": "{{count}} days recorded"
+  },
   "upload": {
     "queue": "Upload queue",
     "summary": "{{done}} of {{total}} finished",
