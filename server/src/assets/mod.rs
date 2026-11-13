@@ -98,6 +98,8 @@ pub struct Asset {
     pub uploaded_by: Uuid,
     /// 아기 표시 순서.
     pub baby_ids: Vec<Uuid>,
+    /// 든 앨범. 순서 없음.
+    pub album_ids: Vec<Uuid>,
     /// 파생물 파일 정보. 처리 전 `{}`.
     #[schema(value_type = DerivativesDoc)]
     pub derivatives: Value,

@@ -1,3 +1,4 @@
+pub mod albums;
 pub mod app;
 pub mod assets;
 pub mod auth;

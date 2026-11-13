@@ -1,0 +1,77 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT al.id, al.name, al.created_by, al.created_at, al.updated_at,\n                  s.photo_count AS \"photo_count!\", s.video_count AS \"video_count!\",\n                  s.first_date AS \"from?\", s.last_date AS \"to?\",\n                  COALESCE(\n                      (SELECT a.id FROM album_assets aa JOIN assets a ON a.id = aa.asset_id\n                       WHERE aa.album_id = al.id AND aa.asset_id = al.cover_asset_id\n                         AND a.deleted_at IS NULL AND a.status = 'ready'),\n                      (SELECT a.id FROM album_assets aa JOIN assets a ON a.id = aa.asset_id\n                       WHERE aa.album_id = al.id AND a.deleted_at IS NULL AND a.status = 'ready'\n                       ORDER BY a.taken_at, a.id\n                       LIMIT 1)\n                  ) AS \"cover_id?\"\n           FROM albums al\n           CROSS JOIN LATERAL (\n               SELECT count(*) FILTER (WHERE a.kind = 'photo') AS photo_count,\n                      count(*) FILTER (WHERE a.kind = 'video') AS video_count,\n                      min((a.taken_at AT TIME ZONE $1)::date) AS first_date,\n                      max((a.taken_at AT TIME ZONE $1)::date) AS last_date,\n                      max(aa.added_at) AS last_added\n               FROM album_assets aa JOIN assets a ON a.id = aa.asset_id\n               WHERE aa.album_id = al.id AND a.deleted_at IS NULL\n           ) s\n           WHERE $2::uuid[] IS NULL OR al.id = ANY($2)\n           ORDER BY COALESCE(s.last_added, al.created_at) DESC, al.id DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "photo_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "video_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 7,
+        "name": "from?",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 8,
+        "name": "to?",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 9,
+        "name": "cover_id?",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "b9b72a15c01bc85f147fa653080b476ae235680705d69f1e31af0ac5f32e3197"
+}

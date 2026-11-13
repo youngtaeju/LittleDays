@@ -4,6 +4,70 @@
  */
 
 export interface paths {
+    "/api/albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_albums"];
+        put?: never;
+        post: operations["create_album"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/albums/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_album"];
+        put?: never;
+        post?: never;
+        delete: operations["delete_album"];
+        options?: never;
+        head?: never;
+        patch: operations["update_album"];
+        trace?: never;
+    };
+    "/api/albums/{id}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_album_assets"];
+        put?: never;
+        post: operations["add_album_assets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/albums/{id}/assets/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["remove_album_assets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assets": {
         parameters: {
             query?: never;
@@ -915,8 +979,50 @@ export interface components {
              */
             to: string;
         };
+        AlbumAssetsRequest: {
+            /** @description 1~500개. 중복은 한 번만. */
+            asset_ids: string[];
+        };
+        /** @description 앨범 목록/상세. */
+        AlbumSummary: {
+            cover: null | components["schemas"]["AssetSummary"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            created_by: string;
+            /**
+             * Format: date
+             * @description 인스턴스 시간대 기준 가장 이른 촬영일. 비면 `null`.
+             */
+            from: string | null;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /**
+             * Format: int64
+             * @description 휴지통 제외. 처리 중, 실패 포함.
+             */
+            photo_count: number;
+            /**
+             * Format: date
+             * @description 인스턴스 시간대 기준 가장 늦은 촬영일. 비면 `null`.
+             */
+            to: string | null;
+            /**
+             * Format: date-time
+             * @description 이름, 표지, 사진 넣기/빼기 시각.
+             */
+            updated_at: string;
+            /**
+             * Format: int64
+             * @description 휴지통 제외. 처리 중, 실패 포함.
+             */
+            video_count: number;
+        };
         /** @description 자산 상세. */
         Asset: {
+            /** @description 든 앨범. 순서 없음. */
+            album_ids: string[];
             /** @description 아기 표시 순서. */
             baby_ids: string[];
             blurhash: string | null;
@@ -1000,11 +1106,16 @@ export interface components {
             /** Format: int32 */
             width: number | null;
         };
-        /** @description 새 사진을 붙일 이야기 또는 마일스톤. */
+        /**
+         * @description 붙일 대상 종류.
+         * @enum {string}
+         */
+        AttachKind: "story" | "milestone" | "album";
+        /** @description 새 사진을 붙일 이야기, 마일스톤, 앨범. */
         AttachTarget: {
             /** Format: uuid */
             id: string;
-            kind: components["schemas"]["LinkKind"];
+            kind: components["schemas"]["AttachKind"];
         };
         /**
          * @description 대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.
@@ -1076,6 +1187,12 @@ export interface components {
         CommentRequest: {
             /** @description 앞뒤 공백 제거 후 1~1000자. 멘션은 `<@사용자id>`. */
             body: string;
+        };
+        CreateAlbumRequest: {
+            /** @description 함께 넣을 사진. 넣기와 같은 검증(1~500개, 휴지통 아닌 사진, 중복은 한 번만). */
+            asset_ids?: string[] | null;
+            /** @description 앞뒤 공백 제거 후 1~50자. 중복 허용. */
+            name: string;
         };
         CreateBabyRequest: {
             /** Format: date */
@@ -1314,11 +1431,6 @@ export interface components {
             /** Format: uuid */
             user_id: string;
         };
-        /**
-         * @description 연결 대상 종류.
-         * @enum {string}
-         */
-        LinkKind: "story" | "milestone";
         LoginRequest: {
             password: string;
             username: string;
@@ -1655,6 +1767,16 @@ export interface components {
              */
             deleted_at: string;
         };
+        /** @description 보낸 필드만 교체. */
+        UpdateAlbumRequest: {
+            /**
+             * Format: uuid
+             * @description 생략 시 변경 없음. 앨범 안의 휴지통 아닌 처리 완료 사진. `null` 이면 기본 표지.
+             */
+            cover_asset_id?: string | null;
+            /** @description 앞뒤 공백 제거 후 1~50자. */
+            name?: string | null;
+        };
         /** @description 보낸 필드만 교체. `null` 은 비움, 결과에 키나 몸무게 하나는 남아야 함. */
         UpdateGrowthRequest: {
             /** Format: double */
@@ -1722,6 +1844,442 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_albums: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 전체 앨범. 휴지통 아닌 사진의 마지막 넣은 시각(비면 만든 시각) 최신순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumSummary"][];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_album: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAlbumRequest"];
+            };
+        };
+        responses: {
+            /** @description 만들어짐 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumSummary"];
+                };
+            };
+            /** @description 이름 오류 (`album.nameInvalid`), 사진 개수 오류 (`request.invalidBody`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`album.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 사진 없음 또는 휴지통 (`asset.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_album: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 앨범 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 앨범 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumSummary"];
+                };
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 앨범 없음 (`album.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_album: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 앨범 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 지워짐. 사진은 남음 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ID 형식 오류 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`album.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 앨범 없음 (`album.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    update_album: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 앨범 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAlbumRequest"];
+            };
+        };
+        responses: {
+            /** @description 고쳐짐 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumSummary"];
+                };
+            };
+            /** @description 이름 오류 (`album.nameInvalid`), 표지 오류 (`album.coverInvalid`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`album.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 앨범 없음 (`album.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_album_assets: {
+        parameters: {
+            query?: {
+                /** @description 이전 응답의 `next_cursor`. */
+                cursor?: string;
+                /** @description 1~500, 기본 100. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description 앨범 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 휴지통 제외, 촬영 시각 오래된 순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AssetSummary"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 앨범 없음 (`album.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    add_album_assets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 앨범 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlbumAssetsRequest"];
+            };
+        };
+        responses: {
+            /** @description 넣음. 이미 든 사진은 그대로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 사진 개수 오류 (`request.invalidBody`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`album.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 앨범 없음 (`album.notFound`), 사진 없음 또는 휴지통 (`asset.notFound`). 하나라도 있으면 아무것도 넣지 않음 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    remove_album_assets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 앨범 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlbumAssetsRequest"];
+            };
+        };
+        responses: {
+            /** @description 뺌. 없는 연결은 무시. 뺀 사진이 지정 표지면 기본 표지로 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 사진 개수 오류 (`request.invalidBody`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description guardian 이상 아님 (`album.forbidden`) 또는 CSRF 헤더 누락 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 앨범 없음 (`album.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     list_assets: {
         parameters: {
             query?: {
@@ -1733,6 +2291,8 @@ export interface operations {
                 baby_id?: string;
                 /** @description 인스턴스 시간대 기준 그날 촬영한 자산만. */
                 date?: string;
+                /** @description 해당 종류만. */
+                kind?: components["schemas"]["AssetKind"];
             };
             header?: never;
             path?: never;

@@ -354,3 +354,40 @@ async fn summary_has_uploaded_by(pool: PgPool) {
     let trash: Value = app.server.get("/api/trash").await.json();
     assert_eq!(trash["items"][0]["uploaded_by"], json!(dad.id));
 }
+
+#[sqlx::test]
+async fn list_kind_video(pool: PgPool) {
+    let app = media_app(&pool, Role::Family).await;
+    let a = baby(&pool, "a").await;
+    let photo = seed(&pool, app.user.id, Utc::now()).await;
+    let mut v = AssetSeed::photo(app.user.id);
+    v.kind = "video";
+    let video = insert_asset(&pool, v).await;
+    let mut v2 = AssetSeed::photo(app.user.id);
+    v2.kind = "video";
+    let other_video = insert_asset(&pool, v2).await;
+    for id in [photo, video] {
+        assets::queries::add_babies(&pool, id, &[a], app.user.id)
+            .await
+            .unwrap();
+    }
+
+    let page: Value = app
+        .server
+        .get("/api/assets")
+        .add_query_param("kind", "video")
+        .await
+        .json();
+    let got = ids(&page);
+    assert_eq!(got.len(), 2);
+    assert!(got.contains(&video) && got.contains(&other_video));
+
+    let page: Value = app
+        .server
+        .get("/api/assets")
+        .add_query_param("kind", "video")
+        .add_query_param("baby_id", a)
+        .await
+        .json();
+    assert_eq!(ids(&page), vec![video]);
+}

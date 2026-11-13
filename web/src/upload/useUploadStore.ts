@@ -215,7 +215,8 @@ function isAttach(v: unknown): v is AttachTarget {
   if (typeof v !== 'object' || v === null) return false
   const a = v as Record<string, unknown>
   return (
-    (a.kind === 'story' || a.kind === 'milestone') && typeof a.id === 'string'
+    (a.kind === 'story' || a.kind === 'milestone' || a.kind === 'album') &&
+    typeof a.id === 'string'
   )
 }
 

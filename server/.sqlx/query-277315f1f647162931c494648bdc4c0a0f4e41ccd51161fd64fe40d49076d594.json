@@ -1,0 +1,131 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT a.id, a.kind AS \"kind: AssetKind\", a.status AS \"status: AssetStatus\",\n                  a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS \"local_date!\",\n                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id\n                            WHERE ab.asset_id = a.id), '{}') AS \"baby_ids!\",\n                  a.derivatives\n           FROM assets a\n           WHERE a.deleted_at IS NULL\n             AND ($2::timestamptz IS NULL OR (a.taken_at, a.id) < ($2, $3::uuid))\n             AND ($4::uuid IS NULL OR EXISTS (\n                   SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $4))\n             AND ($5::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date = $5)\n             AND ($6::asset_kind IS NULL OR a.kind = $6)\n           ORDER BY a.taken_at DESC, a.id DESC\n           LIMIT $7",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "kind: AssetKind",
+        "type_info": {
+          "Custom": {
+            "name": "asset_kind",
+            "kind": {
+              "Enum": [
+                "photo",
+                "video"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "status: AssetStatus",
+        "type_info": {
+          "Custom": {
+            "name": "asset_status",
+            "kind": {
+              "Enum": [
+                "processing",
+                "ready",
+                "failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "taken_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "local_date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 5,
+        "name": "width",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "height",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 7,
+        "name": "duration_ms",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "blurhash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "dominant_color",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "uploaded_by",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 11,
+        "name": "baby_ids!",
+        "type_info": "UuidArray"
+      },
+      {
+        "ordinal": 12,
+        "name": "derivatives",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Uuid",
+        "Date",
+        {
+          "Custom": {
+            "name": "asset_kind",
+            "kind": {
+              "Enum": [
+                "photo",
+                "video"
+              ]
+            }
+          }
+        },
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null,
+      false
+    ]
+  },
+  "hash": "277315f1f647162931c494648bdc4c0a0f4e41ccd51161fd64fe40d49076d594"
+}

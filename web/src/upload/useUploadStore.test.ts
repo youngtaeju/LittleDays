@@ -89,7 +89,7 @@ describe('useUploadStore', () => {
     expect(localStorage.getItem('ld.upload.pending')).toBeNull()
   })
 
-  // 이야기, 마일스톤에 붙일 새 사진. 새로고침 뒤 이어올리기에도 같은 대상.
+  // 이야기, 마일스톤, 앨범에 붙일 새 사진. 새로고침 뒤 이어올리기에도 같은 대상.
   it('pending_keeps_attach', () => {
     const resume = {
       size: 10,
@@ -127,12 +127,35 @@ describe('useUploadStore', () => {
           size: 1,
           lastModified: 1,
           babyIds: [],
-          attach: { kind: 'album', id: 's1' },
+          attach: { kind: 'photo', id: 's1' },
         },
       ]),
     )
     restorePendingUploads()
     expect(uploadStore.getSnapshot()).toEqual([])
+  })
+
+  it('pending_keeps_album_attach', () => {
+    const resume = {
+      size: 10,
+      lastModified: 1,
+      babyIds: [],
+      attach: { kind: 'album' as const, id: 'a1' },
+    }
+    uploadStore.put({
+      id: 'f1',
+      name: 'a.jpg',
+      status: 'uploading',
+      progress: 0.5,
+      resume,
+    })
+    const saved = localStorage.getItem('ld.upload.pending')
+    uploadStore.reset()
+    localStorage.setItem('ld.upload.pending', saved ?? '')
+    restorePendingUploads()
+    expect(uploadStore.getSnapshot()).toEqual([
+      { id: 'f1', name: 'a.jpg', status: 'resumable', progress: 0, resume },
+    ])
   })
 
   it('permanent_errors_not_persisted', () => {
