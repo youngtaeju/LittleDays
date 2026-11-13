@@ -94,7 +94,7 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
   await expectNoHorizontalOverflow(page)
 
   // desktop favorites_flow 가 담은 사진 2장.
-  await page.goto('/me/favorites')
+  await page.goto('/albums/favorites')
   await expect(page.getByRole('heading', { name: '즐겨찾기' })).toBeVisible()
   await expect(tiles(page)).toHaveCount(2)
   await expectNoHorizontalOverflow(page)

@@ -30,6 +30,7 @@ function mockApp(role: Role) {
     'GET /api/users': () => json(200, { users: [userFixture(role)] }),
     'GET /api/invites': () => json(200, { invites: [] }),
     'GET /api/trash': () => json(200, { items: [], next_cursor: null }),
+    'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
     'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
     'GET /api/assets/a1': () => json(200, assetFixture('a1')),
   })
@@ -58,6 +59,20 @@ describe('router', () => {
     await waitFor(() => {
       expect(router.state.location.href).toBe('/')
     })
+  })
+
+  // 즐겨찾기는 앨범 탭으로 이동. 예전 주소는 교체 이동.
+  it('legacy_favorites_redirect', async () => {
+    mockApp('family')
+    const { router } = renderApp('/me/favorites')
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: ko.albums.favorites,
+      }),
+    ).toBeInTheDocument()
+    expect(router.state.location.href).toBe('/albums/favorites')
+    expect(router.history.length).toBe(1)
   })
 
   it('legacy_path_direct_entry_replaced', async () => {

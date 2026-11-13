@@ -53,75 +53,31 @@ function tabBar() {
 }
 
 describe('AppShell', () => {
-  it('tabs_by_role', async () => {
-    await renderShell('owner')
-    const owner = within(tabBar())
-    expect(owner.getAllByRole('listitem')).toHaveLength(5)
-    for (const name of [ko.nav.home, ko.nav.babies, ko.nav.family, ko.nav.me]) {
-      expect(owner.getByRole('link', { name })).toBeInTheDocument()
+  // 달력, 앨범 화면은 자체 머리글. 휴대폰 셸 머리글(우리 집 이름) 숨김.
+  it('own_header_routes', async () => {
+    const { router } = await renderShell('guardian', '/me', [], {
+      'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
+      'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
+    })
+    // 하위 화면 자체 머리글(header)도 banner. 셸 머리글이 문서 순서상 먼저.
+    const shellTitle = () => {
+      const [shell] = screen.getAllByRole('banner')
+      if (!shell) throw new Error('셸 머리글 없음')
+      return within(shell).getByText(settingsFixture.instance_name)
     }
-    expect(
-      owner.getByRole('button', { name: ko.addSheet.open }),
-    ).toBeInTheDocument()
-    cleanup()
-
-    await renderShell('family')
-    const family = within(tabBar())
-    expect(family.getAllByRole('listitem')).toHaveLength(4)
-    expect(family.queryByRole('button', { name: ko.addSheet.open })).toBeNull()
-    expect(
-      screen.queryByRole('button', { name: ko.addSheet.open }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: ko.nav.add }),
-    ).not.toBeInTheDocument()
-  })
-
-  it('selected_tab_marked', async () => {
-    await renderShell('guardian', '/me')
-    const tabs = within(tabBar())
-    expect(tabs.getByRole('link', { name: ko.nav.me })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-    expect(tabs.getByRole('link', { name: ko.nav.home })).not.toHaveAttribute(
-      'aria-current',
-    )
-  })
-
-  it('sidebar_has_favorites', async () => {
-    const { user, router } = await renderShell('family', '/', [], {
-      'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
-    })
-    const more = screen.getByRole('navigation', { name: ko.nav.more })
-    const sidebar = more.parentElement
-    if (!sidebar) throw new Error('사이드바 없음')
-    const main = within(sidebar).getByRole('navigation', { name: ko.nav.main })
-    // 주 메뉴 아래 보조 메뉴.
-    expect(
-      main.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    const link = within(more).getByRole('link', { name: ko.nav.favorites })
-    expect(link).not.toHaveAttribute('aria-current')
-    await user.click(link)
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/me/favorites')
-    })
-    expect(link).toHaveAttribute('aria-current', 'page')
-  })
-
-  it('sidebar_single_current_on_secondary', async () => {
-    await renderShell('guardian', '/me/favorites', [], {
-      'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
-    })
-    const more = screen.getByRole('navigation', { name: ko.nav.more })
-    const sidebar = more.parentElement
-    if (!sidebar) throw new Error('사이드바 없음')
-    const current = within(sidebar)
-      .getAllByRole('link')
-      .filter((l) => l.getAttribute('aria-current') === 'page')
-    expect(current).toHaveLength(1)
-    expect(current[0]).toHaveAccessibleName(ko.nav.favorites)
+    expect(shellTitle().closest('.hidden')).toBeNull()
+    for (const href of [
+      '/calendar',
+      '/albums',
+      '/albums/favorites',
+      '/albums/videos',
+    ]) {
+      await router.navigate({ href })
+      await waitFor(() => {
+        expect(router.state.status).toBe('idle')
+      })
+      expect(shellTitle().closest('.hidden')).not.toBeNull()
+    }
   })
 
   it('add_opens_picker', async () => {

@@ -119,6 +119,23 @@ describe('cachePlugins', () => {
     expect(match('/api/favoritesx')).toBe(false)
   })
 
+  it('albums_memories_offline_api', () => {
+    const match = (path: string) =>
+      isOfflineApi({ url: new URL(BASE + path), sameOrigin: true })
+    expect(match('/api/albums')).toBe(true)
+    expect(match(`/api/albums/${ID}`)).toBe(true)
+    expect(match(`/api/albums/${ID}/assets?limit=100&cursor=c1`)).toBe(true)
+    expect(match('/api/memories?baby_id=b1')).toBe(true)
+    expect(match('/api/memories')).toBe(true)
+
+    expect(match('/api/albums/x')).toBe(false)
+    expect(match(`/api/albums/${ID}/assets/add`)).toBe(false)
+    expect(match(`/api/albums/${ID}/assets/remove`)).toBe(false)
+    expect(match(`/api/albums/${ID}/x`)).toBe(false)
+    expect(match('/api/albumsx')).toBe(false)
+    expect(match('/api/memories/x')).toBe(false)
+  })
+
   // 글꼴은 precache 대신 런타임 캐시(vite.config.ts globIgnores). 빌드 sw.js 확인은 수동.
   it('fonts_not_precached', () => {
     const match = (path: string, sameOrigin = true) =>

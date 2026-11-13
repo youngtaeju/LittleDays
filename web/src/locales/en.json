@@ -15,12 +15,12 @@
   "nav": {
     "main": "Main menu",
     "home": "Home",
+    "calendar": "Calendar",
+    "albums": "Albums",
     "babies": "Babies",
-    "family": "Family",
     "me": "Me",
     "add": "Upload photos",
     "trash": "Trash",
-    "favorites": "Favorites",
     "more": "More",
     "logout": "Sign out"
   },
@@ -465,6 +465,14 @@
       "notFound": "The milestone could not be found."
     }
   },
+  "albums": {
+    "title": "Albums",
+    "fixed": "Collections",
+    "favorites": "Favorites",
+    "videos": "Videos",
+    "monthly": "Monthly albums",
+    "videosEmpty": "No videos yet"
+  },
   "favorites": {
     "empty": "Tap ★ on a photo to collect it here"
   },
@@ -590,15 +598,16 @@
     "reload": "Reload"
   },
   "me": {
-    "account": "My account",
+    "account": "Account",
     "app": "App",
-    "photos": "Photos",
+    "photos": "My photos",
     "home": "Our home",
+    "babies": "Babies",
+    "family": "Family",
     "profile": "Profile",
     "password": "Change password",
     "devices": "Signed-in devices",
     "appearance": "Display & language",
-    "favorites": "Favorites",
     "trash": "Trash",
     "instance": "Home settings",
     "logout": "Sign out",

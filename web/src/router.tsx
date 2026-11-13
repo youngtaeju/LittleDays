@@ -85,6 +85,14 @@ const FavoritesPage = lazyRouteComponent(
   () => import('@/favorites/FavoritesPage'),
   'FavoritesPage',
 )
+const AlbumsPage = lazyRouteComponent(
+  () => import('@/albums/AlbumsPage'),
+  'AlbumsPage',
+)
+const VideosPage = lazyRouteComponent(
+  () => import('@/albums/VideosPage'),
+  'VideosPage',
+)
 const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
   'TrashPage',
@@ -168,13 +176,13 @@ function calendarSearch(s: Record<string, unknown>): {
 // 그 밖의 값, of 없는 story/milestone 은 버림. of 는 story/milestone 일 때만.
 function viewerSearch(s: Record<string, unknown>): {
   baby?: string
-  from?: 'favorites' | 'story' | 'milestone'
+  from?: 'favorites' | 'videos' | 'story' | 'milestone'
   of?: string
 } {
   const of = typeof s.of === 'string' && s.of !== '' ? s.of : undefined
   const from =
-    s.from === 'favorites'
-      ? 'favorites'
+    s.from === 'favorites' || s.from === 'videos'
+      ? s.from
       : (s.from === 'story' || s.from === 'milestone') && of
         ? s.from
         : undefined
@@ -440,10 +448,23 @@ const meInstanceRoute = createRoute({
   component: InstancePage,
 })
 
+// 모든 멤버 읽기.
+const albumsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/albums',
+  component: AlbumsPage,
+})
+
 const favoritesRoute = createRoute({
   getParentRoute: () => shellRoute,
-  path: '/me/favorites',
+  path: '/albums/favorites',
   component: FavoritesPage,
+})
+
+const videosRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/albums/videos',
+  component: VideosPage,
 })
 
 const trashRoute = createRoute({
@@ -484,7 +505,7 @@ const legacyUploadRoute = createRoute({
 // 경로 리터럴 유지(라우터 주소 타입 검사).
 function legacyRoute<P extends string>(
   path: P,
-  to: '/family' | '/me' | '/me/trash',
+  to: '/family' | '/me' | '/me/trash' | '/albums/favorites',
 ) {
   return createRoute({
     getParentRoute: () => rootRoute,
@@ -504,6 +525,7 @@ const routeTree = rootRoute.addChildren([
   legacyRoute('/settings', '/me'),
   legacyUploadRoute,
   legacyRoute('/trash', '/me/trash'),
+  legacyRoute('/me/favorites', '/albums/favorites'),
   authedRoute.addChildren([
     shellRoute.addChildren([
       homeRoute,
@@ -524,7 +546,9 @@ const routeTree = rootRoute.addChildren([
       meDevicesRoute,
       meAppearanceRoute,
       meInstanceRoute,
+      albumsRoute,
       favoritesRoute,
+      videosRoute,
       trashRoute,
     ]),
     photoRoute,

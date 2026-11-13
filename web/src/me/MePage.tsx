@@ -6,14 +6,15 @@ import { hasRole, useMe } from '@/auth/session'
 import { useSignOut } from '@/auth/useSignOut'
 import { cn } from '@/lib/utils'
 
-type SubPath =
+type RowPath =
   | '/me/profile'
   | '/me/password'
   | '/me/devices'
   | '/me/appearance'
-  | '/me/favorites'
   | '/me/trash'
   | '/me/instance'
+  | '/babies'
+  | '/family'
 
 const ROW =
   'flex min-h-14 w-full items-center gap-3 px-4 text-left text-[15px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
@@ -31,7 +32,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function NavRow({ to, label }: { to: SubPath; label: string }) {
+function NavRow({ to, label }: { to: RowPath; label: string }) {
   return (
     <li>
       <Link to={to} className={ROW}>
@@ -70,6 +71,18 @@ export function MePage() {
           <IconChevron aria-hidden className="size-6 text-muted-foreground" />
         </Link>
       )}
+      {hasRole(user, 'guardian') && (
+        <Group title={t('me.photos')}>
+          <NavRow to="/me/trash" label={t('me.trash')} />
+        </Group>
+      )}
+      <Group title={t('me.home')}>
+        <NavRow to="/babies" label={t('me.babies')} />
+        <NavRow to="/family" label={t('me.family')} />
+        {hasRole(user, 'owner') && (
+          <NavRow to="/me/instance" label={t('me.instance')} />
+        )}
+      </Group>
       <Group title={t('me.account')}>
         <NavRow to="/me/profile" label={t('me.profile')} />
         <NavRow to="/me/password" label={t('me.password')} />
@@ -78,17 +91,6 @@ export function MePage() {
       <Group title={t('me.app')}>
         <NavRow to="/me/appearance" label={t('me.appearance')} />
       </Group>
-      <Group title={t('me.photos')}>
-        <NavRow to="/me/favorites" label={t('me.favorites')} />
-        {hasRole(user, 'guardian') && (
-          <NavRow to="/me/trash" label={t('me.trash')} />
-        )}
-      </Group>
-      {hasRole(user, 'owner') && (
-        <Group title={t('me.home')}>
-          <NavRow to="/me/instance" label={t('me.instance')} />
-        </Group>
-      )}
       <div className="grid gap-3">
         <button
           type="button"

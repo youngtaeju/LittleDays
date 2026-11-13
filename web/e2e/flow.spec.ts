@@ -122,11 +122,8 @@ test('day_page', async ({ ownerPage: page }) => {
 test('baby_age_album', async ({ ownerPage: page }) => {
   await page.goto('/')
   await expect(tiles(page)).toHaveCount(3)
-  // 아기 메뉴 → 마지막 본(없으면 첫째) 아기 화면.
-  await page
-    .getByRole('navigation', { name: '주 메뉴' })
-    .getByRole('link', { name: '아기' })
-    .click()
+  // 홈 머리글 아바타(아기 1명) → 아기 화면.
+  await page.getByRole('banner').getByRole('link', { name: BABY_NAME }).click()
   await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
   await expect(
     page.getByRole('heading', { level: 1, name: BABY_NAME }),
@@ -305,7 +302,7 @@ test('invite_family_cannot_upload', async ({
     await expectThumbnailsLoaded(guest, 3)
     const nav = guest.getByRole('navigation', { name: '주 메뉴' })
     await expect(nav.getByRole('link', { name: '홈' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: '가족' })).toBeVisible()
+    await expect(nav.getByRole('link', { name: '나' })).toBeVisible()
     await expect(guest.getByRole('button', { name: '추가하기' })).toHaveCount(0)
     await expect(
       guest.getByRole('button', { name: '사진 올리기' }),
@@ -463,13 +460,13 @@ test('favorites_flow', async ({ ownerPage: page }) => {
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/\/$/)
 
-  // 나 → 즐겨찾기. 최근에 담은 사진이 먼저.
+  // 앨범 → 즐겨찾기. 최근에 담은 사진이 먼저.
   await page
     .getByRole('navigation', { name: '주 메뉴' })
-    .getByRole('link', { name: '나' })
+    .getByRole('link', { name: '앨범' })
     .click()
   await page.getByRole('main').getByRole('link', { name: '즐겨찾기' }).click()
-  await expect(page).toHaveURL(/\/me\/favorites$/)
+  await expect(page).toHaveURL(/\/albums\/favorites$/)
   await expect(
     page.getByRole('heading', { level: 1, name: '즐겨찾기' }),
   ).toBeVisible()
@@ -485,7 +482,7 @@ test('favorites_flow', async ({ ownerPage: page }) => {
   await page.getByRole('button', { name: '다음', exact: true }).click()
   await expect(page).toHaveURL(new RegExp(`${first}\\?from=favorites$`))
   await page.keyboard.press('Escape')
-  await expect(page).toHaveURL(/\/me\/favorites$/)
+  await expect(page).toHaveURL(/\/albums\/favorites$/)
   await expect(tiles(page)).toHaveCount(2)
 })
 
@@ -734,16 +731,32 @@ test('security_headers_and_no_csp_violations', async ({ ownerPage: page }) => {
     await expect(page).toHaveURL(/\/$/)
   }
   const nav = page.getByRole('navigation', { name: '주 메뉴' })
+  for (const [name, url] of [
+    ['달력', /\/calendar$/],
+    ['앨범', /\/albums$/],
+  ] as const) {
+    await nav.getByRole('link', { name }).click()
+    await expect(page).toHaveURL(url)
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+  }
+  // 아기, 가족은 나 탭 우리 집에서.
   for (const [name, heading] of [
     ['아기', '아기'],
     ['가족', '가족'],
-    ['나', OWNER.displayName],
   ] as const) {
-    await nav.getByRole('link', { name }).click()
+    await nav.getByRole('link', { name: '나' }).click()
+    await page
+      .getByRole('main')
+      .getByRole('link', { name, exact: true })
+      .click()
     await expect(
       page.getByRole('heading', { name: heading }).first(),
     ).toBeVisible()
   }
+  await nav.getByRole('link', { name: '나' }).click()
+  await expect(
+    page.getByRole('heading', { name: OWNER.displayName }),
+  ).toBeVisible()
   // 휴지통은 나 화면에서.
   await page.getByRole('main').getByRole('link', { name: '휴지통' }).click()
   await expect(

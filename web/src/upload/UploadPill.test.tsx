@@ -218,7 +218,7 @@ describe('UploadPill', () => {
     const label = '1개 올리는 중 · 40%'
     expect(pill(label)).toBeInTheDocument()
     const nav = screen.getByTestId('tab-bar')
-    for (const name of [ko.nav.babies, ko.nav.family, ko.nav.me]) {
+    for (const name of [ko.nav.calendar, ko.nav.albums, ko.nav.me]) {
       await user.click(within(nav).getByRole('link', { name }))
       expect(pill(label)).toBeInTheDocument()
     }

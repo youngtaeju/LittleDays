@@ -21,6 +21,7 @@ describe('outsideTimeline', () => {
     deleted_at: null,
     taken_at: '2024-05-01T00:00:00Z',
     baby_ids: ['b1'],
+    kind: 'photo' as const,
   }
 
   it('older_asset_may_be_on_next_page', () => {
@@ -50,5 +51,13 @@ describe('outsideTimeline', () => {
       ),
     ).toBe(true)
     expect(outsideTimeline(detail, last, 'b2')).toBe(true)
+  })
+
+  it('outside_video_list', () => {
+    expect(outsideTimeline(detail, last, undefined, 'video')).toBe(true)
+    expect(
+      outsideTimeline({ ...detail, kind: 'video' }, last, undefined, 'video'),
+    ).toBe(false)
+    expect(outsideTimeline(detail, last, undefined)).toBe(false)
   })
 })
