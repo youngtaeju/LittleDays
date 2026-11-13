@@ -72,6 +72,7 @@ function renderFeed(opts: {
     'GET /api/babies': () => json(200, opts.babies ?? [SKY]),
     'GET /api/users': () =>
       json(200, { users: opts.users ?? [userFixture('guardian')] }),
+    'GET /api/memories': () => json(200, null),
     'GET /api/days': (req) => {
       const url = new URL(req.url)
       requests.push(url)

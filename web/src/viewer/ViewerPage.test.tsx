@@ -65,6 +65,7 @@ function renderViewer(opts: {
         next_cursor: null,
       }),
     // 홈으로 닫을 때. 목록 앞 3장이 대표.
+    'GET /api/memories': () => json(200, null),
     'GET /api/days': () =>
       json(200, {
         items: [
@@ -1326,7 +1327,48 @@ describe('ViewerPage', () => {
     // 직접 진입이면 닫기 → 즐겨찾기 화면.
     await user.keyboard('{Escape}')
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/me/favorites')
+      expect(router.state.location.pathname).toBe('/albums/favorites')
+    })
+  })
+
+  // 영상 목록 순서. 아기 필터 무시.
+  it('videos_neighbors', async () => {
+    const requests: URL[] = []
+    const { router, user } = renderViewer({
+      path: '/photos/v1?from=videos&baby=b9',
+      ids: ['v1', 'v2'],
+      extra: {
+        'GET /api/assets': (req) => {
+          requests.push(new URL(req.url))
+          return json(200, {
+            items: ['v1', 'v2'].map((id) =>
+              assetSummaryFixture(id, { kind: 'video' }),
+            ),
+            next_cursor: null,
+          })
+        },
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: ko.viewer.next }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/v2')
+    })
+    expect(router.state.location.search).toEqual({
+      from: 'videos',
+      baby: 'b9',
+    })
+    expect(requests.length).toBeGreaterThan(0)
+    for (const url of requests) {
+      expect(url.searchParams.get('kind')).toBe('video')
+      expect(url.searchParams.get('baby_id')).toBeNull()
+    }
+
+    // 직접 진입이면 닫기 → 영상 화면.
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/albums/videos')
     })
   })
 

@@ -4,14 +4,16 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 
-// 나 탭 하위 화면 공통 틀. 셸 머리글을 대신해 뒤로(기록 있으면 되돌아가기, 직접 진입이면 /me) + 제목 + 오른쪽 actions.
+// 나 탭, 앨범 탭 하위 화면 공통 틀. 셸 머리글을 대신해 뒤로(기록 있으면 되돌아가기, 직접 진입이면 backTo) + 제목 + 오른쪽 actions.
 export function MeSubPage({
   title,
   actions,
+  backTo = '/me',
   children,
 }: {
   title: string
   actions?: ReactNode
+  backTo?: '/me' | '/albums'
   children: ReactNode
 }) {
   const { t } = useTranslation()
@@ -26,7 +28,7 @@ export function MeSubPage({
           aria-label={t('me.back')}
           onClick={() => {
             if (canGoBack) router.history.back()
-            else void router.navigate({ to: '/me', replace: true })
+            else void router.navigate({ to: backTo, replace: true })
           }}
         >
           <IconBack aria-hidden className="size-6" />

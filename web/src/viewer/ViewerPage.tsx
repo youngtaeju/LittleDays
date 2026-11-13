@@ -192,6 +192,9 @@ function Viewer() {
   const { id } = route.useParams()
   const { baby, from, of } = route.useSearch()
   const fromFavorites = from === 'favorites'
+  // 영상 화면 출처. 이웃은 영상 목록(아기 필터 없음).
+  const fromVideos = from === 'videos'
+  const listBaby = fromVideos ? undefined : baby
   // 이야기, 마일스톤 출처. 이웃은 그 대상의 사진 순서(휴지통 제외, 서버 응답 순서).
   const source =
     (from === 'story' || from === 'milestone') && of
@@ -207,9 +210,10 @@ function Viewer() {
   const wide = useMediaQuery(WIDE)
 
   const asset = useAsset(id)
-  const timeline = useTimeline(baby, {
+  const timeline = useTimeline(listBaby, {
     refetchOnMount: false,
     enabled: !fromFavorites && !source,
+    kind: fromVideos ? 'video' : undefined,
   })
   const favorites = useFavorites({
     refetchOnMount: false,
@@ -310,7 +314,12 @@ function Viewer() {
     detail !== undefined &&
     (fromFavorites
       ? detail.favorited && detail.deleted_at === null
-      : !outsideTimeline(detail, items[items.length - 1], baby))
+      : !outsideTimeline(
+          detail,
+          items[items.length - 1],
+          listBaby,
+          fromVideos ? 'video' : undefined,
+        ))
   const atEnd = ids.length > 0 && (ids[ids.length - 1] === id || unlisted)
   useEffect(() => {
     if (atEnd && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
@@ -349,9 +358,10 @@ function Viewer() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     closeTimer.current = window.setTimeout(
       () => {
-        // 직접 진입(앱 내 이전 기록 없음)이면 즐겨찾기 화면, 그 이야기나 마일스톤, 그 밖은 홈 타임라인.
+        // 직접 진입(앱 내 이전 기록 없음)이면 즐겨찾기나 영상 화면, 그 이야기나 마일스톤, 그 밖은 홈 타임라인.
         if (canGoBack) router.history.back()
-        else if (fromFavorites) void navigate({ to: '/me/favorites' })
+        else if (fromFavorites) void navigate({ to: '/albums/favorites' })
+        else if (fromVideos) void navigate({ to: '/albums/videos' })
         else if (source?.kind === 'story') {
           void navigate({ to: '/stories/$id', params: { id: source.id } })
         } else if (source?.kind === 'milestone') {

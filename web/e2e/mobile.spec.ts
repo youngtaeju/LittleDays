@@ -94,7 +94,7 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
   await expectNoHorizontalOverflow(page)
 
   // desktop favorites_flow 가 담은 사진 2장.
-  await page.goto('/me/favorites')
+  await page.goto('/albums/favorites')
   await expect(page.getByRole('heading', { name: '즐겨찾기' })).toBeVisible()
   await expect(tiles(page)).toHaveCount(2)
   await expectNoHorizontalOverflow(page)
@@ -114,6 +114,19 @@ test('screens_fit_width', async ({ ownerPage: page }) => {
     page.getByRole('heading', { name: '우리 집 설정' }),
   ).toBeVisible()
   await expect(page.getByLabel('시간대')).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+})
+
+test('browse_screens_fit_width', async ({ ownerPage: page }) => {
+  // 사진이 있는 달(2024년 5월)의 달력. 칸 라벨이 사진 수를 포함.
+  await page.goto('/calendar?month=2024-05')
+  await expect(
+    page.getByRole('button', { name: '5월 1일, 사진 2장' }),
+  ).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+
+  await page.goto('/albums')
+  await expect(page.getByRole('heading', { name: '앨범' })).toBeVisible()
   await expectNoHorizontalOverflow(page)
 })
 

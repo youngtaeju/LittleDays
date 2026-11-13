@@ -15,12 +15,12 @@
   "nav": {
     "main": "주 메뉴",
     "home": "홈",
+    "calendar": "달력",
+    "albums": "앨범",
     "babies": "아기",
-    "family": "가족",
     "me": "나",
     "add": "사진 올리기",
     "trash": "휴지통",
-    "favorites": "즐겨찾기",
     "more": "더 보기",
     "logout": "로그아웃"
   },
@@ -276,6 +276,30 @@
     "next": "다음 날",
     "nav": "이전·다음 날"
   },
+  "memory": {
+    "years_one": "{{count}}년 전 오늘",
+    "years_other": "{{count}}년 전 오늘",
+    "months_one": "{{count}}개월 전 오늘",
+    "months_other": "{{count}}개월 전 오늘",
+    "dismiss": "오늘은 숨기기"
+  },
+  "calendar": {
+    "prevMonth": "이전 달",
+    "nextMonth": "다음 달",
+    "pickMonth": "달 고르기",
+    "dates": "{{month}} 날짜",
+    "stories_one": "이야기 {{count}}개",
+    "stories_other": "이야기 {{count}}개",
+    "milestones": "마일스톤 {{names}}",
+    "emptyDay": "이 날은 기록이 없어요",
+    "openDay": "그날 보기",
+    "totalPhotos_one": "사진 {{count}}",
+    "totalPhotos_other": "사진 {{count}}",
+    "totalVideos_one": "영상 {{count}}",
+    "totalVideos_other": "영상 {{count}}",
+    "totalDays_one": "기록한 날 {{count}}일",
+    "totalDays_other": "기록한 날 {{count}}일"
+  },
   "upload": {
     "queue": "업로드 목록",
     "summary": "{{total}}개 중 {{done}}개 완료",
@@ -448,6 +472,14 @@
       "notFound": "마일스톤을 찾을 수 없어요."
     }
   },
+  "albums": {
+    "title": "앨범",
+    "fixed": "모아 보기",
+    "favorites": "즐겨찾기",
+    "videos": "영상",
+    "monthly": "개월별 앨범",
+    "videosEmpty": "아직 올라온 영상이 없어요"
+  },
   "favorites": {
     "empty": "사진에서 ★ 를 누르면 여기 모여요"
   },
@@ -572,15 +604,16 @@
     "reload": "새로고침"
   },
   "me": {
-    "account": "내 계정",
+    "account": "계정",
     "app": "앱",
-    "photos": "사진",
+    "photos": "내 사진",
     "home": "우리 집",
+    "babies": "아기",
+    "family": "가족",
     "profile": "프로필",
     "password": "비밀번호 바꾸기",
     "devices": "로그인한 기기",
     "appearance": "화면과 언어",
-    "favorites": "즐겨찾기",
     "trash": "휴지통",
     "instance": "우리 집 설정",
     "logout": "로그아웃",

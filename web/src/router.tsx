@@ -27,6 +27,7 @@ import { pickBaby } from '@/babies/lastBaby'
 import { parseAgeParam } from '@/babies/useBabyStats'
 import { babiesQuery } from '@/timeline/useBabies'
 import { storyQuery } from '@/stories/useStory'
+import { isMonth } from '@/calendar/month'
 import { isCalendarDate } from '@/lib/dates'
 import { uploadStore } from '@/upload/useUploadStore'
 
@@ -84,11 +85,23 @@ const FavoritesPage = lazyRouteComponent(
   () => import('@/favorites/FavoritesPage'),
   'FavoritesPage',
 )
+const AlbumsPage = lazyRouteComponent(
+  () => import('@/albums/AlbumsPage'),
+  'AlbumsPage',
+)
+const VideosPage = lazyRouteComponent(
+  () => import('@/albums/VideosPage'),
+  'VideosPage',
+)
 const TrashPage = lazyRouteComponent(
   () => import('@/trash/TrashPage'),
   'TrashPage',
 )
 const DayPage = lazyRouteComponent(() => import('@/feed/DayPage'), 'DayPage')
+const CalendarPage = lazyRouteComponent(
+  () => import('@/calendar/CalendarPage'),
+  'CalendarPage',
+)
 const StoryNewPage = lazyRouteComponent(
   () => import('@/stories/StoryEditor'),
   'StoryNewPage',
@@ -140,17 +153,36 @@ function babySearch(s: Record<string, unknown>): { baby?: string } {
   return { baby: typeof s.baby === 'string' ? s.baby : undefined }
 }
 
+// 문자열 아닌 값(숫자로 해석된 202611 등)은 빈 문자열. 형식 검사에서 걸러짐.
+function searchText(v: unknown): string | undefined {
+  if (v === undefined) return undefined
+  return typeof v === 'string' ? v : ''
+}
+
+// 달력. month = YYYY-MM, date = 고른 날. 검사는 beforeLoad 와 화면에서.
+function calendarSearch(s: Record<string, unknown>): {
+  month?: string
+  date?: string
+  baby?: string
+} {
+  return {
+    ...babySearch(s),
+    month: searchText(s.month),
+    date: searchText(s.date),
+  }
+}
+
 // 뷰어 전용. from = 이전/다음 목록(없으면 타임라인), of = 이야기, 마일스톤 id.
 // 그 밖의 값, of 없는 story/milestone 은 버림. of 는 story/milestone 일 때만.
 function viewerSearch(s: Record<string, unknown>): {
   baby?: string
-  from?: 'favorites' | 'story' | 'milestone'
+  from?: 'favorites' | 'videos' | 'story' | 'milestone'
   of?: string
 } {
   const of = typeof s.of === 'string' && s.of !== '' ? s.of : undefined
   const from =
-    s.from === 'favorites'
-      ? 'favorites'
+    s.from === 'favorites' || s.from === 'videos'
+      ? s.from
       : (s.from === 'story' || s.from === 'milestone') && of
         ? s.from
         : undefined
@@ -262,6 +294,22 @@ const dayRoute = createRoute({
     }
   },
   component: DayPage,
+})
+
+// 형식, 실존 날짜가 아니면 search 없이 교체 이동. 이번 달 이후는 인스턴스 오늘 기준이라 화면에서.
+const calendarRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/calendar',
+  validateSearch: calendarSearch,
+  beforeLoad: ({ search }) => {
+    if (
+      (search.month !== undefined && !isMonth(search.month)) ||
+      (search.date !== undefined && !isCalendarDate(search.date))
+    ) {
+      throw redirect({ to: '/calendar', replace: true })
+    }
+  },
+  component: CalendarPage,
 })
 
 // 마지막 본 아기(없으면 첫째)로 교체 이동. 아기 없음·조회 실패는 화면에서.
@@ -400,10 +448,23 @@ const meInstanceRoute = createRoute({
   component: InstancePage,
 })
 
+// 모든 멤버 읽기.
+const albumsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/albums',
+  component: AlbumsPage,
+})
+
 const favoritesRoute = createRoute({
   getParentRoute: () => shellRoute,
-  path: '/me/favorites',
+  path: '/albums/favorites',
   component: FavoritesPage,
+})
+
+const videosRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/albums/videos',
+  component: VideosPage,
 })
 
 const trashRoute = createRoute({
@@ -444,7 +505,7 @@ const legacyUploadRoute = createRoute({
 // 경로 리터럴 유지(라우터 주소 타입 검사).
 function legacyRoute<P extends string>(
   path: P,
-  to: '/family' | '/me' | '/me/trash',
+  to: '/family' | '/me' | '/me/trash' | '/albums/favorites',
 ) {
   return createRoute({
     getParentRoute: () => rootRoute,
@@ -464,10 +525,12 @@ const routeTree = rootRoute.addChildren([
   legacyRoute('/settings', '/me'),
   legacyUploadRoute,
   legacyRoute('/trash', '/me/trash'),
+  legacyRoute('/me/favorites', '/albums/favorites'),
   authedRoute.addChildren([
     shellRoute.addChildren([
       homeRoute,
       dayRoute,
+      calendarRoute,
       babiesRoute,
       babyRoute,
       ageAlbumRoute,
@@ -483,7 +546,9 @@ const routeTree = rootRoute.addChildren([
       meDevicesRoute,
       meAppearanceRoute,
       meInstanceRoute,
+      albumsRoute,
       favoritesRoute,
+      videosRoute,
       trashRoute,
     ]),
     photoRoute,

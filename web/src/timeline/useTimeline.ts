@@ -12,11 +12,18 @@ import { ApiError } from '@/api/errors'
 import type { Asset, AssetPage, AssetSummary, DayPage } from '@/api/types'
 
 // 무효화는 ['assets'] 접두로 전체.
-// date: 그날 화면의 하루 목록. 전체 타임라인 캐시와 키 분리.
-export function timelineKey(babyId?: string, date?: string) {
+// date: 그날 화면의 하루 목록. kind: 영상 화면. 전체 타임라인 캐시와 키 분리.
+export function timelineKey(
+  babyId?: string,
+  { date, kind }: { date?: string; kind?: 'video' } = {},
+) {
   return [
     'assets',
-    date ? { baby: babyId ?? null, date } : { baby: babyId ?? null },
+    {
+      baby: babyId ?? null,
+      ...(date ? { date } : {}),
+      ...(kind ? { kind } : {}),
+    },
   ] as const
 }
 
@@ -31,15 +38,27 @@ export function useTimeline(
     refetchOnMount = true,
     enabled = true,
     date,
-  }: { refetchOnMount?: boolean; enabled?: boolean; date?: string } = {},
+    kind,
+  }: {
+    refetchOnMount?: boolean
+    enabled?: boolean
+    date?: string
+    kind?: 'video'
+  } = {},
 ) {
   const query = useInfiniteQuery({
-    queryKey: timelineKey(babyId, date),
+    queryKey: timelineKey(babyId, { date, kind }),
     queryFn: ({ pageParam }) =>
       call(
         api.GET('/api/assets', {
           params: {
-            query: { limit: 100, cursor: pageParam, baby_id: babyId, date },
+            query: {
+              limit: 100,
+              cursor: pageParam,
+              baby_id: babyId,
+              date,
+              kind,
+            },
           },
         }),
       ),

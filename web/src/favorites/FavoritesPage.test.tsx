@@ -43,7 +43,7 @@ function renderFavorites(
     ...emptyFeedRoutes,
     ...extra,
   })
-  return { ...renderApp('/me/favorites'), requests }
+  return { ...renderApp('/albums/favorites'), requests }
 }
 
 describe('FavoritesPage', () => {
@@ -57,7 +57,10 @@ describe('FavoritesPage', () => {
           },
     )
     expect(
-      await screen.findByRole('heading', { level: 1, name: ko.nav.favorites }),
+      await screen.findByRole('heading', {
+        level: 1,
+        name: ko.albums.favorites,
+      }),
     ).toBeVisible()
     const main = within(await screen.findByRole('main'))
     expect(await main.findAllByRole('link', { name: /^사진,/ })).toHaveLength(2)
@@ -74,7 +77,7 @@ describe('FavoritesPage', () => {
 
     await user.click(screen.getByRole('button', { name: ko.me.back }))
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/me')
+      expect(router.state.location.pathname).toBe('/albums')
     })
   })
 

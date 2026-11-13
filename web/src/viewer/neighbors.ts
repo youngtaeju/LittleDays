@@ -14,13 +14,16 @@ export function neighbors(
 }
 
 // 다음 페이지를 받아도 목록에 나올 수 없는 항목. 페이지 순회 중단 판단용.
+// kind: 영상 목록이면 사진은 목록 밖.
 export function outsideTimeline(
-  detail: Pick<Asset, 'deleted_at' | 'taken_at' | 'baby_ids'>,
+  detail: Pick<Asset, 'deleted_at' | 'taken_at' | 'baby_ids' | 'kind'>,
   last: Pick<AssetSummary, 'taken_at'> | undefined,
   baby: string | undefined,
+  kind?: 'video',
 ): boolean {
   if (detail.deleted_at) return true
   if (baby && !detail.baby_ids.includes(baby)) return true
+  if (kind && detail.kind !== kind) return true
   // 목록은 촬영 시각 내림차순. 마지막 항목보다 새로우면 이미 지나침. 같은 시각은 id 순이라 계속.
   return (
     last !== undefined &&

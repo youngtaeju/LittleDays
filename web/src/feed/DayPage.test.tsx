@@ -78,6 +78,7 @@ function renderDay(opts: {
         opts.assets?.(url) ?? { items: items(8), next_cursor: null },
       )
     },
+    'GET /api/memories': () => json(200, null),
     'GET /api/days': () => json(200, { items: [], next_cursor: null }),
   })
   return {

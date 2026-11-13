@@ -11,14 +11,17 @@ export function ignoresGesture(target: EventTarget | null): boolean {
 }
 
 // 가로 60px 이상이고 세로보다 큰 이동만. 다른 포인터 추가(핀치) 시 취소.
+// ignore: 시작 제외 대상. 기본 ignoresGesture. 칸 전체가 버튼인 달력은 제외 없음.
 export function useSwipe({
   enabled,
   onLeft,
   onRight,
+  ignore = ignoresGesture,
 }: {
   enabled: boolean
   onLeft: () => void
   onRight: () => void
+  ignore?: (target: EventTarget | null) => boolean
 }) {
   const start = useRef<{ id: number; x: number; y: number } | null>(null)
 
@@ -31,7 +34,7 @@ export function useSwipe({
         return
       }
       if (e.pointerType === 'mouse' && e.button !== 0) return
-      if (ignoresGesture(e.target)) return
+      if (ignore(e.target)) return
       start.current = { id: e.pointerId, x: e.clientX, y: e.clientY }
     },
     onPointerUp(e: PointerEvent) {

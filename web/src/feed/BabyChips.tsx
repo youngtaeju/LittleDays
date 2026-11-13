@@ -3,13 +3,16 @@ import { useTranslation } from 'react-i18next'
 import type { Baby } from '@/api/types'
 import { cn } from '@/lib/utils'
 
-// 홈 아기 필터(?baby=). 선택 = 강조 채움, 나머지 = 옅은 면.
+// 아기 필터(?baby=). 선택 = 강조 채움, 나머지 = 옅은 면.
+// onSelect: 지정 시 그 화면 안 이동(달력 등). 없으면 홈으로.
 export function BabyChips({
   babies,
   selected,
+  onSelect,
 }: {
   babies: Baby[]
   selected: string | undefined
+  onSelect?: (id?: string) => void
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -31,9 +34,11 @@ export function BabyChips({
             key={id ?? ''}
             type="button"
             aria-pressed={active}
-            onClick={() =>
-              void navigate({ to: '/', search: { baby: id }, replace: true })
-            }
+            onClick={() => {
+              if (onSelect) onSelect(id)
+              else
+                void navigate({ to: '/', search: { baby: id }, replace: true })
+            }}
             className="flex h-11 max-w-48 shrink-0 items-center rounded-full"
           >
             <span

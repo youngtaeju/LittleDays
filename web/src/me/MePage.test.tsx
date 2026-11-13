@@ -26,46 +26,58 @@ function renderMe(role: Role, path = '/me') {
 }
 
 describe('MePage', () => {
-  it('menu_groups_by_role', async () => {
-    renderMe('family')
-    await screen.findByRole('link', { name: '프로필' })
-    const main = within(screen.getByRole('main'))
-    expect(main.getByRole('link', { name: '비밀번호 바꾸기' })).toBeVisible()
-    expect(main.getByRole('link', { name: '로그인한 기기' })).toBeVisible()
-    expect(screen.queryByRole('link', { name: '휴지통' })).toBeNull()
-    expect(screen.queryByRole('link', { name: '우리 집 설정' })).toBeNull()
-    cleanup()
-
-    renderMe('guardian')
-    expect(
-      await screen.findByRole('link', { name: '휴지통' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: '우리 집 설정' })).toBeNull()
-    cleanup()
-
-    renderMe('owner')
-    expect(
-      await screen.findByRole('link', { name: '우리 집 설정' }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '휴지통' })).toBeInTheDocument()
-  })
-
-  it('favorites_row_for_all_roles', async () => {
+  // 스펙 표: 내 사진(휴지통), 우리 집(아기, 가족, 설정), 계정, 앱. 즐겨찾기는 앨범 탭으로만.
+  it('groups_by_role', async () => {
+    const expected = {
+      family: [
+        [ko.me.home, [ko.me.babies, ko.me.family]],
+        [ko.me.account, [ko.me.profile, ko.me.password, ko.me.devices]],
+        [ko.me.app, [ko.me.appearance]],
+      ],
+      guardian: [
+        [ko.me.photos, [ko.me.trash]],
+        [ko.me.home, [ko.me.babies, ko.me.family]],
+        [ko.me.account, [ko.me.profile, ko.me.password, ko.me.devices]],
+        [ko.me.app, [ko.me.appearance]],
+      ],
+      owner: [
+        [ko.me.photos, [ko.me.trash]],
+        [ko.me.home, [ko.me.babies, ko.me.family, ko.me.instance]],
+        [ko.me.account, [ko.me.profile, ko.me.password, ko.me.devices]],
+        [ko.me.app, [ko.me.appearance]],
+      ],
+    } as const
     for (const role of ['family', 'guardian', 'owner'] as const) {
       renderMe(role)
-      const group = (
-        await screen.findByRole('heading', { name: ko.me.photos })
-      ).closest('section')
-      if (!group) throw new Error('사진 그룹 없음')
-      const rows = within(group).getAllByRole('link')
-      expect(rows[0]).toHaveAccessibleName(ko.me.favorites)
-      expect(rows[0]).toHaveAttribute('href', '/me/favorites')
-      // 휴지통은 업로드 권한 있을 때 즐겨찾기 아래.
-      expect(rows.map((r) => r.textContent)).toEqual(
-        role === 'family' ? [ko.me.favorites] : [ko.me.favorites, ko.me.trash],
-      )
+      await screen.findByRole('heading', { name: ko.me.account })
+      const groups = screen.getAllByRole('heading', { level: 2 }).map((h) => {
+        const section = h.closest('section')
+        if (!section) throw new Error('그룹 없음')
+        return [
+          h.textContent,
+          within(section)
+            .getAllByRole('link')
+            .map((l) => l.textContent),
+        ]
+      })
+      expect(groups).toEqual(expected[role])
+      expect(
+        screen.queryByRole('link', { name: ko.albums.favorites }),
+      ).toBeNull()
       cleanup()
     }
+
+    renderMe('family')
+    const home = (
+      await screen.findByRole('heading', { name: ko.me.home })
+    ).closest('section')
+    if (!home) throw new Error('우리 집 그룹 없음')
+    expect(
+      within(home).getByRole('link', { name: ko.me.babies }),
+    ).toHaveAttribute('href', '/babies')
+    expect(
+      within(home).getByRole('link', { name: ko.me.family }),
+    ).toHaveAttribute('href', '/family')
   })
 
   it('shows_name_username_role', async () => {
