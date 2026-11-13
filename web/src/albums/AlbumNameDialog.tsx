@@ -9,9 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { usePortalTheme } from '@/lib/portalTheme'
+import { useBrowserOnline } from '@/pwa/OfflineBanner'
+import { cn } from '@/lib/utils'
 
 // 앨범 이름 입력. 새 앨범, 이름 바꾸기 공용. 길이(1~50자), 공백 정리는 서버 검증.
-// 닫히면 내용 해제. 다시 열면 initialName 부터.
+// 닫히면 내용 해제. 다시 열면 initialName 부터. 테마는 포털 테마(뷰어 위면 어둡게).
 export function AlbumNameDialog({
   open,
   onOpenChange,
@@ -31,9 +34,13 @@ export function AlbumNameDialog({
   error: unknown
   onSubmit: (name: string) => void
 }) {
+  const theme = usePortalTheme()
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined}>
+      <DialogContent
+        aria-describedby={undefined}
+        className={cn(theme, theme && 'text-foreground')}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
@@ -69,13 +76,14 @@ function NameForm({
 }) {
   const { t } = useTranslation()
   const [name, setName] = useState(initialName)
-  const empty = name.trim() === ''
+  const online = useBrowserOnline()
+  const blocked = name.trim() === '' || pending || !online
   return (
     <form
       className="grid gap-4"
       onSubmit={(e) => {
         e.preventDefault()
-        if (!empty && !pending) onSubmit(name)
+        if (!blocked) onSubmit(name)
       }}
     >
       <Field
@@ -92,7 +100,7 @@ function NameForm({
         <Button type="button" variant="outline" onClick={onCancel}>
           {t('common.cancel')}
         </Button>
-        <Button type="submit" disabled={empty || pending}>
+        <Button type="submit" disabled={blocked}>
           {submitLabel}
         </Button>
       </DialogFooter>

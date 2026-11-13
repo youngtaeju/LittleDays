@@ -21,7 +21,14 @@ export function useAlbum(id: string) {
 }
 
 // 촬영 오래된 순. 휴지통 제외는 서버.
-export function useAlbumAssets(id: string) {
+// refetchOnMount false: 뷰어용. 이미 받은 페이지 전체 재조회 방지. enabled: 뷰어가 앨범에서 열렸을 때만.
+export function useAlbumAssets(
+  id: string,
+  {
+    refetchOnMount = true,
+    enabled = true,
+  }: { refetchOnMount?: boolean; enabled?: boolean } = {},
+) {
   const query = useInfiniteQuery({
     queryKey: albumAssetsKey(id),
     queryFn: ({ pageParam }) =>
@@ -32,6 +39,8 @@ export function useAlbumAssets(id: string) {
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (p) => p.next_cursor ?? undefined,
+    refetchOnMount,
+    enabled,
   })
   const { data } = query
   const items = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data])

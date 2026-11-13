@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import {
   cleanup,
   fireEvent,
@@ -5,7 +6,15 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 import type { AlbumSummary, AssetPage, Role } from '@/api/types'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
@@ -13,6 +22,7 @@ import { json, mockFetch } from '@/test/fetch'
 import {
   albumFixture,
   apiError,
+  assetFixture,
   assetSummaryFixture,
   babyFixture,
   emptyFeedRoutes,
@@ -20,6 +30,7 @@ import {
   userFixture,
 } from '@/test/fixtures'
 import { renderApp } from '@/test/router'
+import { assetKey } from '@/timeline/useTimeline'
 import { uploadStore } from '@/upload/useUploadStore'
 
 const add = vi.fn()
@@ -156,7 +167,7 @@ describe('AlbumPage', () => {
   // 이미 든 사진도 선택 없이 시작. 고른 것만 넣기.
   it('add_from_uploaded', async () => {
     const bodies: unknown[] = []
-    const { user, counts } = setup({
+    const { user, counts, queryClient } = setup({
       extra: {
         'GET /api/assets': () =>
           json(200, {
@@ -185,6 +196,7 @@ describe('AlbumPage', () => {
     for (const tile of tiles)
       expect(tile).toHaveAttribute('aria-pressed', 'false')
     const listBefore = counts.list
+    queryClient.setQueryData(assetKey('y'), assetFixture('y'))
     const [, , y] = tiles
     if (!y) throw new Error('타일 없음')
     await user.click(y)
@@ -194,6 +206,8 @@ describe('AlbumPage', () => {
     })
     expect(await screen.findByText('1개를 담았어요')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).toBeNull()
+    // 사진 상세의 album_ids 도 낡음.
+    expect(queryClient.getQueryState(assetKey('y'))?.isInvalidated).toBe(true)
     // 앨범 요약, 사진 목록 다시 받음.
     await waitFor(() => {
       expect(counts.list).toBeGreaterThan(listBefore)
@@ -271,7 +285,7 @@ describe('AlbumPage', () => {
 
   it('select_remove', async () => {
     const bodies: unknown[] = []
-    const { user } = setup({
+    const { user, queryClient } = setup({
       extra: {
         [`POST /api/albums/${ID}/assets/remove`]: async (req) => {
           bodies.push(await req.json())
@@ -296,6 +310,7 @@ describe('AlbumPage', () => {
     await user.click(screen.getByRole('button', { name: ko.common.cancel }))
     expect(grid().getAllByRole('link')).toHaveLength(3)
 
+    queryClient.setQueryData(assetKey('a'), assetFixture('a'))
     await user.click(screen.getByRole('button', { name: ko.albums.select }))
     const tiles = grid().getAllByRole('button')
     expect(tiles).toHaveLength(3)
@@ -311,6 +326,7 @@ describe('AlbumPage', () => {
       expect(bodies).toEqual([{ asset_ids: ['a', 'c'] }])
     })
     expect(await screen.findByText('2개를 뺐어요')).toBeInTheDocument()
+    expect(queryClient.getQueryState(assetKey('a'))?.isInvalidated).toBe(true)
     // 고르기 모드 끝.
     expect(
       await screen.findByRole('button', { name: ko.albums.select }),
@@ -323,7 +339,7 @@ describe('AlbumPage', () => {
     let deleted = false
     let getsAfterDelete = 0
     const patches: unknown[] = []
-    const { user, router } = setup({
+    const { user, router, queryClient } = setup({
       extra: {
         [`GET /api/albums/${ID}`]: () => {
           if (deleted) {
@@ -366,6 +382,7 @@ describe('AlbumPage', () => {
     expect(patches).toEqual([{ name: '제주' }])
     expect(screen.queryByRole('dialog')).toBeNull()
 
+    queryClient.setQueryData(assetKey('a'), assetFixture('a'))
     await user.click(screen.getByRole('button', { name: ko.albums.menu }))
     await user.click(
       await screen.findByRole('menuitem', { name: ko.albums.delete }),
@@ -385,6 +402,7 @@ describe('AlbumPage', () => {
       expect(router.state.location.pathname).toBe('/albums')
     })
     expect(await screen.findByText(ko.albums.deleted)).toBeInTheDocument()
+    expect(queryClient.getQueryState(assetKey('a'))?.isInvalidated).toBe(true)
     // 떠나기 전 다시 받으면 404 알림 깜박임.
     await new Promise((r) => setTimeout(r, 50))
     expect(getsAfterDelete).toBe(0)
@@ -434,6 +452,11 @@ describe('AlbumPage', () => {
     const empty = { items: [], next_cursor: null }
     setup({ role: 'guardian', album: albumFixture(ID), page: empty })
     expect(await screen.findByText(ko.albums.empty)).toBeVisible()
+    // 뺄 사진이 없으니 고르기 없음.
+    expect(
+      screen.getByRole('button', { name: ko.albums.addPhotos }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: ko.albums.select })).toBeNull()
     cleanup()
     setup({ role: 'family', album: albumFixture(ID), page: empty })
     expect(await screen.findByText(ko.albums.emptyFamily)).toBeVisible()
@@ -450,5 +473,138 @@ describe('AlbumPage', () => {
       screen.getByRole('button', { name: ko.albums.select }),
     ).toBeDisabled()
     expect(screen.getByRole('button', { name: ko.albums.menu })).toBeDisabled()
+  })
+
+  // 열어 둔 시트, 대화상자 안의 쓰기도 오프라인이면 막음.
+  it('offline_inside_sheets', async () => {
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
+    // offline 이벤트는 TanStack onlineManager 도 끔. 끝나면 되돌려 다음 테스트 조회 유지.
+    const goOffline = (offline: boolean) => {
+      onLine.mockReturnValue(!offline)
+      fireEvent(window, new Event(offline ? 'offline' : 'online'))
+    }
+    onTestFinished(() => {
+      onlineManager.setOnline(true)
+    })
+    const { user } = setup({
+      extra: {
+        'GET /api/assets': () =>
+          json(200, { items: [photo('x')], next_cursor: null }),
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: ko.albums.addPhotos }),
+    )
+    const sheet = await screen.findByRole('dialog', {
+      name: ko.albums.addPhotos,
+    })
+    goOffline(true)
+    expect(
+      within(sheet).getByRole('button', { name: ko.albums.pickUploaded }),
+    ).toBeDisabled()
+    expect(
+      within(sheet).getByRole('button', { name: ko.albums.uploadNew }),
+    ).toBeDisabled()
+
+    goOffline(false)
+    await user.click(
+      within(sheet).getByRole('button', { name: ko.albums.pickUploaded }),
+    )
+    const picker = await screen.findByRole('dialog', {
+      name: ko.stories.pickTitle,
+    })
+    await within(picker).findAllByRole('button', { name: /^사진,/ })
+    goOffline(true)
+    // 등록 안 된 POST 가 나가면 테스트 실패.
+    expect(
+      within(picker).getByRole('button', { name: '0장 고르기' }),
+    ).toBeDisabled()
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+
+    goOffline(false)
+    await user.click(screen.getByRole('button', { name: ko.albums.menu }))
+    await user.click(
+      await screen.findByRole('menuitem', { name: ko.albums.rename }),
+    )
+    const rename = await screen.findByRole('dialog', {
+      name: ko.albums.rename,
+    })
+    const save = within(rename).getByRole('button', { name: ko.common.save })
+    expect(save).toBeEnabled()
+    goOffline(true)
+    expect(save).toBeDisabled()
+  })
+
+  // 고르기 모드에 들어가면 취소로, 나오면 고르기 버튼으로 포커스.
+  it('select_mode_focus', async () => {
+    const { user } = setup({
+      extra: {
+        [`POST /api/albums/${ID}/assets/remove`]: () => json(204, null),
+      },
+    })
+    await user.click(
+      await screen.findByRole('button', { name: ko.albums.select }),
+    )
+    expect(screen.getByRole('button', { name: ko.common.cancel })).toHaveFocus()
+    await user.click(screen.getByRole('button', { name: ko.common.cancel }))
+    expect(screen.getByRole('button', { name: ko.albums.select })).toHaveFocus()
+
+    await user.click(screen.getByRole('button', { name: ko.albums.select }))
+    const [first] = grid().getAllByRole('button')
+    if (!first) throw new Error('타일 없음')
+    await user.click(first)
+    await user.click(screen.getByRole('button', { name: '앨범에서 빼기 (1)' }))
+    expect(
+      await screen.findByRole('button', { name: ko.albums.select }),
+    ).toHaveFocus()
+  })
+
+  // 지운 앨범은 목록 재조회 전에도 앨범 탭에 보이지 않음.
+  it('delete_drops_from_album_list', async () => {
+    const other = albumFixture('00000000-0000-4000-8000-0000000000a2', {
+      name: '목욕 시간',
+    })
+    let deleted = false
+    const { user, router, queryClient } = setup({
+      extra: {
+        // 지운 뒤 목록 재조회는 끝나지 않음(캐시만 보이게).
+        'GET /api/albums': () =>
+          deleted ? new Promise<Response>(() => undefined) : json(200, []),
+        [`GET /api/albums/${ID}`]: () =>
+          deleted
+            ? apiError(404, 'album.notFound')
+            : json(200, albumFixture(ID)),
+        [`DELETE /api/albums/${ID}`]: () => {
+          deleted = true
+          return json(204, null)
+        },
+      },
+    })
+    queryClient.setQueryData(['assets', 'albums'], [albumFixture(ID), other])
+    await user.click(
+      await screen.findByRole('button', { name: ko.albums.menu }),
+    )
+    await user.click(
+      await screen.findByRole('menuitem', { name: ko.albums.delete }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: ko.albums.deleteTitle,
+    })
+    await user.click(
+      within(dialog).getByRole('button', { name: ko.albums.deleteSubmit }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/albums')
+    })
+    const ours = await screen.findByRole('list', { name: ko.albums.ours })
+    expect(
+      within(ours).getByRole('link', { name: /^목욕 시간,/ }),
+    ).toBeInTheDocument()
+    expect(
+      within(ours).queryByRole('link', { name: /^첫 제주 여행,/ }),
+    ).toBeNull()
   })
 })

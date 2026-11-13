@@ -214,6 +214,8 @@ describe('uploader', () => {
       expect(status(dup)).toBe('duplicate')
     })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['assets', 'albums'] })
+    // 기존 사진 상세의 album_ids.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['asset'] })
     expect(invalidate).not.toHaveBeenCalledWith({
       queryKey: ['milestone', 'al1'],
     })

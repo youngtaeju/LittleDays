@@ -487,7 +487,6 @@
     "videosEmpty": "No videos yet",
     "new": "New album",
     "ours": "Our albums",
-    "noAlbums": "Couldn't load our albums",
     "tile_one": "{{name}}, {{count}} item",
     "tile_other": "{{name}}, {{count}} items",
     "nameLabel": "Album name",
@@ -515,7 +514,12 @@
     "removed_other": "Removed {{count}} items",
     "photoGrid": "Album photos",
     "empty": "Add some photos",
-    "emptyFamily": "No photos yet"
+    "emptyFamily": "No photos yet",
+    "addTo": "Add to album",
+    "createAndAdd": "Create album and add",
+    "setCover": "Set as cover",
+    "coverSet": "Set as album cover",
+    "removeFromAlbum": "Remove from album"
   },
   "favorites": {
     "empty": "Tap ★ on a photo to collect it here"

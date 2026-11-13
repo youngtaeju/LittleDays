@@ -487,7 +487,6 @@
     "videosEmpty": "아직 올라온 영상이 없어요",
     "new": "새 앨범",
     "ours": "우리 앨범",
-    "noAlbums": "우리 앨범을 불러오지 못했어요",
     "tile_one": "{{name}}, {{count}}개",
     "tile_other": "{{name}}, {{count}}개",
     "nameLabel": "앨범 이름",
@@ -515,7 +514,12 @@
     "removed_other": "{{count}}개를 뺐어요",
     "photoGrid": "앨범 사진",
     "empty": "사진을 추가해 보세요",
-    "emptyFamily": "아직 사진이 없어요"
+    "emptyFamily": "아직 사진이 없어요",
+    "addTo": "앨범에 담기",
+    "createAndAdd": "새 앨범 만들고 담기",
+    "setCover": "표지로 지정",
+    "coverSet": "표지로 지정했어요",
+    "removeFromAlbum": "앨범에서 빼기"
   },
   "favorites": {
     "empty": "사진에서 ★ 를 누르면 여기 모여요"

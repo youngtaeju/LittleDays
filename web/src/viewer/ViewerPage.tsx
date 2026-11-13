@@ -20,6 +20,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { AlbumPickSheet } from '@/albums/AlbumPickSheet'
+import { albumKey, useAlbumAssets } from '@/albums/useAlbum'
+import { albumsKeyRoot } from '@/albums/useAlbums'
 import { api, call } from '@/api/client'
 import { isLogoutError } from '@/api/errors'
 import type { Asset, AssetSummary } from '@/api/types'
@@ -200,6 +203,8 @@ function Viewer() {
     (from === 'story' || from === 'milestone') && of
       ? { kind: from, id: of }
       : null
+  // 앨범 출처. 이웃은 앨범 사진 순서(촬영 오래된 순, 페이지).
+  const albumId = from === 'album' && of ? of : null
   const navigate = useNavigate()
   const router = useRouter()
   const canGoBack = useCanGoBack()
@@ -212,8 +217,12 @@ function Viewer() {
   const asset = useAsset(id)
   const timeline = useTimeline(listBaby, {
     refetchOnMount: false,
-    enabled: !fromFavorites && !source,
+    enabled: !fromFavorites && !source && !albumId,
     kind: fromVideos ? 'video' : undefined,
+  })
+  const album = useAlbumAssets(albumId ?? '', {
+    refetchOnMount: false,
+    enabled: albumId !== null,
   })
   const favorites = useFavorites({
     refetchOnMount: false,
@@ -237,21 +246,23 @@ function Viewer() {
     fetchNextPage,
   } = fromFavorites
     ? favorites
-    : source
-      ? {
-          items: sourceAssets ?? NO_ITEMS,
-          hasNextPage: false,
-          isFetchingNextPage: false,
-          isFetchNextPageError: false,
-          fetchNextPage: noPage,
-        }
-      : timeline
+    : albumId
+      ? album
+      : source
+        ? {
+            items: sourceAssets ?? NO_ITEMS,
+            hasNextPage: false,
+            isFetchingNextPage: false,
+            isFetchNextPageError: false,
+            fetchNextPage: noPage,
+          }
+        : timeline
   const ids = useMemo(() => items.map((i) => i.id), [items])
   const listed = ids.includes(id)
   const found = neighbors(ids, id)
-  // ★ 를 꺼 즐겨찾기 목록에서 빠지거나 휴지통으로 옮겨 대상 사진에서 빠져도
+  // ★ 를 꺼 즐겨찾기 목록에서 빠지거나 휴지통으로 옮겨 대상 사진에서 빠지거나 앨범에서 빠져도
   // 열린 사진은 마지막으로 목록에 있던 때의 이웃 유지.
-  const keepsNeighbors = fromFavorites || source !== null
+  const keepsNeighbors = fromFavorites || source !== null || albumId !== null
   const [kept, setKept] = useState<{
     id: string
     prev?: string
@@ -292,6 +303,7 @@ function Viewer() {
   const [editing, setEditing] = useState<Editing | null>(null)
   const [trashOpen, setTrashOpen] = useState(false)
   const [likersOpen, setLikersOpen] = useState(false)
+  const [albumsOpen, setAlbumsOpen] = useState(false)
   const [scrubbing, setScrubbing] = useState(false)
   if (shownId !== id) {
     setShownId(id)
@@ -299,14 +311,21 @@ function Viewer() {
     setEditing(null)
     setTrashOpen(false)
     setLikersOpen(false)
+    setAlbumsOpen(false)
   }
+
+  // 변경 응답 도착 시점의 열린 항목. 응답 전에 넘겼으면 이동하지 않음.
+  const shownRef = useRef(id)
+  useEffect(() => {
+    shownRef.current = id
+  }, [id])
 
   const like = useToggleLike({ kind: 'asset', id })
   const favorite = useToggleFavorite(id, { fromFavorites })
 
   // 불러온 목록의 마지막 항목이거나 아직 목록에 없으면 다음 페이지. 실패·끝이면 중단.
   // 상세 도착 후 판단. 휴지통·다른 아기·이미 지나친 시각처럼 목록에 나올 수 없으면 순회 안 함.
-  // 즐겨찾기 목록은 즐겨찾기한 시각 순서라 즐겨찾기 여부와 휴지통만 판단.
+  // 즐겨찾기 목록은 즐겨찾기한 시각 순서라 즐겨찾기 여부와 휴지통만 판단. 앨범도 같은 방식(든 앨범, 휴지통).
   // 이야기, 마일스톤 사진은 한 번에 전부라 더 받을 목록 없음.
   const unlisted =
     !source &&
@@ -314,12 +333,14 @@ function Viewer() {
     detail !== undefined &&
     (fromFavorites
       ? detail.favorited && detail.deleted_at === null
-      : !outsideTimeline(
-          detail,
-          items[items.length - 1],
-          listBaby,
-          fromVideos ? 'video' : undefined,
-        ))
+      : albumId
+        ? detail.album_ids.includes(albumId) && detail.deleted_at === null
+        : !outsideTimeline(
+            detail,
+            items[items.length - 1],
+            listBaby,
+            fromVideos ? 'video' : undefined,
+          ))
   const atEnd = ids.length > 0 && (ids[ids.length - 1] === id || unlisted)
   useEffect(() => {
     if (atEnd && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
@@ -358,11 +379,13 @@ function Viewer() {
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     closeTimer.current = window.setTimeout(
       () => {
-        // 직접 진입(앱 내 이전 기록 없음)이면 즐겨찾기나 영상 화면, 그 이야기나 마일스톤, 그 밖은 홈 타임라인.
+        // 직접 진입(앱 내 이전 기록 없음)이면 즐겨찾기나 영상 화면, 그 앨범, 그 이야기나 마일스톤, 그 밖은 홈 타임라인.
         if (canGoBack) router.history.back()
         else if (fromFavorites) void navigate({ to: '/albums/favorites' })
         else if (fromVideos) void navigate({ to: '/albums/videos' })
-        else if (source?.kind === 'story') {
+        else if (albumId) {
+          void navigate({ to: '/albums/$id', params: { id: albumId } })
+        } else if (source?.kind === 'story') {
           void navigate({ to: '/stories/$id', params: { id: source.id } })
         } else if (source?.kind === 'milestone') {
           void navigate({ to: '/milestones/$id', params: { id: source.id } })
@@ -425,6 +448,8 @@ function Viewer() {
           },
         },
       })
+      // 응답 전에 다른 사진으로 옮겨 갔으면 그 자리 유지.
+      if (assetId !== shownRef.current) return
       if (next) go(next)
       else {
         setTrashOpen(false)
@@ -444,6 +469,48 @@ function Viewer() {
       applyAsset(qc, a)
     },
   })
+  // 빼면 다음 사진. 마지막이면 닫기(앨범 화면).
+  const removeFromAlbum = useMutation({
+    mutationFn: (v: { albumId: string; assetId: string }) =>
+      call(
+        api.POST('/api/albums/{id}/assets/remove', {
+          params: { path: { id: v.albumId } },
+          body: { asset_ids: [v.assetId] },
+        }),
+      ),
+    onSuccess: (_, v) => {
+      void qc.invalidateQueries({ queryKey: albumsKeyRoot })
+      // 사진 상세 album_ids.
+      void qc.invalidateQueries({ queryKey: ['asset'] })
+      toast(t('albums.removed', { count: 1 }))
+      if (v.assetId !== shownRef.current) return
+      if (next) go(next)
+      else close()
+    },
+    onError: (e) => {
+      if (!isLogoutError(e)) toast.error(errorMessage(t, e))
+    },
+  })
+
+  const setCover = useMutation({
+    mutationFn: (v: { albumId: string; assetId: string }) =>
+      call(
+        api.PATCH('/api/albums/{id}', {
+          params: { path: { id: v.albumId } },
+          body: { cover_asset_id: v.assetId },
+        }),
+      ),
+    onSuccess: (a) => {
+      qc.setQueryData(albumKey(a.id), a)
+      void qc.invalidateQueries({ queryKey: albumsKeyRoot, exact: true })
+      void qc.invalidateQueries({ queryKey: ['asset'] })
+      toast(t('albums.coverSet'))
+    },
+    onError: (e) => {
+      if (!isLogoutError(e)) toast.error(errorMessage(t, e))
+    },
+  })
+
   const retryProps = {
     onRetry:
       canEdit && media
@@ -648,6 +715,34 @@ function Viewer() {
                 }
               : null
           }
+          albums={
+            canEdit && detail && !detail.deleted_at
+              ? {
+                  onAdd: () => {
+                    setAlbumsOpen(true)
+                  },
+                  // 이 앨범에 든 사진만. 표지는 처리 완료 사진만.
+                  onSetCover:
+                    albumId &&
+                    detail.album_ids.includes(albumId) &&
+                    detail.status === 'ready'
+                      ? () => {
+                          setCover.mutate({ albumId, assetId: detail.id })
+                        }
+                      : null,
+                  onRemove:
+                    albumId && detail.album_ids.includes(albumId)
+                      ? () => {
+                          removeFromAlbum.mutate({
+                            albumId,
+                            assetId: detail.id,
+                          })
+                        }
+                      : null,
+                  removing: removeFromAlbum.isPending,
+                }
+              : null
+          }
           trash={
             canEdit && media
               ? {
@@ -826,6 +921,14 @@ function Viewer() {
         open={likersOpen}
         onOpenChange={setLikersOpen}
       />
+      {albumsOpen && (
+        <AlbumPickSheet
+          assetId={id}
+          onClose={() => {
+            setAlbumsOpen(false)
+          }}
+        />
+      )}
     </div>
   )
 }

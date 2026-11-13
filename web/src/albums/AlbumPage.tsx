@@ -9,11 +9,11 @@ import IconAdd from '~icons/material-symbols/add-rounded'
 import IconMore from '~icons/material-symbols/more-vert-rounded'
 import type { TFunction } from 'i18next'
 import { DropdownMenu } from 'radix-ui'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, call } from '@/api/client'
-import { ApiError } from '@/api/errors'
+import { ApiError, isLogoutError } from '@/api/errors'
 import type { AlbumSummary } from '@/api/types'
 import { hasRole, useMe } from '@/auth/session'
 import { FormError } from '@/components/Field'
@@ -107,6 +107,12 @@ function AlbumMenu({
     onSuccess: () => {
       setDeleting(false)
       toast(t('albums.deleted'))
+      // 사진 상세 album_ids.
+      void qc.invalidateQueries({ queryKey: ['asset'] })
+      // 앨범 탭이 재조회 전에 지운 앨범을 잠깐 보이지 않게.
+      qc.setQueryData<AlbumSummary[]>([...albumsKeyRoot], (list) =>
+        list?.filter((x) => x.id !== album.id),
+      )
       // 화면을 떠난 뒤 제거(남은 화면의 재조회 404 알림 방지).
       const unsubscribe = router.subscribe('onRendered', () => {
         unsubscribe()
@@ -236,7 +242,22 @@ export function AlbumPage() {
       return next
     })
   }, [])
+  // 고르기 모드 전환 뒤 포커스. 들어가면 취소, 나오면 고르기 버튼(숨는 버튼에 포커스가 남지 않게).
+  const selectButton = useRef<HTMLButtonElement>(null)
+  const cancelButton = useRef<HTMLButtonElement>(null)
+  const focusAfter = useRef<'cancel' | 'select' | null>(null)
+  useEffect(() => {
+    const target = focusAfter.current
+    focusAfter.current = null
+    if (target === 'cancel') cancelButton.current?.focus()
+    else if (target === 'select') selectButton.current?.focus()
+  }, [selecting])
+  const startSelect = () => {
+    focusAfter.current = 'cancel'
+    setSelecting(true)
+  }
   const endSelect = () => {
+    focusAfter.current = 'select'
     setSelecting(false)
     setSelected(new Set())
   }
@@ -251,11 +272,13 @@ export function AlbumPage() {
       ),
     onSuccess: (_, ids) => {
       void qc.invalidateQueries({ queryKey: albumsKeyRoot })
+      // 사진 상세 album_ids.
+      void qc.invalidateQueries({ queryKey: ['asset'] })
       toast(t('albums.removed', { count: ids.length }))
       endSelect()
     },
     onError: (e) => {
-      toast.error(errorMessage(t, e))
+      if (!isLogoutError(e)) toast.error(errorMessage(t, e))
     },
   })
 
@@ -299,16 +322,18 @@ export function AlbumPage() {
                 <IconAdd aria-hidden className="size-5" />
                 {t('albums.addPhotos')}
               </Button>
-              <Button
-                variant="secondary"
-                className="h-11 rounded-full px-4 text-xs font-semibold"
-                disabled={!online}
-                onClick={() => {
-                  setSelecting(true)
-                }}
-              >
-                {t('albums.select')}
-              </Button>
+              {/* 뺄 사진이 있을 때만. */}
+              {assets.items.length > 0 && (
+                <Button
+                  ref={selectButton}
+                  variant="secondary"
+                  className="h-11 rounded-full px-4 text-xs font-semibold"
+                  disabled={!online}
+                  onClick={startSelect}
+                >
+                  {t('albums.select')}
+                </Button>
+              )}
             </div>
           )}
           <AssetGrid
@@ -324,7 +349,12 @@ export function AlbumPage() {
           {selecting && (
             // 휴대폰은 하단 탭(h-14 + 테두리) 위에 고정.
             <div className="sticky bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] z-10 -mx-4 flex gap-2 border-t bg-background px-4 py-2 lg:bottom-0">
-              <Button variant="outline" className="flex-1" onClick={endSelect}>
+              <Button
+                ref={cancelButton}
+                variant="outline"
+                className="flex-1"
+                onClick={endSelect}
+              >
                 {t('common.cancel')}
               </Button>
               <Button

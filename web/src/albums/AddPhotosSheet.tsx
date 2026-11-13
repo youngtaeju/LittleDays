@@ -5,14 +5,16 @@ import { useState, type ComponentType, type SVGProps } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { api, call } from '@/api/client'
+import { isLogoutError } from '@/api/errors'
 import { errorMessage } from '@/i18n'
+import { useBrowserOnline } from '@/pwa/OfflineBanner'
 import { AssetPickerSheet } from '@/stories/AssetPickerSheet'
 import { AdaptiveSheet } from '@/upload/AdaptiveSheet'
 import { useUploadPicker } from '@/upload/picker'
 import { albumsKeyRoot } from './useAlbums'
 
 const OPTION =
-  'flex min-h-14 w-full items-center gap-4 rounded-xl px-3 text-left text-[15px] font-semibold outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring'
+  'flex min-h-14 w-full items-center gap-4 rounded-xl px-3 text-left text-[15px] font-semibold outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50'
 
 // 사진 추가 시트. 올린 사진 고르기(고른 것만 넣기) / 새로 올리기(업로드 확인 시트 + 앨범 대상).
 export function AddPhotosSheet({
@@ -25,6 +27,8 @@ export function AddPhotosSheet({
   const { t } = useTranslation()
   const qc = useQueryClient()
   const picker = useUploadPicker()
+  // 고르기 끝이 곧 넣기 요청. 오프라인이면 막음.
+  const online = useBrowserOnline()
   const [picking, setPicking] = useState(false)
 
   // 시트를 닫은 뒤 완료. 화면을 떠나도 알림과 무효화는 훅 옵션 쪽이라 실행.
@@ -38,10 +42,12 @@ export function AddPhotosSheet({
       ),
     onSuccess: (_, ids) => {
       void qc.invalidateQueries({ queryKey: albumsKeyRoot })
+      // 사진 상세 album_ids.
+      void qc.invalidateQueries({ queryKey: ['asset'] })
       toast(t('albums.added', { count: ids.length }))
     },
     onError: (e) => {
-      toast.error(errorMessage(t, e))
+      if (!isLogoutError(e)) toast.error(errorMessage(t, e))
     },
   })
 
@@ -49,6 +55,7 @@ export function AddPhotosSheet({
     return (
       <AssetPickerSheet
         selected={[]}
+        doneDisabled={!online}
         onClose={onClose}
         onDone={(assets) => {
           onClose()
@@ -89,7 +96,12 @@ export function AddPhotosSheet({
       <ul className="-mx-2 grid gap-1">
         {options.map(({ key, label, icon: Icon, run }) => (
           <li key={key}>
-            <button type="button" className={OPTION} onClick={run}>
+            <button
+              type="button"
+              className={OPTION}
+              disabled={!online}
+              onClick={run}
+            >
               <span
                 aria-hidden
                 className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-ink"

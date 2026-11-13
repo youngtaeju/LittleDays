@@ -134,8 +134,9 @@ function createQueue(): Uploader {
     ) {
       const { kind, id: target } = s.attach
       if (kind === 'album') {
-        // 앨범 목록 개수, 표지와 앨범 화면 전부.
+        // 앨범 목록 개수, 표지와 앨범 화면 전부. 중복이면 기존 사진 상세의 album_ids 도.
         void queryClient?.invalidateQueries({ queryKey: albumsKeyRoot })
+        void queryClient?.invalidateQueries({ queryKey: ['asset'] })
       } else {
         void queryClient?.invalidateQueries({
           queryKey: kind === 'story' ? storyKey(target) : milestoneKey(target),
