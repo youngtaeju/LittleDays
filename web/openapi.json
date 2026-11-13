@@ -3604,6 +3604,62 @@
         }
       }
     },
+    "/api/memories": {
+      "get": {
+        "operationId": "get_memory",
+        "parameters": [
+          {
+            "name": "baby_id",
+            "in": "query",
+            "description": "해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "오늘(인스턴스 시간대)과 같은 일의 가장 가까운 년 전, 없으면 11개월 이내 개월 전 하루. 없으면 JSON `null`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Memory"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "쿼리 오류 (`request.invalidQuery`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/milestones/{id}": {
       "get": {
         "operationId": "get_milestone",
@@ -6901,6 +6957,34 @@
             "type": "string"
           }
         }
+      },
+      "Memory": {
+        "type": "object",
+        "description": "오늘의 추억 하루. `n` 은 `kind` 단위 경과 수.",
+        "required": [
+          "kind",
+          "n",
+          "day"
+        ],
+        "properties": {
+          "day": {
+            "$ref": "#/components/schemas/DaySummary"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MemoryKind"
+          },
+          "n": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "MemoryKind": {
+        "type": "string",
+        "enum": [
+          "years",
+          "months"
+        ]
       },
       "Milestone": {
         "allOf": [

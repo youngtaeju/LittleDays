@@ -2,10 +2,13 @@
 
 use chrono::NaiveDate;
 use serde::Serialize;
+use sqlx::PgConnection;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{assets::AssetSummary, milestones::MilestoneSummary, stories::StorySummary};
+use crate::{
+    assets::AssetSummary, error::AppResult, milestones::MilestoneSummary, stories::StorySummary,
+};
 
 pub mod queries;
 pub mod routes;
@@ -58,4 +61,38 @@ pub struct DayDetail {
     pub stories: Vec<StorySummary>,
     /// 그날 마일스톤. 기록 순.
     pub milestones: Vec<MilestoneSummary>,
+}
+
+/// 날짜 목록의 미리보기, 이야기, 마일스톤 채움. `items` 는 날짜 내림차순.
+/// 목록 조회와 같은 스냅숏 트랜잭션 안에서 호출.
+pub async fn fill(
+    conn: &mut PgConnection,
+    tz: &str,
+    items: &mut [DaySummary],
+    baby_id: Option<Uuid>,
+) -> AppResult<()> {
+    let dates: Vec<NaiveDate> = items.iter().map(|d| d.date).collect();
+    let mut previews = queries::previews(&mut *conn, tz, &dates, baby_id)
+        .await?
+        .into_iter()
+        .peekable();
+    // 두 결과 모두 날짜 내림차순.
+    for day in items.iter_mut() {
+        while let Some(p) = previews.next_if(|p| p.local_date == day.date) {
+            day.preview.push(p);
+        }
+    }
+    let (stories, milestones) = queries::records(conn, tz, &dates, baby_id).await?;
+    // 날짜 집합에서 온 기록이라 해당 날 항상 존재.
+    for s in stories {
+        if let Some(day) = items.iter_mut().find(|d| d.date == s.entry_date) {
+            day.stories.push(s);
+        }
+    }
+    for m in milestones {
+        if let Some(day) = items.iter_mut().find(|d| d.date == m.achieved_on) {
+            day.milestones.push(m);
+        }
+    }
+    Ok(())
 }
