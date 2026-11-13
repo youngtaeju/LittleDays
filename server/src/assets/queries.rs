@@ -18,6 +18,9 @@ pub async fn get(exec: impl PgExecutor<'_>, id: Uuid, viewer: Uuid) -> AppResult
                   COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
                             FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
                             WHERE ab.asset_id = a.id), '{}') AS "baby_ids!",
+                  COALESCE((SELECT array_agg(aa.album_id)
+                            FROM album_assets aa WHERE aa.asset_id = a.id), '{}')
+                    AS "album_ids!",
                   a.derivatives, a.processing_error, a.created_at, a.deleted_at,
                   (SELECT count(*) FROM asset_likes l WHERE l.asset_id = a.id) AS "like_count!",
                   (SELECT count(*) FROM asset_comments c WHERE c.asset_id = a.id)
@@ -202,6 +205,7 @@ pub async fn list(
     cursor: Option<(DateTime<Utc>, Uuid)>,
     baby_id: Option<Uuid>,
     date: Option<NaiveDate>,
+    kind: Option<AssetKind>,
     limit: i64,
 ) -> AppResult<Vec<AssetSummary>> {
     let (cursor_ts, cursor_id) = cursor.unzip();
@@ -220,13 +224,15 @@ pub async fn list(
              AND ($4::uuid IS NULL OR EXISTS (
                    SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $4))
              AND ($5::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date = $5)
+             AND ($6::asset_kind IS NULL OR a.kind = $6)
            ORDER BY a.taken_at DESC, a.id DESC
-           LIMIT $6"#,
+           LIMIT $7"#,
         timezone,
         cursor_ts,
         cursor_id,
         baby_id,
         date,
+        kind as Option<AssetKind>,
         limit,
     )
     .fetch_all(exec)

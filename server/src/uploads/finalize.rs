@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 use super::{Upload, queries, remove_temp_file};
 use crate::{
+    albums,
     assets::{
         self, Asset, AssetStatus, TakenAtSource,
         queries::{NewAsset, ShaMatch},
@@ -50,16 +51,25 @@ pub struct FinalizeRequest {
     baby_ids: Vec<Uuid>,
     /// 클라이언트 파일 수정 시각. 촬영 메타데이터 없을 때 촬영일 후보.
     file_modified_at: Option<DateTime<Utc>>,
-    /// 맨 뒤에 붙일 이야기 또는 마일스톤. 대상이 없거나 고칠 권한이 없으면 연결만 건너뜀.
+    /// 맨 뒤에 붙일 이야기, 마일스톤 또는 앨범. 대상이 없거나 고칠 권한이 없으면 연결만 건너뜀.
     /// 중복 업로드(409)면 기존 사진이 휴지통 아닐 때 연결.
     #[serde(default)]
     attach: Option<AttachTarget>,
 }
 
-/// 새 사진을 붙일 이야기 또는 마일스톤.
+/// 붙일 대상 종류.
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AttachKind {
+    Story,
+    Milestone,
+    Album,
+}
+
+/// 새 사진을 붙일 이야기, 마일스톤, 앨범.
 #[derive(Deserialize, ToSchema)]
 pub struct AttachTarget {
-    kind: LinkKind,
+    kind: AttachKind,
     id: Uuid,
 }
 
@@ -263,24 +273,36 @@ async fn store_asset(
 }
 
 /// 대상이 있고 요청자가 고칠 수 있으면 맨 뒤에 연결, 아니면 건너뜀.
-/// 이야기는 작성자이고 guardian 이상, 마일스톤은 guardian 이상. 대상 행 잠금으로 동시 삭제 시 FK 위반 방지.
+/// 이야기는 작성자이고 guardian 이상, 마일스톤과 앨범은 guardian 이상. 대상 행 잠금으로 동시 삭제 시 FK 위반 방지.
 async fn attach(
     conn: &mut PgConnection,
     current: &CurrentUser,
     target: &AttachTarget,
     asset_id: Uuid,
 ) -> AppResult<()> {
-    let allowed = match target.kind {
-        LinkKind::Story => stories::queries::author_for_link(&mut *conn, target.id)
-            .await?
-            .is_some_and(|author| stories::can_edit(current, author)),
-        LinkKind::Milestone => {
-            current.require(Role::Guardian).is_ok()
-                && milestones::queries::exists_for_link(&mut *conn, target.id).await?
+    let link_kind = match target.kind {
+        AttachKind::Story => {
+            let allowed = stories::queries::author_for_link(&mut *conn, target.id)
+                .await?
+                .is_some_and(|author| stories::can_edit(current, author));
+            allowed.then_some(LinkKind::Story)
+        }
+        AttachKind::Milestone => {
+            let allowed = current.require(Role::Guardian).is_ok()
+                && milestones::queries::exists_for_link(&mut *conn, target.id).await?;
+            allowed.then_some(LinkKind::Milestone)
+        }
+        AttachKind::Album => {
+            if current.require(Role::Guardian).is_ok()
+                && albums::queries::lock_for_link(&mut *conn, target.id).await?
+            {
+                albums::queries::add_assets(conn, target.id, current.user.id, &[asset_id]).await?;
+            }
+            None
         }
     };
-    if allowed {
-        links::append(&mut *conn, target.kind, target.id, asset_id).await?;
+    if let Some(kind) = link_kind {
+        links::append(&mut *conn, kind, target.id, asset_id).await?;
     }
     Ok(())
 }

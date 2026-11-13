@@ -1,14 +1,15 @@
 use axum::{Json, extract::State, http::StatusCode};
 use serde::Deserialize;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
 use super::{AlbumSummary, check_assets, check_count, normalize_name, queries, require_write};
 use crate::{
+    assets::{AssetSummary, Page, cursor},
     auth::extract::CurrentUser,
     error::{AppError, AppResult, ErrorBody},
-    request::{Json as JsonBody, Path},
+    request::{Json as JsonBody, Path, Query},
     settings,
     state::AppState,
 };
@@ -17,6 +18,7 @@ pub fn router() -> OpenApiRouter<AppState> {
     OpenApiRouter::new()
         .routes(routes!(list_albums, create_album))
         .routes(routes!(get_album, update_album, delete_album))
+        .routes(routes!(list_album_assets))
         .routes(routes!(add_album_assets))
         .routes(routes!(remove_album_assets))
 }
@@ -29,20 +31,27 @@ struct CreateAlbumRequest {
     asset_ids: Option<Vec<Uuid>>,
 }
 
-/// 키가 있으면 `null` 포함 `Some`.
-fn present<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Option<Uuid>>, D::Error> {
-    Option::<Uuid>::deserialize(d).map(Some)
-}
-
 /// 보낸 필드만 교체.
 #[derive(Deserialize, ToSchema)]
 struct UpdateAlbumRequest {
     /// 앞뒤 공백 제거 후 1~50자.
     name: Option<String>,
     /// 생략 시 변경 없음. 앨범 안의 휴지통 아닌 처리 완료 사진. `null` 이면 기본 표지.
-    #[serde(default, deserialize_with = "present")]
+    #[serde(default, deserialize_with = "crate::records::present")]
     #[schema(value_type = Option<Uuid>)]
     cover_asset_id: Option<Option<Uuid>>,
+}
+
+const DEFAULT_LIMIT: i64 = 100;
+const MAX_LIMIT: i64 = 500;
+
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+struct AlbumAssetsQuery {
+    /// 이전 응답의 `next_cursor`.
+    cursor: Option<String>,
+    /// 1~500, 기본 100.
+    limit: Option<i64>,
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -129,6 +138,45 @@ async fn get_album(
         .pop()
         .map(Json)
         .ok_or(AppError::NotFound("album.notFound"))
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/albums/{id}/assets",
+    params(("id" = Uuid, Path, description = "앨범 ID"), AlbumAssetsQuery),
+    responses(
+        (status = 200, description = "휴지통 제외, 촬영 시각 오래된 순", body = Page<AssetSummary>),
+        (status = 400, description = "쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`)", body = ErrorBody),
+        (status = 401, description = "인증 필요", body = ErrorBody),
+        (status = 404, description = "앨범 없음 (`album.notFound`)", body = ErrorBody),
+    )
+)]
+async fn list_album_assets(
+    State(state): State<AppState>,
+    _current: CurrentUser,
+    Path(id): Path<Uuid>,
+    Query(q): Query<AlbumAssetsQuery>,
+) -> AppResult<Json<Page<AssetSummary>>> {
+    let limit = q.limit.unwrap_or(DEFAULT_LIMIT);
+    if !(1..=MAX_LIMIT).contains(&limit) {
+        return Err(AppError::bad_request("request.invalidQuery"));
+    }
+    let after = q.cursor.as_deref().map(cursor::decode).transpose()?;
+    let mut conn = state.pool.acquire().await?;
+    if !queries::exists(&mut *conn, id).await? {
+        return Err(AppError::NotFound("album.notFound"));
+    }
+    let tz = settings::queries::load(&mut *conn).await?.timezone;
+    let mut items = queries::list_assets(&mut *conn, &tz, id, after, limit + 1).await?;
+    let next_cursor = if items.len() as i64 > limit {
+        items.truncate(limit as usize);
+        items
+            .last()
+            .map(|last| cursor::encode(last.taken_at, last.id))
+    } else {
+        None
+    };
+    Ok(Json(Page { items, next_cursor }))
 }
 
 #[utoipa::path(

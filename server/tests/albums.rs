@@ -560,3 +560,109 @@ async fn delete_keeps_assets(pool: PgPool) {
         "album.notFound",
     );
 }
+
+fn page_ids(page: &Value) -> Vec<Uuid> {
+    page["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|i| i["id"].as_str().unwrap().parse().unwrap())
+        .collect()
+}
+
+#[sqlx::test]
+async fn album_assets_order_and_cursor(pool: PgPool) {
+    let app = media_app(&pool, Role::Owner).await;
+    let newest = photo(&pool, app.user.id, "2024-03-12").await;
+    let oldest = photo(&pool, app.user.id, "2024-03-10").await;
+    let middle = photo(&pool, app.user.id, "2024-03-11").await;
+    let trashed = photo(&pool, app.user.id, "2024-03-13").await;
+    let album = create(&app.server, json!({ "name": "앨범" })).await;
+    let id = album["id"].as_str().unwrap();
+    add(&app.server, id, &[newest, oldest, middle, trashed])
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    trash(&app.server, trashed).await;
+
+    let first: Value = app
+        .server
+        .get(&format!("/api/albums/{id}/assets"))
+        .add_query_param("limit", 2)
+        .await
+        .json();
+    assert_eq!(page_ids(&first), [oldest, middle]);
+    let cursor = first["next_cursor"].as_str().unwrap();
+    let second: Value = app
+        .server
+        .get(&format!("/api/albums/{id}/assets"))
+        .add_query_param("limit", 2)
+        .add_query_param("cursor", cursor)
+        .await
+        .json();
+    assert_eq!(page_ids(&second), [newest]);
+    assert!(second["next_cursor"].is_null());
+
+    let res = app
+        .server
+        .get(&format!("/api/albums/{id}/assets"))
+        .add_query_param("limit", 0)
+        .await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "request.invalidQuery");
+    let res = app
+        .server
+        .get(&format!("/api/albums/{}/assets", Uuid::now_v7()))
+        .await;
+    assert_error(&res, StatusCode::NOT_FOUND, "album.notFound");
+}
+
+#[sqlx::test]
+async fn album_ids_in_asset_detail(pool: PgPool) {
+    let app = media_app(&pool, Role::Owner).await;
+    let p = photo(&pool, app.user.id, "2024-03-10").await;
+    let a = create(&app.server, json!({ "name": "가" })).await;
+    let b = create(&app.server, json!({ "name": "나" })).await;
+    for album in [&a, &b] {
+        add(&app.server, album["id"].as_str().unwrap(), &[p])
+            .await
+            .assert_status(StatusCode::NO_CONTENT);
+    }
+    let detail: Value = app.server.get(&format!("/api/assets/{p}")).await.json();
+    let mut got: Vec<&str> = detail["album_ids"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap())
+        .collect();
+    got.sort();
+    let mut want = vec![a["id"].as_str().unwrap(), b["id"].as_str().unwrap()];
+    want.sort();
+    assert_eq!(got, want);
+}
+
+#[sqlx::test]
+async fn other_guardian_can_edit_and_family_can_list(pool: PgPool) {
+    let app = media_app(&pool, Role::Owner).await;
+    let p = photo(&pool, app.user.id, "2024-03-10").await;
+    let q = photo(&pool, app.user.id, "2024-03-11").await;
+    let album = create(&app.server, json!({ "name": "원래", "asset_ids": [p] })).await;
+    let id = album["id"].as_str().unwrap();
+    let (guardian, _) = app.login_as("dad", Role::Guardian).await;
+
+    patch(&guardian, id, json!({ "name": "바뀜" }))
+        .await
+        .assert_status_ok();
+    patch(&guardian, id, json!({ "cover_asset_id": p }))
+        .await
+        .assert_status_ok();
+    add(&guardian, id, &[q])
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    remove(&guardian, id, &[q])
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+
+    let (family, _) = app.login_as("grandma", Role::Family).await;
+    let res = family.get(&format!("/api/albums/{id}/assets")).await;
+    res.assert_status_ok();
+    assert_eq!(page_ids(&res.json()), [p]);
+}

@@ -5,7 +5,7 @@ use utoipa::{IntoParams, ToSchema};
 use utoipa_axum::{router::OpenApiRouter, routes};
 use uuid::Uuid;
 
-use super::{Asset, AssetSummary, MonthCount, Page, TrashItem, cursor, queries, trash};
+use super::{Asset, AssetKind, AssetSummary, MonthCount, Page, TrashItem, cursor, queries, trash};
 use crate::{
     auth::extract::CurrentUser,
     babies,
@@ -45,6 +45,8 @@ struct ListQuery {
     baby_id: Option<Uuid>,
     /// 인스턴스 시간대 기준 그날 촬영한 자산만.
     date: Option<NaiveDate>,
+    /// 해당 종류만.
+    kind: Option<AssetKind>,
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -110,7 +112,16 @@ async fn list_assets(
     }
     let after = q.cursor.as_deref().map(cursor::decode).transpose()?;
     let tz = settings::queries::load(&state.pool).await?.timezone;
-    let mut items = queries::list(&state.pool, &tz, after, q.baby_id, q.date, limit + 1).await?;
+    let mut items = queries::list(
+        &state.pool,
+        &tz,
+        after,
+        q.baby_id,
+        q.date,
+        q.kind,
+        limit + 1,
+    )
+    .await?;
     let next_cursor = if items.len() as i64 > limit {
         items.truncate(limit as usize);
         items

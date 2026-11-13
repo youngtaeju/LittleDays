@@ -302,6 +302,82 @@
       }
     },
     "/api/albums/{id}/assets": {
+      "get": {
+        "operationId": "list_album_assets",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "앨범 ID",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "이전 응답의 `next_cursor`.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "1~500, 기본 100.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "휴지통 제외, 촬영 시각 오래된 순",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page_AssetSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "앨범 없음 (`album.notFound`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "operationId": "add_album_assets",
         "parameters": [
@@ -486,6 +562,15 @@
             "schema": {
               "type": "string",
               "format": "date"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "description": "해당 종류만.",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AssetKind"
             }
           }
         ],
@@ -5604,6 +5689,7 @@
           "caption",
           "uploaded_by",
           "baby_ids",
+          "album_ids",
           "derivatives",
           "processing_error",
           "created_at",
@@ -5614,6 +5700,14 @@
           "favorited"
         ],
         "properties": {
+          "album_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "든 앨범. 순서 없음."
+          },
           "baby_ids": {
             "type": "array",
             "items": {
@@ -5869,9 +5963,18 @@
           }
         }
       },
+      "AttachKind": {
+        "type": "string",
+        "description": "붙일 대상 종류.",
+        "enum": [
+          "story",
+          "milestone",
+          "album"
+        ]
+      },
       "AttachTarget": {
         "type": "object",
-        "description": "새 사진을 붙일 이야기 또는 마일스톤.",
+        "description": "새 사진을 붙일 이야기, 마일스톤, 앨범.",
         "required": [
           "kind",
           "id"
@@ -5882,7 +5985,7 @@
             "format": "uuid"
           },
           "kind": {
-            "$ref": "#/components/schemas/LinkKind"
+            "$ref": "#/components/schemas/AttachKind"
           }
         }
       },
@@ -6542,7 +6645,7 @@
               },
               {
                 "$ref": "#/components/schemas/AttachTarget",
-                "description": "맨 뒤에 붙일 이야기 또는 마일스톤. 대상이 없거나 고칠 권한이 없으면 연결만 건너뜀.\n중복 업로드(409)면 기존 사진이 휴지통 아닐 때 연결."
+                "description": "맨 뒤에 붙일 이야기, 마일스톤 또는 앨범. 대상이 없거나 고칠 권한이 없으면 연결만 건너뜀.\n중복 업로드(409)면 기존 사진이 휴지통 아닐 때 연결."
               }
             ]
           },
@@ -6767,14 +6870,6 @@
             "format": "uuid"
           }
         }
-      },
-      "LinkKind": {
-        "type": "string",
-        "description": "연결 대상 종류.",
-        "enum": [
-          "story",
-          "milestone"
-        ]
       },
       "LoginRequest": {
         "type": "object",

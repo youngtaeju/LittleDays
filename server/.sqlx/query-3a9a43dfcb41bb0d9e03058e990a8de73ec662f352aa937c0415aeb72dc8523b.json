@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT a.id, a.kind AS \"kind: AssetKind\", a.status AS \"status: AssetStatus\",\n                  a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS \"local_date!\",\n                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id\n                            WHERE ab.asset_id = a.id), '{}') AS \"baby_ids!\",\n                  a.derivatives\n           FROM assets a\n           WHERE a.deleted_at IS NULL\n             AND ($2::timestamptz IS NULL OR (a.taken_at, a.id) < ($2, $3::uuid))\n             AND ($4::uuid IS NULL OR EXISTS (\n                   SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $4))\n             AND ($5::date IS NULL OR (a.taken_at AT TIME ZONE $1)::date = $5)\n           ORDER BY a.taken_at DESC, a.id DESC\n           LIMIT $6",
+  "query": "SELECT a.id, a.kind AS \"kind: AssetKind\", a.status AS \"status: AssetStatus\",\n                  a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS \"local_date!\",\n                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,\n                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)\n                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id\n                            WHERE ab.asset_id = a.id), '{}') AS \"baby_ids!\",\n                  a.derivatives\n           FROM album_assets aa JOIN assets a ON a.id = aa.asset_id\n           WHERE aa.album_id = $2 AND a.deleted_at IS NULL\n             AND ($3::timestamptz IS NULL OR (a.taken_at, a.id) > ($3, $4::uuid))\n           ORDER BY a.taken_at ASC, a.id ASC\n           LIMIT $5",
   "describe": {
     "columns": [
       {
@@ -93,10 +93,9 @@
     "parameters": {
       "Left": [
         "Text",
+        "Uuid",
         "Timestamptz",
         "Uuid",
-        "Uuid",
-        "Date",
         "Int8"
       ]
     },
@@ -116,5 +115,5 @@
       false
     ]
   },
-  "hash": "11e72d522969f70b290793e337a1bb2d2b1b4247f0d6a11951beae358399e914"
+  "hash": "3a9a43dfcb41bb0d9e03058e990a8de73ec662f352aa937c0415aeb72dc8523b"
 }

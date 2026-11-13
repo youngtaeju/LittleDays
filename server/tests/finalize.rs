@@ -641,3 +641,80 @@ async fn concurrent_duplicate_attaches_once(pool: PgPool) {
         [(asset_id(&created.json()), 0)]
     );
 }
+
+async fn create_album(app: &MediaApp) -> Uuid {
+    let res = app
+        .server
+        .post("/api/albums")
+        .add_header(XRW, XRW_VALUE)
+        .json(&json!({ "name": "앨범" }))
+        .await;
+    res.assert_status(StatusCode::CREATED);
+    asset_id(&res.json())
+}
+
+async fn album_assets(pool: &PgPool, album: Uuid) -> Vec<Uuid> {
+    sqlx::query_scalar!(
+        "SELECT asset_id FROM album_assets WHERE album_id = $1 ORDER BY asset_id",
+        album
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn attach_album(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let album = create_album(&app).await;
+    let upload = upload_bytes(&app, &fake_jpeg(), "a.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "album", "id": album } }),
+    )
+    .await;
+    res.assert_status(StatusCode::CREATED);
+    assert_eq!(album_assets(&pool, album).await, [asset_id(&res.json())]);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn attach_album_gone_skips(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let album = create_album(&app).await;
+    app.server
+        .delete(&format!("/api/albums/{album}"))
+        .add_header(XRW, XRW_VALUE)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+    let upload = upload_bytes(&app, &fake_jpeg(), "a.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "album", "id": album } }),
+    )
+    .await;
+    res.assert_status(StatusCode::CREATED);
+    let links = sqlx::query_scalar!(r#"SELECT count(*) AS "n!" FROM album_assets"#)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(links, 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn attach_album_duplicate(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let bytes = fake_jpeg();
+    let existing = finalize_ok(&app, upload_bytes(&app, &bytes, "a.jpg").await).await;
+    let album = create_album(&app).await;
+    let upload = upload_bytes(&app, &bytes, "b.jpg").await;
+    let res = finalize(
+        &app,
+        upload,
+        json!({ "attach": { "kind": "album", "id": album } }),
+    )
+    .await;
+    assert_duplicate(&res, existing, false);
+    assert_eq!(album_assets(&pool, album).await, [existing]);
+}

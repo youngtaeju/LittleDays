@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
@@ -96,6 +97,17 @@ async fn asset_summaries(
     .fetch_all(exec)
     .await?;
     Ok(rows)
+}
+
+/// 앨범 존재 여부. 잠금 없음(읽기 전용 조회용).
+pub async fn exists(exec: impl PgExecutor<'_>, album_id: Uuid) -> AppResult<bool> {
+    let found = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM albums WHERE id = $1) AS "exists!""#,
+        album_id
+    )
+    .fetch_one(exec)
+    .await?;
+    Ok(found)
 }
 
 /// 앨범 있으면 `true`. 트랜잭션 안에서 호출 시 커밋까지 앨범 삭제 차단(연결 쓰기의 FK 위반 방지).
@@ -226,4 +238,38 @@ pub async fn delete(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
         .execute(exec)
         .await?;
     Ok(res.rows_affected() == 1)
+}
+
+/// 앨범 안 휴지통 아닌 사진, 촬영 오래된 순. `limit` 만큼 가져오며 호출 측이 +1 로 다음 페이지 판정.
+pub async fn list_assets(
+    exec: impl PgExecutor<'_>,
+    timezone: &str,
+    album_id: Uuid,
+    cursor: Option<(DateTime<Utc>, Uuid)>,
+    limit: i64,
+) -> AppResult<Vec<AssetSummary>> {
+    let (cursor_ts, cursor_id) = cursor.unzip();
+    let rows = sqlx::query_as!(
+        AssetSummary,
+        r#"SELECT a.id, a.kind AS "kind: AssetKind", a.status AS "status: AssetStatus",
+                  a.taken_at, (a.taken_at AT TIME ZONE $1)::date AS "local_date!",
+                  a.width, a.height, a.duration_ms, a.blurhash, a.dominant_color, a.uploaded_by,
+                  COALESCE((SELECT array_agg(b.id ORDER BY b.sort_order, b.created_at, b.id)
+                            FROM asset_babies ab JOIN babies b ON b.id = ab.baby_id
+                            WHERE ab.asset_id = a.id), '{}') AS "baby_ids!",
+                  a.derivatives
+           FROM album_assets aa JOIN assets a ON a.id = aa.asset_id
+           WHERE aa.album_id = $2 AND a.deleted_at IS NULL
+             AND ($3::timestamptz IS NULL OR (a.taken_at, a.id) > ($3, $4::uuid))
+           ORDER BY a.taken_at ASC, a.id ASC
+           LIMIT $5"#,
+        timezone,
+        album_id,
+        cursor_ts,
+        cursor_id,
+        limit,
+    )
+    .fetch_all(exec)
+    .await?;
+    Ok(rows)
 }

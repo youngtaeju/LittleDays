@@ -43,7 +43,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["list_album_assets"];
         put?: never;
         post: operations["add_album_assets"];
         delete?: never;
@@ -1021,6 +1021,8 @@ export interface components {
         };
         /** @description 자산 상세. */
         Asset: {
+            /** @description 든 앨범. 순서 없음. */
+            album_ids: string[];
             /** @description 아기 표시 순서. */
             baby_ids: string[];
             blurhash: string | null;
@@ -1104,11 +1106,16 @@ export interface components {
             /** Format: int32 */
             width: number | null;
         };
-        /** @description 새 사진을 붙일 이야기 또는 마일스톤. */
+        /**
+         * @description 붙일 대상 종류.
+         * @enum {string}
+         */
+        AttachKind: "story" | "milestone" | "album";
+        /** @description 새 사진을 붙일 이야기, 마일스톤, 앨범. */
         AttachTarget: {
             /** Format: uuid */
             id: string;
-            kind: components["schemas"]["LinkKind"];
+            kind: components["schemas"]["AttachKind"];
         };
         /**
          * @description 대표 사진 정사각 자르기. 회전 적용 후 원본 기준, 좌상단 `x`·`y` 와 한 변 `size` 모두 비율.
@@ -1424,11 +1431,6 @@ export interface components {
             /** Format: uuid */
             user_id: string;
         };
-        /**
-         * @description 연결 대상 종류.
-         * @enum {string}
-         */
-        LinkKind: "story" | "milestone";
         LoginRequest: {
             password: string;
             username: string;
@@ -2101,6 +2103,61 @@ export interface operations {
             };
         };
     };
+    list_album_assets: {
+        parameters: {
+            query?: {
+                /** @description 이전 응답의 `next_cursor`. */
+                cursor?: string;
+                /** @description 1~500, 기본 100. */
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                /** @description 앨범 ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 휴지통 제외, 촬영 시각 오래된 순 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_AssetSummary"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`, `asset.invalidCursor`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 앨범 없음 (`album.notFound`) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
     add_album_assets: {
         parameters: {
             query?: never;
@@ -2234,6 +2291,8 @@ export interface operations {
                 baby_id?: string;
                 /** @description 인스턴스 시간대 기준 그날 촬영한 자산만. */
                 date?: string;
+                /** @description 해당 종류만. */
+                kind?: components["schemas"]["AssetKind"];
             };
             header?: never;
             path?: never;

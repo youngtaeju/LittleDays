@@ -97,6 +97,7 @@ export function assetFixture(id: string, over: Partial<Asset> = {}): Asset {
     comment_count: 0,
     liked: false,
     favorited: false,
+    album_ids: [],
     ...over,
   }
 }

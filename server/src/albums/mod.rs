@@ -73,7 +73,9 @@ fn check_count(ids: &[Uuid]) -> AppResult<()> {
 /// 트랜잭션 안에서 호출 시 커밋까지 사진 완전 삭제 차단.
 pub async fn check_assets(conn: &mut PgConnection, ids: &[Uuid]) -> AppResult<Vec<Uuid>> {
     check_count(ids)?;
-    let ids = links::dedup(ids);
+    let mut ids = links::dedup(ids);
+    // 동시 겹치는 추가가 같은 순서로 잠그도록 정렬. 앨범 순서는 촬영 시각이라 무관.
+    ids.sort_unstable();
     if links::lock_visible_assets(conn, &ids).await? != ids.len() {
         return Err(AppError::NotFound("asset.notFound"));
     }
