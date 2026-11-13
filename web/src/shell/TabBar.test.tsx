@@ -37,6 +37,7 @@ function renderShell(role: Role, path = '/', babies: Baby[] = [SKY]) {
     'GET /api/assets': () => json(200, { items: [], next_cursor: null }),
     'GET /api/stories/x': () => apiError(404, 'story.notFound'),
     'GET /api/favorites': () => json(200, { items: [], next_cursor: null }),
+    'GET /api/albums': () => json(200, []),
     [`GET /api/babies/${SKY.id}/stats`]: () =>
       json(200, {
         photo_count: 0,

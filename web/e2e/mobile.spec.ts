@@ -126,8 +126,45 @@ test('browse_screens_fit_width', async ({ ownerPage: page }) => {
   await expectNoHorizontalOverflow(page)
 
   await page.goto('/albums')
-  await expect(page.getByRole('heading', { name: '앨범' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { level: 1, name: '앨범' }),
+  ).toBeVisible()
   await expectNoHorizontalOverflow(page)
+
+  // 긴 이름(공백 없음) 앨범 화면과 뷰어 앨범에 담기 시트. 끝나면 지움.
+  const headers = { 'X-Requested-With': 'LittleDays' }
+  const name = '하늘빛처럼맑은아기의첫번째여행'.repeat(3)
+  const photos = (await listAssets(page)).filter((a) => a.kind === 'photo')
+  const created = await page.request.post('/api/albums', {
+    headers,
+    data: { name, asset_ids: photos.map((a) => a.id) },
+  })
+  expect(created.status(), await created.text()).toBe(201)
+  const { id } = (await created.json()) as { id: string }
+  try {
+    await page.goto('/albums')
+    await expect(
+      page.getByRole('link', { name: new RegExp(`^${name},`) }),
+    ).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+
+    await page.goto(`/albums/${id}`)
+    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+    const grid = page.getByRole('list', { name: '앨범 사진' })
+    await expect(grid.getByRole('link')).toHaveCount(photos.length)
+    await expectNoHorizontalOverflow(page)
+
+    await grid.getByRole('link').first().click()
+    await expect(page).toHaveURL(/\/photos\/[0-9a-f-]+\?from=album&of=/)
+    await page.getByRole('button', { name: '더 보기' }).click()
+    await page.getByRole('menuitem', { name: '앨범에 담기' }).click()
+    const sheet = page.getByRole('dialog', { name: '앨범에 담기' })
+    await expect(sheet.getByRole('checkbox', { name })).toBeChecked()
+    await expectNoHorizontalOverflow(page)
+  } finally {
+    const del = await page.request.delete(`/api/albums/${id}`, { headers })
+    expect(del.status()).toBeLessThan(300)
+  }
 })
 
 // 비로그인 화면. ownerPage 와 별개의 새 컨텍스트(쿠키 없음).

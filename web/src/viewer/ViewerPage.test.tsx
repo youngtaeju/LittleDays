@@ -10,7 +10,9 @@ import type { Asset, AssetSummary, Baby, Role } from '@/api/types'
 import { initI18n } from '@/i18n'
 import ko from '@/locales/ko.json'
 import { json, mockFetch } from '@/test/fetch'
+import { albumKey } from '@/albums/useAlbum'
 import {
+  albumFixture,
   apiError,
   assetFixture,
   assetSummaryFixture,
@@ -1608,7 +1610,418 @@ describe('ViewerPage', () => {
     expect(router.state.location.href).toBe('/photos/b')
     expect(timelineCalls).toBe(1)
   })
+
+  it('album_menu_guardian_only', async () => {
+    const path = `/photos/a?from=album&of=${ALBUM}`
+    const inAlbum = { a: assetFixture('a', { album_ids: [ALBUM] }) }
+    const { user } = renderViewer({
+      path,
+      ids: ['a'],
+      role: 'family',
+      assets: inAlbum,
+      extra: albumRoutes(['a']),
+    })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    let menu = await screen.findByRole('menu')
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((m) => m.textContent),
+    ).toEqual([ko.viewer.downloadOriginal])
+    cleanup()
+
+    const guardian = renderViewer({
+      path,
+      ids: ['a'],
+      assets: inAlbum,
+      extra: albumRoutes(['a']),
+    })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await guardian.user.click(
+      screen.getByRole('button', { name: ko.viewer.more }),
+    )
+    menu = await screen.findByRole('menu')
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((m) => m.textContent),
+    ).toEqual([
+      ko.viewer.downloadOriginal,
+      ko.albums.addTo,
+      ko.albums.setCover,
+      ko.albums.removeFromAlbum,
+      ko.viewer.editTakenAt,
+      ko.viewer.trash,
+    ])
+    cleanup()
+
+    // 앨범 밖에서 연 뷰어는 담기만.
+    const plain = renderViewer({ path: '/photos/a', ids: ['a'] })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await plain.user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    menu = await screen.findByRole('menu')
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((m) => m.textContent),
+    ).toEqual([
+      ko.viewer.downloadOriginal,
+      ko.albums.addTo,
+      ko.viewer.editTakenAt,
+      ko.viewer.trash,
+    ])
+  })
+
+  it('from_album_neighbors', async () => {
+    let timelineCalls = 0
+    const { router, user } = renderViewer({
+      path: `/photos/a?from=album&of=${ALBUM}`,
+      extra: {
+        'GET /api/assets': () => {
+          timelineCalls += 1
+          return json(200, { items: [], next_cursor: null })
+        },
+        // 앨범 순서. 타임라인 순서(a, b, c)와 다름.
+        ...albumRoutes(['c', 'a', 'b']),
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.prev })
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    expect(router.state.location.search).toEqual({ from: 'album', of: ALBUM })
+    expect(screen.queryByRole('button', { name: ko.viewer.next })).toBeNull()
+    await user.keyboard('{ArrowLeft}')
+    await user.keyboard('{ArrowLeft}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    expect(timelineCalls).toBe(0)
+
+    // 직접 진입이면 닫기 → 그 앨범.
+    await user.keyboard('{Escape}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/albums/${ALBUM}`)
+    })
+  })
+
+  // 앨범에 든 휴지통 아닌 사진만 다음 페이지를 찾아 넘김.
+  it('from_album_walks_pages_only_for_members', async () => {
+    const walk = async (asset: Asset) => {
+      const cursors: (string | null)[] = []
+      renderViewer({
+        path: `/photos/c?from=album&of=${ALBUM}`,
+        assets: { c: asset },
+        extra: {
+          [`GET /api/albums/${ALBUM}/assets`]: (req) => {
+            const cursor = new URL(req.url).searchParams.get('cursor')
+            cursors.push(cursor)
+            return cursor === 'c1'
+              ? json(200, {
+                  items: [assetSummaryFixture('c')],
+                  next_cursor: null,
+                })
+              : json(200, {
+                  items: [assetSummaryFixture('a'), assetSummaryFixture('b')],
+                  next_cursor: 'c1',
+                })
+          },
+        },
+      })
+      await screen.findByRole('button', { name: ko.viewer.info })
+      await waitFor(() => {
+        expect(cursors.length).toBeGreaterThan(0)
+      })
+      await new Promise((r) => setTimeout(r, 50))
+      cleanup()
+      return cursors
+    }
+    expect(await walk(assetFixture('c', { album_ids: [ALBUM] }))).toEqual([
+      null,
+      'c1',
+    ])
+    expect(await walk(assetFixture('c', { album_ids: [] }))).toEqual([null])
+    expect(
+      await walk(
+        assetFixture('c', {
+          album_ids: [ALBUM],
+          deleted_at: '2024-06-01T00:00:00Z',
+        }),
+      ),
+    ).toEqual([null])
+  })
+
+  it('remove_from_album_moves_next', async () => {
+    const bodies: unknown[] = []
+    let members = ['a', 'b']
+    const { router, user } = renderViewer({
+      path: `/photos/a?from=album&of=${ALBUM}`,
+      ids: ['a', 'b'],
+      assets: {
+        a: assetFixture('a', { album_ids: [ALBUM] }),
+        b: assetFixture('b', { album_ids: [ALBUM] }),
+      },
+      extra: {
+        ...albumRoutes(() => members),
+        [`POST /api/albums/${ALBUM}/assets/remove`]: async (req) => {
+          const body = (await req.json()) as { asset_ids: string[] }
+          bodies.push(body)
+          members = members.filter((m) => !body.asset_ids.includes(m))
+          return json(204, null)
+        },
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.next })
+    await clickMenu(user, ko.albums.removeFromAlbum)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    expect(router.state.location.search).toEqual({ from: 'album', of: ALBUM })
+    expect(bodies).toEqual([{ asset_ids: ['a'] }])
+    expect(await screen.findByText('1개를 뺐어요')).toBeInTheDocument()
+
+    // 마지막 사진이면 앨범 화면.
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await clickMenu(user, ko.albums.removeFromAlbum)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(`/albums/${ALBUM}`)
+    })
+    expect(bodies).toEqual([{ asset_ids: ['a'] }, { asset_ids: ['b'] }])
+  })
+
+  it('set_cover', async () => {
+    const patches: unknown[] = []
+    const { user } = renderViewer({
+      path: `/photos/a?from=album&of=${ALBUM}`,
+      ids: ['a', 'b'],
+      assets: {
+        a: assetFixture('a', { album_ids: [ALBUM] }),
+        b: assetFixture('b', { album_ids: [ALBUM], status: 'processing' }),
+      },
+      extra: {
+        ...albumRoutes(['a', 'b']),
+        [`PATCH /api/albums/${ALBUM}`]: async (req) => {
+          patches.push(await req.json())
+          return json(200, albumFixture(ALBUM))
+        },
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await clickMenu(user, ko.albums.setCover)
+    await waitFor(() => {
+      expect(patches).toEqual([{ cover_asset_id: 'a' }])
+    })
+    expect(await screen.findByText(ko.albums.coverSet)).toBeInTheDocument()
+
+    // 처리 중 사진은 표지 후보 아님.
+    await user.click(screen.getByRole('button', { name: ko.viewer.next }))
+    await screen.findByText(ko.timeline.processing)
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    const menu = await screen.findByRole('menu')
+    expect(
+      within(menu).getByRole('menuitem', { name: ko.albums.removeFromAlbum }),
+    ).toBeInTheDocument()
+    expect(
+      within(menu).queryByRole('menuitem', { name: ko.albums.setCover }),
+    ).toBeNull()
+  })
+
+  it('trash_refreshes_album', async () => {
+    let listCalls = 0
+    const { router, user, queryClient } = renderViewer({
+      path: `/photos/a?from=album&of=${ALBUM}`,
+      ids: ['a', 'b'],
+      extra: {
+        [`GET /api/albums/${ALBUM}/assets`]: () => {
+          listCalls += 1
+          return json(200, {
+            items: ['a', 'b'].map((id) => assetSummaryFixture(id)),
+            next_cursor: null,
+          })
+        },
+        'DELETE /api/assets/a': () => json(204, null),
+      },
+    })
+    // 앨범 화면에서 받아 둔 요약.
+    queryClient.setQueryData(albumKey(ALBUM), albumFixture(ALBUM))
+    await screen.findByRole('button', { name: ko.viewer.next })
+    expect(listCalls).toBe(1)
+    await clickMenu(user, ko.viewer.trash)
+    const confirm = await screen.findByRole('dialog', {
+      name: ko.viewer.trashTitle,
+    })
+    await user.click(
+      within(confirm).getByRole('button', { name: ko.viewer.trash }),
+    )
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    await waitFor(() => {
+      expect(listCalls).toBe(2)
+    })
+    expect(queryClient.getQueryState(albumKey(ALBUM))?.isInvalidated).toBe(true)
+  })
+
+  it('offline_disables_album_menu', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    const { user } = renderViewer({
+      path: `/photos/a?from=album&of=${ALBUM}`,
+      ids: ['a'],
+      assets: { a: assetFixture('a', { album_ids: [ALBUM] }) },
+      extra: albumRoutes(['a']),
+    })
+    await screen.findByRole('button', { name: ko.viewer.info })
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    const menu = await screen.findByRole('menu')
+    for (const name of [
+      ko.albums.addTo,
+      ko.albums.setCover,
+      ko.albums.removeFromAlbum,
+    ]) {
+      expect(within(menu).getByRole('menuitem', { name })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    }
+    // 등록 안 된 POST 가 나가면 테스트 실패.
+    await user.click(
+      within(menu).getByRole('menuitem', { name: ko.albums.removeFromAlbum }),
+    )
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  // 빼는 중엔 다시 못 누름. 응답 전에 다른 사진으로 넘기면 그 자리 유지.
+  it('remove_pending_blocks_and_stays', async () => {
+    let calls = 0
+    let listCalls = 0
+    let respond: (r: Response) => void = () => undefined
+    const { router, user } = renderViewer({
+      path: `/photos/a?from=album&of=${ALBUM}`,
+      assets: {
+        a: assetFixture('a', { album_ids: [ALBUM] }),
+        b: assetFixture('b', { album_ids: [ALBUM] }),
+      },
+      extra: {
+        [`GET /api/albums/${ALBUM}/assets`]: () => {
+          listCalls += 1
+          return json(200, {
+            items: ['a', 'b', 'c'].map((id) => assetSummaryFixture(id)),
+            next_cursor: null,
+          })
+        },
+        [`POST /api/albums/${ALBUM}/assets/remove`]: () => {
+          calls += 1
+          return new Promise<Response>((r) => {
+            respond = r
+          })
+        },
+      },
+    })
+    await screen.findByRole('button', { name: ko.viewer.next })
+    await clickMenu(user, ko.albums.removeFromAlbum)
+    await waitFor(() => {
+      expect(calls).toBe(1)
+    })
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    const item = within(await screen.findByRole('menu')).getByRole('menuitem', {
+      name: ko.albums.removeFromAlbum,
+    })
+    expect(item).toHaveAttribute('aria-disabled', 'true')
+    await user.click(item)
+    await user.keyboard('{Escape}')
+    expect(calls).toBe(1)
+
+    await user.keyboard('{ArrowRight}')
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/b')
+    })
+    respond(json(204, null))
+    // 성공 처리(앨범 목록 무효화) 뒤에도 이동 없음.
+    await waitFor(() => {
+      expect(listCalls).toBe(2)
+    })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(router.state.location.pathname).toBe('/photos/b')
+  })
+
+  // 휴지통 응답 전에 다른 사진으로 옮겨 가면 그 자리 유지.
+  it('trash_success_after_leaving_stays', async () => {
+    let respond: (r: Response) => void = () => undefined
+    let listCalls = 0
+    const { router, user } = renderViewer({
+      path: '/photos/a',
+      list: () => {
+        listCalls += 1
+        return ['a', 'b', 'c'].map((id) => assetSummaryFixture(id))
+      },
+      extra: {
+        'DELETE /api/assets/a': () =>
+          new Promise<Response>((r) => {
+            respond = r
+          }),
+      },
+    })
+    await clickMenuWhenReady(user, ko.viewer.trash)
+    const confirm = await screen.findByRole('dialog', {
+      name: ko.viewer.trashTitle,
+    })
+    await user.click(
+      within(confirm).getByRole('button', { name: ko.viewer.trash }),
+    )
+    await router.navigate({
+      to: '/photos/$id',
+      params: { id: 'c' },
+      replace: true,
+    })
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/photos/c')
+    })
+    const before = listCalls
+    respond(json(204, null))
+    // 성공 처리(타임라인 무효화) 뒤에도 이동 없음. 닫기 지연(200ms)보다 길게 대기.
+    await waitFor(() => {
+      expect(listCalls).toBeGreaterThan(before)
+    })
+    await new Promise((r) => setTimeout(r, 300))
+    expect(router.state.location.pathname).toBe('/photos/c')
+  })
 })
+
+const ALBUM = '00000000-0000-4000-8000-0000000000a1'
+
+async function clickMenuWhenReady(
+  user: ReturnType<typeof renderViewer>['user'],
+  name: string,
+) {
+  await screen.findByRole('button', { name: ko.viewer.info })
+  await clickMenu(user, name)
+}
+
+// 앨범 사진 목록(한 페이지)과 앨범 화면 요약.
+function albumRoutes(ids: string[] | (() => string[])): Routes {
+  const list = typeof ids === 'function' ? ids : () => ids
+  return {
+    [`GET /api/albums/${ALBUM}/assets`]: () =>
+      json(200, {
+        items: list().map((id) => assetSummaryFixture(id)),
+        next_cursor: null,
+      }),
+    [`GET /api/albums/${ALBUM}`]: () =>
+      json(200, albumFixture(ALBUM, { photo_count: list().length })),
+  }
+}
+
+async function clickMenu(
+  user: ReturnType<typeof renderViewer>['user'],
+  name: string,
+) {
+  await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+  await user.click(
+    within(await screen.findByRole('menu')).getByRole('menuitem', { name }),
+  )
+}
 
 function wideScreen() {
   vi.spyOn(window, 'matchMedia').mockImplementation(

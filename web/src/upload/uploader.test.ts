@@ -181,6 +181,52 @@ describe('uploader', () => {
     expect(invalidate).not.toHaveBeenCalledWith({ queryKey: ['milestones'] })
   })
 
+  // 앨범: 새 자산, 중복 모두 서버가 연결. 둘 다 앨범 목록, 요약, 사진 목록 다시 받음.
+  it('album_attach_invalidates_albums', async () => {
+    const qc = createTestQueryClient()
+    const invalidate = vi.spyOn(qc, 'invalidateQueries')
+    const up = getUploader(qc)
+    up.uppy.setOptions({ autoProceed: false })
+    const attach = { kind: 'album' as const, id: 'al1' }
+    const [created] = up.add([photo('n.jpg')], ['b1'], attach)
+    const [dup] = up.add([photo('d.jpg')], ['b1'], attach)
+    if (!created || !dup) throw new Error('항목 없음')
+    mockFetch({
+      'POST /api/uploads/u1/finalize': () => json(201, assetFixture('x1')),
+      'POST /api/uploads/u2/finalize': () =>
+        json(409, {
+          error: 'asset.duplicate',
+          params: { asset_id: 'x0', in_trash: false },
+        }),
+    })
+    const success = (id: string, upload: string) => {
+      up.uppy.emit('upload-success', up.uppy.getFile(id), {
+        uploadURL: `${location.origin}/api/uploads/${upload}`,
+        status: 200,
+        body: { xhr: new XMLHttpRequest() },
+      })
+    }
+    const status = (id: string) =>
+      uploadStore.getSnapshot().find((i) => i.id === id)?.status
+
+    success(dup, 'u2')
+    await waitFor(() => {
+      expect(status(dup)).toBe('duplicate')
+    })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['assets', 'albums'] })
+    // 기존 사진 상세의 album_ids.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['asset'] })
+    expect(invalidate).not.toHaveBeenCalledWith({
+      queryKey: ['milestone', 'al1'],
+    })
+    invalidate.mockClear()
+    success(created, 'u1')
+    await waitFor(() => {
+      expect(status(created)).toBe('done')
+    })
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['assets', 'albums'] })
+  })
+
   // 큐에 이미 있는 파일을 붙일 대상과 함께 다시 추가하면 대상만 갱신.
   it('readd_existing_sets_attach', () => {
     const up = getUploader(createTestQueryClient())

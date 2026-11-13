@@ -23,8 +23,8 @@ import {
 } from './useUploadStore'
 
 interface UploadPicker {
-  // 새 파일 고르기 → 확인 시트.
-  open: () => void
+  // 새 파일 고르기 → 확인 시트. attach: 마무리 때 붙일 대상(앨범 새로 올리기).
+  open: (options?: { attach?: AttachTarget }) => void
   // 이어올리기 대기 파일 다시 고르기. 같은 파일은 확인 없이 원래 태그로.
   resume: () => void
 }
@@ -62,12 +62,19 @@ export function UploadPickerProvider({ children }: { children: ReactNode }) {
   const canUpload = hasRole(user, 'guardian')
   const inputRef = useRef<HTMLInputElement>(null)
   const mode = useRef<'new' | 'resume'>('new')
+  // 마지막 open 의 붙일 대상. 선택창 결과에만 적용(끌어다 놓기, 이어올리기 제외).
+  const openAttach = useRef<AttachTarget | undefined>(undefined)
   const nextKey = useRef(0)
-  const [pending, setPending] = useState<PendingFile[] | null>(null)
+  // 확인 시트 파일과 붙일 대상. 시트가 열린 채 더한 파일도 같은 대상.
+  const [pending, setPending] = useState<{
+    files: PendingFile[]
+    attach: AttachTarget | undefined
+  } | null>(null)
   const [dragging, setDragging] = useState(false)
   const [picker] = useState<UploadPicker>(() => ({
-    open: () => {
+    open: (options) => {
       mode.current = 'new'
+      openAttach.current = options?.attach
       inputRef.current?.click()
     },
     resume: () => {
@@ -77,14 +84,18 @@ export function UploadPickerProvider({ children }: { children: ReactNode }) {
   }))
 
   // 확인 시트에 추가(열려 있으면 뒤에 붙임). 사진·영상 외 파일은 제외.
-  function confirm(files: File[]) {
+  function confirm(files: File[], attach?: AttachTarget) {
     const media = files.filter((f) => mediaKind(f) !== null)
     if (media.length < files.length) {
       toast.error(t('upload.status.unsupported'))
     }
     if (media.length === 0) return
     const added = media.map((file) => ({ key: nextKey.current++, file }))
-    setPending((prev) => [...(prev ?? []), ...added])
+    setPending((prev) =>
+      prev
+        ? { ...prev, files: [...prev.files, ...added] }
+        : { files: added, attach },
+    )
   }
 
   // Uppy 는 첫 업로드 때 지연 로딩.
@@ -217,7 +228,7 @@ export function UploadPickerProvider({ children }: { children: ReactNode }) {
           e.currentTarget.value = ''
           if (files.length === 0) return
           if (mode.current === 'resume') void resume(files)
-          else confirm(files)
+          else confirm(files, openAttach.current)
         }}
       />
       {dragging && (
@@ -228,17 +239,17 @@ export function UploadPickerProvider({ children }: { children: ReactNode }) {
       {pending && (
         <Suspense>
           <UploadConfirm
-            files={pending}
+            files={pending.files}
             onRemove={(key) => {
-              const next = pending.filter((f) => f.key !== key)
-              setPending(next.length > 0 ? next : null)
+              const next = pending.files.filter((f) => f.key !== key)
+              setPending(next.length > 0 ? { ...pending, files: next } : null)
             }}
             onCancel={() => {
               setPending(null)
             }}
             onSubmit={(files, babyIds) => {
               setPending(null)
-              void upload([{ files, babyIds }])
+              void upload([{ files, babyIds, attach: pending.attach }])
             }}
           />
         </Suspense>

@@ -10,16 +10,19 @@ import { AdaptiveSheet } from '@/upload/AdaptiveSheet'
 
 // 올린 사진에서 여러 장 고르기. date 가 있으면 그날 사진 먼저, "다른 날"로 전체 타임라인.
 // onDone: 고른 순서 그대로(기존 선택 뒤에 새로 누른 순서). onClose: 바꾸지 않고 닫기.
+// doneDisabled: 고르기 끝 버튼 막기(끝내자마자 저장하는 쪽의 오프라인 등).
 export function AssetPickerSheet({
   date,
   selected,
   onDone,
   onClose,
+  doneDisabled = false,
 }: {
   date?: string | undefined
   selected: readonly AssetSummary[]
   onDone: (assets: AssetSummary[]) => void
   onClose: () => void
+  doneDisabled?: boolean
 }) {
   const { t } = useTranslation()
   const settings = useSettings()
@@ -135,6 +138,7 @@ export function AssetPickerSheet({
         <div className="sticky bottom-0 bg-background pt-2 pb-1">
           <Button
             className="h-11 w-full"
+            disabled={doneDisabled}
             onClick={() => {
               onDone([...picked])
             }}

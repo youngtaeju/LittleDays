@@ -20,7 +20,7 @@ import {
   uniqueJpeg,
 } from './fixtures'
 import type { Page } from '@playwright/test'
-import type { AssetPage, Baby, Comment } from '@/api/types'
+import type { AlbumSummary, AssetPage, Baby, Comment } from '@/api/types'
 
 // 선언 순서대로 실행(워커 1개). 앞 테스트가 만든 계정·사진 사용.
 // 첫 테스트 외에는 재시도해도 최종 상태가 같도록 작성(복구까지 한 테스트 안에서).
@@ -806,6 +806,136 @@ test('memory_card', async ({ ownerPage: page }) => {
   }
 })
 
+const ALBUM_NAME = '가족 여행'
+
+// 이전 시도가 남긴 앨범 제거. 사진은 그대로.
+async function resetAlbums(page: Page): Promise<void> {
+  const res = await page.request.get('/api/albums')
+  expect(res.status()).toBe(200)
+  for (const a of (await res.json()) as AlbumSummary[]) {
+    if (!a.name.startsWith(ALBUM_NAME)) continue
+    const del = await page.request.delete(`/api/albums/${a.id}`, {
+      headers: { 'X-Requested-With': 'LittleDays' },
+    })
+    expect(del.status()).toBeLessThan(300)
+  }
+}
+
+test('album_round_trip', async ({
+  ownerPage: page,
+  browser,
+  baseURL,
+  locale,
+  timezoneId,
+}) => {
+  const retry = String(test.info().retry)
+  const name = `${ALBUM_NAME} ${retry}`
+  await resetAlbums(page)
+  let guestClose: (() => Promise<void>) | undefined
+  try {
+    // 앨범 탭 → 새 앨범 → 앨범 화면.
+    await page.goto('/albums')
+    await page.getByRole('button', { name: '새 앨범' }).first().click()
+    const dialog = page.getByRole('dialog', { name: '새 앨범' })
+    await dialog.getByLabel('앨범 이름').fill(name)
+    await dialog.getByRole('button', { name: '만들기' }).click()
+    await expect(page).toHaveURL(/\/albums\/[0-9a-f-]+$/)
+    const albumUrl = page.url()
+    await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
+
+    // 사진 추가 → 올린 사진 고르기. 사진 2장.
+    await page.getByRole('button', { name: '사진 추가' }).click()
+    await page.getByRole('button', { name: '올린 사진 고르기' }).click()
+    const picker = page.getByRole('dialog', { name: '사진 고르기' })
+    const photos = picker.getByRole('button', { name: /^사진,/ })
+    await expect(photos).toHaveCount(2)
+    await photos.nth(0).click()
+    await photos.nth(1).click()
+    await picker.getByRole('button', { name: '2장 고르기' }).click()
+    await expect(page.getByText('2개를 담았어요')).toBeVisible()
+    const grid = page.getByRole('list', { name: '앨범 사진' })
+    await expect(grid.getByRole('link', { name: /^사진,/ })).toHaveCount(2)
+    await expect(page.getByText(/^사진 2/)).toBeVisible()
+
+    // 뷰어: 앨범 순서로 넘기기.
+    await grid.getByRole('link').first().click()
+    await expect(page).toHaveURL(/\/photos\/[0-9a-f-]+\?from=album&of=/)
+    const next = page.getByRole('button', { name: '다음', exact: true })
+    await next.click()
+    await expect(next).toHaveCount(0)
+    await expect(
+      page.getByRole('button', { name: '이전', exact: true }),
+    ).toBeVisible()
+    const lastId = new URL(page.url()).pathname.split('/').at(-1) ?? ''
+
+    // ⋮ 앨범에 담기: 체크 끄고 다시 켜기(누르는 즉시 저장).
+    const more = page.getByRole('button', { name: '더 보기' })
+    await more.click()
+    await page.getByRole('menuitem', { name: '앨범에 담기' }).click()
+    const sheet = page.getByRole('dialog', { name: '앨범에 담기' })
+    const check = sheet.getByRole('checkbox', { name })
+    await expect(check).toBeChecked()
+    await check.click()
+    await expect(check).not.toBeChecked()
+    await expect
+      .poll(async () => (await getAsset(page, lastId)).album_ids.length)
+      .toBe(0)
+    await check.click()
+    await expect(check).toBeChecked()
+    await expect
+      .poll(async () => (await getAsset(page, lastId)).album_ids.length)
+      .toBe(1)
+    await page.keyboard.press('Escape')
+    await expect(sheet).toHaveCount(0)
+
+    // 앨범에서 빼기: 마지막 사진이라 앨범 화면으로. 1장 남음.
+    await more.click()
+    await page.getByRole('menuitem', { name: '앨범에서 빼기' }).click()
+    await expect(page).toHaveURL(albumUrl)
+    await expect(grid.getByRole('link', { name: /^사진,/ })).toHaveCount(1)
+    await expect(page.getByText(/^사진 1/)).toBeVisible()
+
+    // 가족: 보기만.
+    const { guest, close } = await createFamilyPage(page, browser, {
+      baseURL,
+      locale,
+      timezoneId,
+      displayName: `고모${retry}`,
+      username: `albumfam${retry}`,
+    })
+    guestClose = close
+    await guest.goto(albumUrl)
+    await expect(guest.getByRole('heading', { level: 1, name })).toBeVisible()
+    const guestGrid = guest.getByRole('list', { name: '앨범 사진' })
+    await expect(guestGrid.getByRole('link')).toHaveCount(1)
+    await expect(guest.getByRole('button', { name: '사진 추가' })).toHaveCount(
+      0,
+    )
+    await expect(guest.getByRole('button', { name: '고르기' })).toHaveCount(0)
+    await expect(guest.getByRole('button', { name: '앨범 메뉴' })).toHaveCount(
+      0,
+    )
+    await guestGrid.getByRole('link').click()
+    await expect(guest).toHaveURL(/\/photos\/[0-9a-f-]+\?from=album&of=/)
+    await guest.getByRole('button', { name: '더 보기' }).click()
+    await expect(
+      guest.getByRole('menuitem', { name: '원본 내려받기' }),
+    ).toBeVisible()
+    await expect(guest.getByRole('menuitem')).toHaveCount(1)
+    await guest.keyboard.press('Escape')
+    await guest.goto('/albums')
+    await expect(
+      guest
+        .getByRole('main')
+        .getByRole('link', { name: new RegExp(`^${name},`) }),
+    ).toBeVisible()
+    await expect(guest.getByRole('button', { name: '새 앨범' })).toHaveCount(0)
+  } finally {
+    await guestClose?.()
+    await resetAlbums(page)
+  }
+})
+
 test('tabs_navigation', async ({ ownerPage: page }) => {
   await page.goto('/')
   const nav = page.getByRole('navigation', { name: '주 메뉴' })
@@ -817,7 +947,9 @@ test('tabs_navigation', async ({ ownerPage: page }) => {
   )
   await nav.getByRole('link', { name: '앨범' }).click()
   await expect(page).toHaveURL(/\/albums$/)
-  await expect(page.getByRole('heading', { name: '앨범' })).toBeVisible()
+  await expect(
+    page.getByRole('heading', { level: 1, name: '앨범' }),
+  ).toBeVisible()
   await nav.getByRole('link', { name: '나' }).click()
   await expect(page).toHaveURL(/\/me$/)
   await nav.getByRole('link', { name: '홈' }).click()

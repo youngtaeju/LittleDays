@@ -40,7 +40,7 @@ const OFFLINE = 'aria-disabled:opacity-50'
 const COUNT_BUTTON = 'h-14 min-w-11 px-2 text-sm font-semibold tabular-nums'
 
 const MENU_ITEM =
-  'flex min-h-11 cursor-default items-center gap-3 rounded-lg px-3 text-sm outline-none select-none data-[highlighted]:bg-accent'
+  'flex min-h-11 cursor-default items-center gap-3 rounded-lg px-3 text-sm outline-none select-none data-[disabled]:opacity-50 data-[highlighted]:bg-accent'
 
 // 위: 닫기 / 시각, 나이 / 확대(데스크톱), 즐겨찾기, 더 보기. 아래 왼쪽: 하트, 댓글. 아래 오른쪽: 정보, 내려받기, 휴지통.
 // 숨김 중엔 inert 로 포커스, 클릭 제외.
@@ -52,6 +52,7 @@ export function ViewerBars({
   zoom,
   download,
   info,
+  albums,
   onEditTakenAt,
   trash,
   reactions,
@@ -63,6 +64,13 @@ export function ViewerBars({
   zoom: { zoomed: boolean; onToggle: () => void } | null
   download: { href: string; filename: string | undefined }
   info: { open: boolean; onToggle: () => void } | null
+  // 앨범에 담기. 표지 지정, 빼기는 앨범에서 연 뷰어만. removing: 빼기 요청 중(다시 누름 방지).
+  albums: {
+    onAdd: () => void
+    onSetCover: (() => void) | null
+    onRemove: (() => void) | null
+    removing: boolean
+  } | null
   onEditTakenAt: (() => void) | null
   trash: {
     open: boolean
@@ -166,6 +174,34 @@ export function ViewerBars({
                     {t('viewer.downloadOriginal')}
                   </a>
                 </DropdownMenu.Item>
+                {/* 오프라인이면 막음. 대기한 요청이 재연결 때 나가 화면을 옮기지 않게. */}
+                {albums && (
+                  <DropdownMenu.Item
+                    className={MENU_ITEM}
+                    disabled={!online}
+                    onSelect={albums.onAdd}
+                  >
+                    {t('albums.addTo')}
+                  </DropdownMenu.Item>
+                )}
+                {albums?.onSetCover && (
+                  <DropdownMenu.Item
+                    className={MENU_ITEM}
+                    disabled={!online}
+                    onSelect={albums.onSetCover}
+                  >
+                    {t('albums.setCover')}
+                  </DropdownMenu.Item>
+                )}
+                {albums?.onRemove && (
+                  <DropdownMenu.Item
+                    className={MENU_ITEM}
+                    disabled={!online || albums.removing}
+                    onSelect={albums.onRemove}
+                  >
+                    {t('albums.removeFromAlbum')}
+                  </DropdownMenu.Item>
+                )}
                 {onEditTakenAt && (
                   <DropdownMenu.Item
                     className={MENU_ITEM}

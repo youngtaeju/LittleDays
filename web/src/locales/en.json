@@ -470,6 +470,12 @@
       "duplicate": "This milestone is already logged.",
       "noteInvalid": "Notes can be up to 100 characters.",
       "notFound": "The milestone could not be found."
+    },
+    "album": {
+      "notFound": "The album could not be found.",
+      "nameInvalid": "Album names must be 1 to 50 characters.",
+      "coverInvalid": "This photo can't be the album cover.",
+      "forbidden": "You can't change albums."
     }
   },
   "albums": {
@@ -478,7 +484,42 @@
     "favorites": "Favorites",
     "videos": "Videos",
     "monthly": "Monthly albums",
-    "videosEmpty": "No videos yet"
+    "videosEmpty": "No videos yet",
+    "new": "New album",
+    "ours": "Our albums",
+    "tile_one": "{{name}}, {{count}} item",
+    "tile_other": "{{name}}, {{count}} items",
+    "nameLabel": "Album name",
+    "create": "Create",
+    "menu": "Album menu",
+    "rename": "Rename",
+    "delete": "Delete album",
+    "deleteTitle": "Delete this album?",
+    "deleteDescription": "The photos won't be deleted.",
+    "deleteSubmit": "Delete",
+    "deleted": "Album deleted",
+    "metaPhotos_one": "{{count}} photo",
+    "metaPhotos_other": "{{count}} photos",
+    "metaVideos_one": "{{count}} video",
+    "metaVideos_other": "{{count}} videos",
+    "range": "{{from}} – {{to}}",
+    "addPhotos": "Add photos",
+    "select": "Select",
+    "pickUploaded": "Choose uploaded photos",
+    "uploadNew": "Upload new",
+    "removeSelected": "Remove from album ({{count}})",
+    "added_one": "Added {{count}} item",
+    "added_other": "Added {{count}} items",
+    "removed_one": "Removed {{count}} item",
+    "removed_other": "Removed {{count}} items",
+    "photoGrid": "Album photos",
+    "empty": "Add some photos",
+    "emptyFamily": "No photos yet",
+    "addTo": "Add to album",
+    "createAndAdd": "Create album and add",
+    "setCover": "Set as cover",
+    "coverSet": "Set as album cover",
+    "removeFromAlbum": "Remove from album"
   },
   "favorites": {
     "empty": "Tap ★ on a photo to collect it here"

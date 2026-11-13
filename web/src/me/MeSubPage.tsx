@@ -20,7 +20,8 @@ export function MeSubPage({
   const router = useRouter()
   const canGoBack = useCanGoBack()
   return (
-    <div className="-mt-4 grid gap-4">
+    // 열 최소 폭 0. 말줄임 제목(nowrap)의 글자 폭만큼 열이 넓어지지 않게.
+    <div className="-mt-4 grid grid-cols-1 gap-4">
       <header className="sticky top-0 z-10 -mx-4 flex min-h-14 items-center gap-1 bg-background px-2 py-1">
         <Button
           variant="ghost"

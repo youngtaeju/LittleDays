@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import Uppy, { type UppyFile } from '@uppy/core'
 import Tus, { type TusBody, type TusOptions } from '@uppy/tus'
+import { albumsKeyRoot } from '@/albums/useAlbums'
 import { errorBody } from '@/api/client'
 import { ApiError } from '@/api/errors'
 import type { AttachTarget } from '@/api/types'
@@ -82,7 +83,7 @@ function tusError(
 export interface Uploader {
   uppy: UploaderUppy
   // 반환: 파일별 업로드 목록 항목 ID(큐에 이미 있는 파일·지원 안 함 포함).
-  // attach: 마무리 때 붙일 이야기, 마일스톤.
+  // attach: 마무리 때 붙일 이야기, 마일스톤, 앨범.
   add: (files: File[], babyIds: string[], attach?: AttachTarget) => string[]
   retry: (id: string) => void
 }
@@ -125,15 +126,22 @@ function createQueue(): Uploader {
     )
     // 같은 파일 다시 선택 허용. await 이후라 tus 이벤트 정리 완료(동기 제거 시 업로드 DELETE).
     if (uppy.checkIfFileAlreadyExists(id)) uppy.removeFile(id)
-    // 새 자산, 중복 모두 서버가 대상에 연결. 열린 이야기, 마일스톤 상세에 바로 반영.
+    // 새 자산, 중복 모두 서버가 대상에 연결. 열린 이야기, 마일스톤, 앨범에 바로 반영.
+    // 중복은 settle 의 ['assets'] 무효화 대상 아님. 앨범도 여기서 직접.
     if (
       s.attach &&
       (outcome.kind === 'created' || outcome.kind === 'duplicate')
     ) {
       const { kind, id: target } = s.attach
-      void queryClient?.invalidateQueries({
-        queryKey: kind === 'story' ? storyKey(target) : milestoneKey(target),
-      })
+      if (kind === 'album') {
+        // 앨범 목록 개수, 표지와 앨범 화면 전부. 중복이면 기존 사진 상세의 album_ids 도.
+        void queryClient?.invalidateQueries({ queryKey: albumsKeyRoot })
+        void queryClient?.invalidateQueries({ queryKey: ['asset'] })
+      } else {
+        void queryClient?.invalidateQueries({
+          queryKey: kind === 'story' ? storyKey(target) : milestoneKey(target),
+        })
+      }
       // 아기 화면 타임라인 썸네일. 대상 아기를 모르니 아기별 목록 전부.
       if (kind === 'milestone') {
         void queryClient?.invalidateQueries({ queryKey: milestonesKeyRoot })
