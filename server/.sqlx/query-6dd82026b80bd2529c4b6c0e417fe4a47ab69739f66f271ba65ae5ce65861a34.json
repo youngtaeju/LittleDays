@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE albums\n         SET cover_asset_id = CASE WHEN cover_asset_id = ANY($2) THEN NULL ELSE cover_asset_id END,\n             updated_at = now()\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6dd82026b80bd2529c4b6c0e417fe4a47ab69739f66f271ba65ae5ce65861a34"
+}
