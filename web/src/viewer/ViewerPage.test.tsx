@@ -65,6 +65,7 @@ function renderViewer(opts: {
         next_cursor: null,
       }),
     // 홈으로 닫을 때. 목록 앞 3장이 대표.
+    'GET /api/memories': () => json(200, null),
     'GET /api/days': () =>
       json(200, {
         items: [

@@ -276,6 +276,13 @@
     "next": "Next day",
     "nav": "Previous and next day"
   },
+  "memory": {
+    "years_one": "{{count}} year ago today",
+    "years_other": "{{count}} years ago today",
+    "months_one": "{{count}} month ago today",
+    "months_other": "{{count}} months ago today",
+    "dismiss": "Hide for today"
+  },
   "calendar": {
     "prevMonth": "Previous month",
     "nextMonth": "Next month",

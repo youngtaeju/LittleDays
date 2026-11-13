@@ -36,6 +36,7 @@ function renderHome(babies: Baby[], path = '/') {
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/babies': () => json(200, babies),
     'GET /api/users': () => json(200, { users: [] }),
+    'GET /api/memories': () => json(200, null),
     'GET /api/days': () => json(200, { items: [], next_cursor: null }),
     [`GET /api/babies/${SEA.id}/stats`]: () =>
       json(200, {

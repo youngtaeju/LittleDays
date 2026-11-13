@@ -200,5 +200,6 @@ export function dayFixture(
 export const emptyFeedRoutes = {
   'GET /api/babies': () => json(200, []),
   'GET /api/days': () => json(200, { items: [], next_cursor: null }),
+  'GET /api/memories': () => json(200, null),
   'GET /api/users': () => json(200, { users: [] }),
 }

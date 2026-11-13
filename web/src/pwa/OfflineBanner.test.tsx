@@ -78,6 +78,7 @@ describe('OfflineBanner', () => {
       'GET /api/auth/me': offline,
       'GET /api/settings': offline,
       'GET /api/babies': offline,
+      'GET /api/memories': offline,
       'GET /api/days': offline,
       'GET /api/users': offline,
     })

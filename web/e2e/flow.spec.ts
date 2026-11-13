@@ -683,6 +683,166 @@ test('records_round_trip', async ({ ownerPage: page }) => {
   }
 })
 
+// 시간대 tz 의 시각 t 벽시계 값(UTC 로 읽은 ms)과 날짜 부분.
+function wallParts(t: number, tz: string): Record<string, number> {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(t)
+  return Object.fromEntries(
+    parts
+      .filter((p) => p.type !== 'literal')
+      .map((p) => [p.type, Number(p.value)]),
+  )
+}
+
+// 인스턴스 시간대 기준 지금의 1년 전 같은 날 정오. taken_at(UTC)과 그 날짜.
+function lastYearNoon(tz: string): { taken_at: string; date: string } {
+  const now = wallParts(Date.now(), tz)
+  const naive = Date.UTC(
+    (now.year ?? 0) - 1,
+    (now.month ?? 1) - 1,
+    now.day ?? 1,
+    12,
+  )
+  const w = wallParts(naive, tz)
+  const offset =
+    Date.UTC(
+      w.year ?? 0,
+      (w.month ?? 1) - 1,
+      w.day ?? 1,
+      w.hour,
+      w.minute,
+      w.second,
+    ) - naive
+  return {
+    taken_at: new Date(naive - offset).toISOString(),
+    date: new Date(naive).toISOString().slice(0, 10),
+  }
+}
+
+test('calendar_flow', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  await page
+    .getByRole('navigation', { name: '주 메뉴' })
+    .getByRole('link', { name: '달력' })
+    .click()
+  await expect(page).toHaveURL(/\/calendar$/)
+  // 사진은 2024년 5월 1일. 달 고르기에서 이동.
+  await page.getByRole('button', { name: /^\d{4}년 \d+월$/ }).click()
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: '2024년 5월', exact: true })
+    .click()
+  await expect(page).toHaveURL(/month=2024-05/)
+
+  // 기록 없는 칸을 먼저 골라 두면 사진 칸 첫 누름이 "고르기".
+  await page.getByRole('button', { name: '5월 15일', exact: true }).click()
+  await expect(page.getByText('이 날은 기록이 없어요')).toBeVisible()
+  const cell = page.getByRole('button', { name: '5월 1일, 사진 2장' })
+  await expect(cell).toHaveAttribute('aria-pressed', 'false')
+  await cell.click()
+  await expect(cell).toHaveAttribute('aria-pressed', 'true')
+  await expect(page).toHaveURL(/date=2024-05-01/)
+  await expect(page.getByRole('link', { name: '그날 보기' })).toBeVisible()
+
+  // 같은 칸을 다시 누르면 그날 화면. 뒤로 오면 같은 달, 같은 칸.
+  await cell.click()
+  await expect(page).toHaveURL(/\/days\/2024-05-01/)
+  await expect(tiles(page)).toHaveCount(2)
+  await page.getByRole('banner').getByRole('button', { name: '뒤로' }).click()
+  await expect(page).toHaveURL(/\/calendar\?.*month=2024-05/)
+  await expect(page).toHaveURL(/date=2024-05-01/)
+  await expect(
+    page.getByRole('button', { name: '5월 1일, 사진 2장' }),
+  ).toHaveAttribute('aria-pressed', 'true')
+})
+
+test('memory_card', async ({ ownerPage: page }) => {
+  const headers = { 'X-Requested-With': 'LittleDays' }
+  const settings = (await (await page.request.get('/api/settings')).json()) as {
+    timezone: string
+  }
+  const past = lastYearNoon(settings.timezone)
+  // 인스턴스 오늘이 2월 29일이면 1년 전 같은 날이 없어 서버 후보 없음.
+  const nowWall = wallParts(Date.now(), settings.timezone)
+  test.skip(
+    nowWall.month === 2 && nowWall.day === 29,
+    '인스턴스 오늘이 2월 29일',
+  )
+  // 2024-05 촬영 사진(fixtures). 이전 시도가 옮긴 값은 후보에서 제외되므로 항상 원래 값을 읽음.
+  const photo = (await listAssets(page)).find(
+    (a) => a.kind === 'photo' && a.taken_at.startsWith('2024-05'),
+  )
+  expect(photo).toBeDefined()
+  const id = photo?.id ?? ''
+  const original = photo?.taken_at ?? ''
+  try {
+    const patched = await page.request.patch(`/api/assets/${id}`, {
+      headers,
+      data: { taken_at: past.taken_at },
+    })
+    expect(patched.status(), await patched.text()).toBeLessThan(300)
+
+    await page.goto('/')
+    const card = page.getByRole('link', { name: /1년 전 오늘/ })
+    await expect(card).toBeVisible()
+    await expect(card.locator('img')).toBeVisible()
+    await card.click()
+    await expect(page).toHaveURL(new RegExp(`/days/${past.date}`))
+    await expect(tiles(page)).toHaveCount(1)
+  } finally {
+    const restored = await page.request.patch(`/api/assets/${id}`, {
+      headers,
+      data: { taken_at: original },
+    })
+    expect(restored.status(), await restored.text()).toBeLessThan(300)
+  }
+})
+
+test('tabs_navigation', async ({ ownerPage: page }) => {
+  await page.goto('/')
+  const nav = page.getByRole('navigation', { name: '주 메뉴' })
+  await nav.getByRole('link', { name: '달력' }).click()
+  await expect(page).toHaveURL(/\/calendar/)
+  await expect(nav.getByRole('link', { name: '달력' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await nav.getByRole('link', { name: '앨범' }).click()
+  await expect(page).toHaveURL(/\/albums$/)
+  await expect(page.getByRole('heading', { name: '앨범' })).toBeVisible()
+  await nav.getByRole('link', { name: '나' }).click()
+  await expect(page).toHaveURL(/\/me$/)
+  await nav.getByRole('link', { name: '홈' }).click()
+  await expect(page).toHaveURL(/\/$/)
+
+  // 나 → 우리 집 → 가족. 나 탭이 계속 선택.
+  await nav.getByRole('link', { name: '나' }).click()
+  await page.getByRole('link', { name: '가족', exact: true }).click()
+  await expect(page).toHaveURL(/\/family$/)
+  await expect(
+    page.getByRole('heading', { name: '가족', level: 1 }),
+  ).toBeVisible()
+  await expect(nav.getByRole('link', { name: '나' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+
+  // 추가하기는 탭이 아니라 시트.
+  await page.getByRole('button', { name: '추가하기' }).click()
+  await expect(
+    page.getByRole('dialog', { name: '무엇을 남길까요?' }),
+  ).toBeVisible()
+  await page.keyboard.press('Escape')
+})
+
 test('offline_banner', async ({ ownerPage: page, context }) => {
   const banner = page.getByText('연결이 없어 저장된 사진만 보여요')
   await page.goto('/')
