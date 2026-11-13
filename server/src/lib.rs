@@ -14,6 +14,7 @@ pub mod jobs;
 pub mod links;
 pub mod maintenance;
 pub mod media;
+pub mod memories;
 pub mod milestones;
 pub mod openapi;
 pub mod reactions;

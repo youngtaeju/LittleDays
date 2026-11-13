@@ -676,6 +676,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/memories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_memory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/milestones/{id}": {
         parameters: {
             query?: never;
@@ -1440,6 +1456,15 @@ export interface components {
             expires_at: string;
             token: string;
         };
+        /** @description 오늘의 추억 하루. `n` 은 `kind` 단위 경과 수. */
+        Memory: {
+            day: components["schemas"]["DaySummary"];
+            kind: components["schemas"]["MemoryKind"];
+            /** Format: int32 */
+            n: number;
+        };
+        /** @enum {string} */
+        MemoryKind: "years" | "months";
         /** @description 마일스톤 상세. */
         Milestone: components["schemas"]["MilestoneSummary"] & {
             /** @description 붙인 순서 전부. 휴지통 제외. */
@@ -4901,6 +4926,47 @@ export interface operations {
             };
             /** @description 만료, 사용됨, 회수됨 */
             410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_memory: {
+        parameters: {
+            query?: {
+                /** @description 해당 아기가 태그된 사진과 이야기, 그 아기의 마일스톤만. */
+                baby_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 오늘(인스턴스 시간대)과 같은 일의 가장 가까운 년 전, 없으면 11개월 이내 개월 전 하루. 없으면 JSON `null` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": null | components["schemas"]["Memory"];
+                };
+            };
+            /** @description 쿼리 오류 (`request.invalidQuery`) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description 인증 필요 */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

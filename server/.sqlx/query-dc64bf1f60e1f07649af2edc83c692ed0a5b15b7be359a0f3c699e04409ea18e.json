@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO stories (id, author_id, entry_date, body) VALUES ($1, $2, $3, 'story')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc64bf1f60e1f07649af2edc83c692ed0a5b15b7be359a0f3c699e04409ea18e"
+}

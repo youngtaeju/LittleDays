@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH f AS (\n               SELECT (a.taken_at AT TIME ZONE $1)::date AS date\n               FROM assets a\n               WHERE a.deleted_at IS NULL\n                 AND ($2::uuid IS NULL OR EXISTS (\n                       SELECT 1 FROM asset_babies ab WHERE ab.asset_id = a.id AND ab.baby_id = $2))\n           ),\n           s AS (\n               SELECT s.entry_date FROM stories s\n               WHERE $2::uuid IS NULL OR EXISTS (\n                     SELECT 1 FROM story_babies sb WHERE sb.story_id = s.id AND sb.baby_id = $2)\n           ),\n           m AS (\n               SELECT m.achieved_on FROM milestones m\n               WHERE $2::uuid IS NULL OR m.baby_id = $2\n           ),\n           u AS (\n               SELECT f.date FROM f\n               UNION\n               SELECT s.entry_date FROM s\n               UNION\n               SELECT m.achieved_on FROM m\n           ),\n           c AS (\n               SELECT u.date,\n                      ((date_part('year', $3::date) - date_part('year', u.date)) * 12\n                       + date_part('month', $3::date) - date_part('month', u.date))::int\n                        AS months_ago\n               FROM u\n               WHERE u.date < $3::date AND date_part('day', u.date) = date_part('day', $3::date)\n           )\n           SELECT date AS \"date!\", months_ago AS \"months_ago!\" FROM c\n           WHERE months_ago % 12 = 0 OR months_ago <= 11\n           ORDER BY (months_ago % 12 = 0) DESC, months_ago ASC\n           LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "date!",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 1,
+        "name": "months_ago!",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Date"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "99b10288508c9228c2722f7d038dffa0fc2bd74838a5242f454485a192d1b030"
+}

@@ -81,30 +81,8 @@ async fn list_days(
         None
     };
 
-    let dates: Vec<NaiveDate> = items.iter().map(|d| d.date).collect();
-    let mut previews = queries::previews(&mut *tx, &tz, &dates, q.baby_id)
-        .await?
-        .into_iter()
-        .peekable();
-    // 두 결과 모두 날짜 내림차순.
-    for day in &mut items {
-        while let Some(p) = previews.next_if(|p| p.local_date == day.date) {
-            day.preview.push(p);
-        }
-    }
-    let (stories, milestones) = queries::records(&mut tx, &tz, &dates, q.baby_id).await?;
+    super::fill(&mut tx, &tz, &mut items, q.baby_id).await?;
     tx.commit().await?;
-    // 날짜 집합에서 온 기록이라 해당 날 항상 존재.
-    for s in stories {
-        if let Some(day) = items.iter_mut().find(|d| d.date == s.entry_date) {
-            day.stories.push(s);
-        }
-    }
-    for m in milestones {
-        if let Some(day) = items.iter_mut().find(|d| d.date == m.achieved_on) {
-            day.milestones.push(m);
-        }
-    }
     Ok(Json(Page { items, next_cursor }))
 }
 
