@@ -80,6 +80,30 @@ describe('MePage', () => {
     ).toHaveAttribute('href', '/family')
   })
 
+  // 시안 M1: 옅은 바탕 위 둥근 카드, 라벨은 카드 바깥 위.
+  it('me_cards', async () => {
+    renderMe('owner')
+    const heading = await screen.findByRole('heading', { name: ko.me.home })
+    const section = heading.closest('section')
+    if (!section) throw new Error('그룹 없음')
+    const card = section.querySelector('ul')
+    if (!card) throw new Error('카드 없음')
+    expect(card).toHaveClass('bg-card', 'rounded-xl')
+    expect(card).not.toHaveClass('border-y')
+    expect(card.contains(heading)).toBe(false)
+    expect(
+      heading.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    const page = section.parentElement
+    expect(page).toHaveClass('bg-muted')
+    const profile = screen.getByRole('link', { name: /@/ })
+    expect(profile).toHaveClass('bg-card', 'rounded-xl')
+    expect(screen.getByRole('button', { name: '로그아웃' })).toHaveClass(
+      'bg-card',
+      'rounded-xl',
+    )
+  })
+
   it('shows_name_username_role', async () => {
     renderMe('owner')
     const me = userFixture('owner')
