@@ -26,7 +26,7 @@ function Tab({ item, active }: { item: NavItem; active: boolean }) {
   )
 }
 
-// 1024px 미만 하단 탭. family 는 (+) 없음. onAdd: 셸의 추가 시트 열기.
+// 1024px 미만 하단 탭. family 는 (+) 대신 아기 탭(useNavItems). onAdd: 셸의 추가 시트 열기.
 export function TabBar({ onAdd }: { onAdd: () => void }) {
   const { t } = useTranslation()
   const { user } = useMe()

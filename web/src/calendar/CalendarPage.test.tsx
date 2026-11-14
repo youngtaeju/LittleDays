@@ -47,6 +47,13 @@ const SEA = babyFixture({
   birth_date: '2024-03-10',
   sort_order: 1,
 })
+// 11월 15일 = 생후 400일.
+const HARIN = babyFixture({
+  id: '00000000-0000-4000-8000-0000000000b3',
+  name: '하린',
+  birth_date: '2025-10-12',
+  sort_order: 2,
+})
 
 function previewOf(date: string, n: number) {
   return Array.from({ length: n }, (_, i) =>
@@ -120,11 +127,26 @@ function cell(name: string | RegExp) {
   return screen.getByRole('button', { name })
 }
 
+// 10단위 일수 표시. [칸 날짜, 숫자].
+function marks() {
+  return screen
+    .queryAllByTestId('day-mark')
+    .map((m) => [
+      m.closest('button')?.getAttribute('aria-label')?.split(', ')[0],
+      m.textContent,
+    ])
+}
+
+const primaryHarin = {
+  'GET /api/settings': () =>
+    json(200, { ...settingsFixture, primary_baby_id: HARIN.id }),
+}
+
 describe('CalendarPage', () => {
   it('cells_show_records', async () => {
     renderCalendar()
     const c12 = await screen.findByRole('button', {
-      name: '11월 12일, 사진 18장, 마일스톤 혼자 걷기',
+      name: '11월 12일, 생후 651일, 사진 18장, 마일스톤 혼자 걷기',
     })
     // 대표 사진 = preview[0] 썸네일. 마일스톤 ★.
     expect(c12.querySelector('img')).toHaveAttribute(
@@ -135,21 +157,21 @@ describe('CalendarPage', () => {
     expect(within(c12).queryByTestId('story-dot')).toBeNull()
 
     // 글만 있는 날 = 점.
-    const c6 = cell('11월 6일, 이야기 1개')
+    const c6 = cell('11월 6일, 생후 645일, 이야기 1개')
     expect(c6.querySelector('img')).toBeNull()
     expect(within(c6).getByTestId('story-dot')).toBeInTheDocument()
 
-    expect(cell('11월 2일, 사진 3장, 영상 1개').querySelector('img')).not.toBe(
-      null,
-    )
+    expect(
+      cell('11월 2일, 생후 641일, 사진 3장, 영상 1개').querySelector('img'),
+    ).not.toBe(null)
 
     // 기록 없는 날.
-    const c3 = cell('11월 3일')
+    const c3 = cell('11월 3일, 생후 642일')
     expect(c3.querySelector('img')).toBeNull()
     expect(within(c3).queryByTestId('story-dot')).toBeNull()
 
     // 오늘 = 강조 테두리, 기본 고른 날.
-    const today = cell('11월 13일')
+    const today = cell('11월 13일, 생후 652일')
     expect(today).toHaveAttribute('aria-current', 'date')
     expect(today).toHaveAttribute('aria-pressed', 'true')
     expect(c12).toHaveAttribute('aria-pressed', 'false')
@@ -216,8 +238,10 @@ describe('CalendarPage', () => {
     await screen.findByRole('heading', { name: '2026년 11월' })
     // 이번 달 다음은 못 감. 미래 칸 누를 수 없음.
     expect(screen.getByRole('button', { name: '다음 달' })).toBeDisabled()
-    expect(cell('11월 14일')).toBeDisabled()
-    expect(cell('11월 13일')).toBeEnabled()
+    expect(
+      await screen.findByRole('button', { name: '11월 14일, 생후 653일' }),
+    ).toBeDisabled()
+    expect(cell('11월 13일, 생후 652일')).toBeEnabled()
     // 이전 달 미리 받기. 미래 달은 요청 없음.
     await waitFor(() => {
       expect(requests.map((u) => u.searchParams.get('from'))).toContain(
@@ -237,7 +261,7 @@ describe('CalendarPage', () => {
     // 지난 달 기본 고른 날 = 마지막 기록한 날. 미래 아님.
     const c20 = await screen.findByRole('button', { name: /^10월 20일, / })
     expect(c20).toHaveAttribute('aria-pressed', 'true')
-    expect(cell('10월 31일')).toBeEnabled()
+    expect(cell('10월 31일, 생후 639일')).toBeEnabled()
 
     // 왼쪽으로 밀면 다음 달(칸 위에서 시작해도).
     fireEvent.pointerDown(c20, { pointerId: 1, clientX: 300, clientY: 200 })
@@ -245,7 +269,7 @@ describe('CalendarPage', () => {
     await screen.findByRole('heading', { name: '2026년 11월' })
 
     // 이번 달에서 왼쪽은 그대로.
-    const c13 = cell('11월 13일')
+    const c13 = cell('11월 13일, 생후 652일')
     fireEvent.pointerDown(c13, { pointerId: 1, clientX: 300, clientY: 200 })
     fireEvent.pointerUp(c13, { pointerId: 1, clientX: 200, clientY: 210 })
     expect(screen.getByRole('heading', { name: '2026년 11월' })).toBeVisible()
@@ -261,14 +285,16 @@ describe('CalendarPage', () => {
     process.env.TZ = 'UTC'
     vi.setSystemTime(new Date('2026-11-12T15:30:00Z'))
     renderCalendar()
-    const c13 = await screen.findByRole('button', { name: '11월 13일' })
+    const c13 = await screen.findByRole('button', {
+      name: '11월 13일, 생후 652일',
+    })
     await waitFor(() => {
       expect(c13).toHaveAttribute('aria-current', 'date')
     })
     expect(c13).toBeEnabled()
     expect(c13).toHaveAttribute('aria-pressed', 'true')
     expect(cell(/^11월 12일, /)).not.toHaveAttribute('aria-current')
-    expect(cell('11월 14일')).toBeDisabled()
+    expect(cell('11월 14일, 생후 653일')).toBeDisabled()
   })
 
   it.each([
@@ -304,7 +330,10 @@ describe('CalendarPage', () => {
     // 이번 달의 미래 날짜도 무시.
     renderCalendar({ path: '/calendar?date=2026-11-20' })
     await waitFor(() => {
-      expect(cell('11월 13일')).toHaveAttribute('aria-pressed', 'true')
+      expect(cell('11월 13일, 생후 652일')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
     })
   })
 
@@ -392,5 +421,96 @@ describe('CalendarPage', () => {
     // 기록 없으면 올해만.
     await within(dialog).findByRole('heading', { name: '2026년' })
     expect(within(dialog).getAllByRole('heading')).toHaveLength(2)
+  })
+  // 대표 아기(하린) 기준. 10의 배수 칸만, 숫자만.
+  it('marks_every_ten_days', async () => {
+    renderCalendar({ babies: [SKY, HARIN], extra: primaryHarin })
+    await waitFor(() => {
+      expect(marks()).toEqual([
+        ['11월 5일', '390'],
+        ['11월 15일', '400'],
+        ['11월 25일', '410'],
+      ])
+    })
+  })
+
+  it('label_has_day_number', async () => {
+    renderCalendar({ babies: [SKY, HARIN], extra: primaryHarin })
+    expect(
+      await screen.findByRole('button', { name: '11월 15일, 생후 400일' }),
+    ).toBeDisabled()
+    expect(
+      cell('11월 12일, 생후 397일, 사진 18장, 마일스톤 혼자 걷기'),
+    ).toBeInTheDocument()
+  })
+
+  it('future_mark_dimmed', async () => {
+    renderCalendar({ babies: [SKY, HARIN], extra: primaryHarin })
+    const future = await screen.findByRole('button', {
+      name: '11월 15일, 생후 400일',
+    })
+    // 흐림은 보조 글자색(대비 4.5:1 유지), 투명도 없음.
+    const mark = within(future).getByTestId('day-mark')
+    expect(mark).toHaveClass('text-muted-foreground')
+    expect(mark).not.toHaveClass('text-accent-ink')
+    expect(mark.className).not.toMatch(/opacity/)
+    expect(
+      within(cell('11월 5일, 생후 390일')).getByTestId('day-mark'),
+    ).toHaveClass('text-accent-ink')
+  })
+
+  // 글만 있는 날 점은 왼쪽 아래, 숫자는 오른쪽 아래(겹치지 않게).
+  it('story_dot_with_mark', async () => {
+    renderCalendar({ babies: [babyFixture({ birth_date: '2026-10-28' })] })
+    const c6 = await screen.findByRole('button', {
+      name: '11월 6일, 생후 10일, 이야기 1개',
+    })
+    expect(within(c6).getByTestId('day-mark')).toHaveTextContent('10')
+    // 12px, 700.
+    expect(within(c6).getByTestId('day-mark')).toHaveClass(
+      'right-1',
+      'text-2xs',
+      'font-bold',
+    )
+    const dot = within(c6).getByTestId('story-dot')
+    expect(dot).toHaveClass('left-1.5')
+    expect(dot.className).not.toMatch(/left-1\/2|translate-x/)
+  })
+
+  // 칩으로 고른 아기가 대표 아기보다 우선.
+  it('marks_follow_chip', async () => {
+    const { user } = renderCalendar({
+      babies: [SKY, HARIN],
+      extra: primaryHarin,
+    })
+    await screen.findByRole('button', { name: '11월 15일, 생후 400일' })
+    await user.click(screen.getByRole('button', { name: '하늘' }))
+    await waitFor(() => {
+      expect(marks()).toEqual([
+        ['11월 1일', '640'],
+        ['11월 11일', '650'],
+        ['11월 21일', '660'],
+      ])
+    })
+    expect(cell('11월 13일, 생후 652일')).toBeInTheDocument()
+  })
+
+  // 태어난 날 = 1. 출생 전 칸은 숫자, 일수 이름 없음.
+  it('no_marks_before_birth', async () => {
+    renderCalendar({
+      path: '/calendar?month=2026-10',
+      babies: [babyFixture({ birth_date: '2026-10-15' })],
+    })
+    await screen.findByRole('button', { name: '10월 15일, 생후 1일' })
+    expect(cell('10월 14일')).toBeInTheDocument()
+    expect(marks()).toEqual([['10월 24일', '10']])
+    cleanup()
+
+    // 출산 예정 아기는 표시 없음.
+    renderCalendar({ babies: [babyFixture({ birth_date: '2027-01-01' })] })
+    await screen.findByRole('heading', { name: '2026년 11월' })
+    await screen.findByRole('button', { name: /^11월 12일, / })
+    expect(marks()).toEqual([])
+    expect(cell('11월 13일')).toBeInTheDocument()
   })
 })

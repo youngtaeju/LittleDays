@@ -3,6 +3,7 @@ import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DaySummary } from '@/api/types'
 import { milestoneLabel } from '@/milestones/labels'
+import { dayNumber } from '@/lib/age'
 import { formatMonthDay } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { thumbUrl } from '@/timeline/media'
@@ -23,16 +24,19 @@ function weekdays(lng: string): string[] {
   )
 }
 
-// 칸 하나. 사진 날 = 대표 사진, 글만 = 점, 마일스톤 = ★. 미래 날은 누를 수 없음.
+// 칸 하나. 사진 날 = 대표 사진, 글만 = 왼쪽 아래 점, 마일스톤 = ★, 10단위 일수 = 오른쪽 아래 숫자.
+// 미래 날은 누를 수 없음. age: 기준 아기 생후 일수(출생 전, 기준 아기 없음은 undefined).
 const DayCell = memo(function DayCell({
   date,
   day,
+  age,
   today,
   selected,
   onSelect,
 }: {
   date: string
   day: DaySummary | undefined
+  age: number | undefined
   today: string
   selected: boolean
   onSelect: (date: string) => void
@@ -42,6 +46,7 @@ const DayCell = memo(function DayCell({
   const photo = day?.preview[0]
   const label = [
     formatMonthDay(date, i18n.language),
+    age !== undefined ? t('age.days', { days: age }) : null,
     day && day.photo_count > 0
       ? t('feed.photos', { count: day.photo_count })
       : null,
@@ -105,8 +110,24 @@ const DayCell = memo(function DayCell({
         <span
           aria-hidden
           data-testid="story-dot"
-          className="absolute bottom-1.5 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-accent-ink"
+          className="absolute bottom-1.5 left-1.5 size-1.5 rounded-full bg-accent-ink"
         />
+      )}
+      {age !== undefined && age % 10 === 0 && (
+        <span
+          aria-hidden
+          data-testid="day-mark"
+          className={cn(
+            'absolute right-1 bottom-[3px] text-2xs leading-none font-bold',
+            photo
+              ? 'text-white [text-shadow:0_0_3px_rgb(0_0_0/0.7)]'
+              : future
+                ? 'text-muted-foreground'
+                : 'text-accent-ink',
+          )}
+        >
+          {age}
+        </span>
       )}
       {day && day.milestones.length > 0 && (
         <IconStar
@@ -139,12 +160,13 @@ const DayCell = memo(function DayCell({
   )
 })
 
-// 일요일 시작 7열. 앞 빈칸은 빈 자리.
+// 일요일 시작 7열. 앞 빈칸은 빈 자리. birthDate: 일수 기준 아기 생일.
 export function MonthGrid({
   month,
   label,
   days,
   today,
+  birthDate,
   selected,
   onSelect,
 }: {
@@ -152,6 +174,7 @@ export function MonthGrid({
   label: string
   days: Map<string, DaySummary>
   today: string
+  birthDate?: string
   selected: string | undefined
   onSelect: (date: string) => void
 }) {
@@ -172,20 +195,21 @@ export function MonthGrid({
         aria-label={t('calendar.dates', { month: label })}
         className="grid grid-cols-7 gap-[2px]"
       >
-        {cells.map((date, i) =>
-          date ? (
+        {cells.map((date, i) => {
+          if (!date) return <span key={`lead-${String(i)}`} />
+          const n = birthDate ? dayNumber(birthDate, date) : 0
+          return (
             <DayCell
               key={date}
               date={date}
               day={days.get(date)}
+              age={n >= 1 ? n : undefined}
               today={today}
               selected={date === selected}
               onSelect={onSelect}
             />
-          ) : (
-            <span key={`lead-${String(i)}`} />
-          ),
-        )}
+          )
+        })}
       </div>
     </div>
   )

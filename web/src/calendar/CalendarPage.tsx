@@ -5,6 +5,7 @@ import IconNext from '~icons/material-symbols/chevron-right-rounded'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { DaySummary } from '@/api/types'
+import { usePrimaryBaby } from '@/babies/usePrimaryBaby'
 import { Button } from '@/components/ui/button'
 import { BabyChips } from '@/feed/BabyChips'
 import { errorMessage } from '@/i18n'
@@ -38,6 +39,9 @@ export function CalendarPage() {
   const days = query.data?.items ?? NO_DAYS
   const byDate = useMemo(() => new Map(days.map((d) => [d.date, d])), [days])
   const babies = useBabies().data
+  const primary = usePrimaryBaby()
+  // 10단위 일수 기준. 칩으로 고른 아기, 아니면 대표 아기.
+  const reference = babies?.find((b) => b.id === baby) ?? primary
   const [picking, setPicking] = useState(false)
 
   // 달 밖, 미래 날짜는 무시.
@@ -185,6 +189,7 @@ export function CalendarPage() {
             label={title}
             days={byDate}
             today={today}
+            birthDate={reference?.birth_date}
             selected={selected}
             onSelect={onSelect}
           />

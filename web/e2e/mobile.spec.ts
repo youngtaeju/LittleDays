@@ -121,7 +121,7 @@ test('browse_screens_fit_width', async ({ ownerPage: page }) => {
   // 사진이 있는 달(2024년 5월)의 달력. 칸 라벨이 사진 수를 포함.
   await page.goto('/calendar?month=2024-05')
   await expect(
-    page.getByRole('button', { name: '5월 1일, 사진 2장' }),
+    page.getByRole('button', { name: '5월 1일, 생후 62일, 사진 2장' }),
   ).toBeVisible()
   await expectNoHorizontalOverflow(page)
 
@@ -189,6 +189,46 @@ test('auth_screens_fit_width', async ({ page, request }) => {
   await expect(
     page.getByRole('heading', { name: '초대 링크가 올바르지 않아요' }),
   ).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+})
+
+// 가족 초대로 가입한 새 컨텍스트. 하단 탭은 (+) 대신 아기.
+test('family_tab_bar_fits_width', async ({ page, request }) => {
+  await page.goto(await createInvitePath(request))
+  await page.getByLabel('표시 이름').fill('삼촌')
+  await page.getByRole('button', { name: '다음' }).click()
+  await page.getByLabel('아이디').fill(`mfamily${String(test.info().retry)}`)
+  await page.getByLabel('비밀번호').fill('e2e-family-password')
+  await page.getByRole('button', { name: '계정 만들기' }).click()
+  await expect(page).toHaveURL(/\/$/)
+
+  const tabs = page.getByTestId('tab-bar')
+  await expect(tabs.getByRole('link')).toHaveText([
+    '홈',
+    '달력',
+    '아기',
+    '앨범',
+    '나',
+  ])
+  await expect(page.getByRole('button', { name: '추가하기' })).toHaveCount(0)
+  await expectThumbnailsLoaded(page, 3)
+  await expectNoHorizontalOverflow(page)
+  // 고정 위치라 문서 넘침에 안 잡힘. 탭 줄 자체 검사.
+  expect(
+    await tabs
+      .getByRole('list')
+      .evaluate((e) => e.scrollWidth <= e.clientWidth),
+  ).toBe(true)
+
+  await tabs.getByRole('link', { name: '아기' }).click()
+  await expect(page).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+  await expect(
+    page.getByRole('heading', { level: 1, name: BABY_NAME }),
+  ).toBeVisible()
+  await expect(tabs.getByRole('link', { name: '아기' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
   await expectNoHorizontalOverflow(page)
 })
 
