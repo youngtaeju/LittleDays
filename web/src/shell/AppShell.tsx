@@ -17,6 +17,7 @@ import { babiesQuery } from '@/timeline/useBabies'
 import { UploadPickerProvider, useUploadPicker } from '@/upload/picker'
 import { UploadPill } from '@/upload/UploadPill'
 import { useQueueOpen } from '@/upload/useUploadStore'
+import { AddFab, useShowsFab } from './AddFab'
 import { AddSheet } from './AddSheet'
 import { Sidebar } from './Sidebar'
 import { TabBar } from './TabBar'
@@ -48,7 +49,7 @@ function useScrolled(): boolean {
   return useSyncExternalStore(subscribeScroll, () => window.scrollY > 0)
 }
 
-// 휴대폰 (+), 데스크톱 사이드바 공용 추가 시트 하나. 항목 동작 연결 지점.
+// 휴대폰 떠 있는 (+), 데스크톱 사이드바 공용 추가 시트 하나. 항목 동작 연결 지점.
 function ShellAddSheet({
   open,
   onOpenChange,
@@ -137,6 +138,7 @@ export function AppShell() {
   const fullScreen = useRouterState({
     select: (s) => /^\/stories\/(new|[^/]+\/edit)$/.test(s.location.pathname),
   })
+  const showsFab = useShowsFab()
   const scrolled = useScrolled()
   const queueOpen = useQueueOpen()
   const [addOpen, setAddOpen] = useState(false)
@@ -177,21 +179,25 @@ export function AppShell() {
             </div>
             <OfflineBanner />
           </header>
+          {/* 아래 여백: 탭 바, 떠 있는 (+) 있으면 그 높이만큼 더(마지막 줄 가림 방지). */}
           <main
             className={cn(
               'px-4 pt-4 lg:pb-8',
               fullScreen
                 ? 'pb-[calc(2rem+env(safe-area-inset-bottom))]'
-                : 'pb-[calc(5rem+env(safe-area-inset-bottom))]',
+                : showsFab
+                  ? 'pb-[calc(8.5rem+env(safe-area-inset-bottom))]'
+                  : 'pb-[calc(5rem+env(safe-area-inset-bottom))]',
             )}
           >
             <Outlet />
           </main>
         </div>
-        {!fullScreen && <TabBar onAdd={openAdd} />}
+        {!fullScreen && <TabBar />}
+        {showsFab && <AddFab onClick={openAdd} />}
         <ShellAddSheet open={addOpen} onOpenChange={setAddOpen} />
         {/* 모든 탭 공용. 탭 이동에도 유지. */}
-        <UploadPill />
+        <UploadPill besideFab={showsFab} />
         {queueOpen && (
           <Suspense>
             <UploadQueueSheet />

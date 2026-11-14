@@ -37,7 +37,8 @@ function Ring({ percent }: { percent: number }) {
 }
 
 // 업로드 진행 알약. 휴대폰 탭 바 위 가운데, 데스크톱 오른쪽 아래. 누르면 업로드 목록.
-export function UploadPill() {
+// besideFab: 휴대폰 떠 있는 (+) 표시 중. 버튼과 겹치지 않게 왼쪽 정렬.
+export function UploadPill({ besideFab = false }: { besideFab?: boolean }) {
   const { t } = useTranslation()
   const pill = useUploadPill()
   const kind = pill?.kind
@@ -62,7 +63,13 @@ export function UploadPill() {
         {text}
       </span>
       {pill && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:px-0">
+        <div
+          className={cn(
+            'pointer-events-none fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-30 flex px-4 lg:inset-x-auto lg:right-6 lg:bottom-6 lg:px-0',
+            // 오른쪽 여백 = 버튼 오른쪽 16px + 버튼 56px + 간격 8px.
+            besideFab ? 'justify-start pr-20 lg:pr-0' : 'justify-center',
+          )}
+        >
           <button
             type="button"
             aria-haspopup="dialog"

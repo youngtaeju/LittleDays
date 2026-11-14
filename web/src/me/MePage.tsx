@@ -19,13 +19,15 @@ type RowPath =
 const ROW =
   'flex min-h-14 w-full items-center gap-3 px-4 text-left text-[15px] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring'
 
+const CARD = 'rounded-xl bg-card'
+
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="grid gap-1">
+    <section className="grid gap-2">
       <h2 className="px-4 text-[13px] font-semibold text-muted-foreground">
         {title}
       </h2>
-      <ul className="divide-y divide-border border-y border-border">
+      <ul className={cn(CARD, 'divide-y divide-border/60 overflow-hidden')}>
         {children}
       </ul>
     </section>
@@ -50,9 +52,10 @@ export function MePage() {
   const initial = Array.from(user?.display_name ?? '')[0] ?? '?'
 
   return (
-    <div className="-mx-4 grid max-w-xl gap-6 sm:mx-auto">
+    // 휴대폰: 셸 여백(px-4, pt-4, 아래 탭 바 여백)까지 옅은 바탕으로 채움. 데스크톱: 본문 칸 안의 패널.
+    <div className="-mx-4 -mt-4 -mb-[calc(5rem+env(safe-area-inset-bottom))] grid min-h-[calc(100dvh-3.5rem)] grid-cols-[minmax(0,36rem)] content-start justify-center gap-7 bg-muted px-4 pt-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:mx-auto lg:mt-0 lg:mb-0 lg:min-h-0 lg:max-w-xl lg:grid-cols-1 lg:rounded-2xl lg:pb-6">
       {user && (
-        <Link to="/me/profile" className={cn(ROW, 'min-h-20 gap-4')}>
+        <Link to="/me/profile" className={cn(ROW, CARD, 'min-h-20 gap-4')}>
           <span
             aria-hidden
             className="inline-flex size-12 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xl font-bold text-accent-ink"
@@ -94,14 +97,14 @@ export function MePage() {
       <div className="grid gap-3">
         <button
           type="button"
-          className={cn(ROW, 'border-y border-border text-destructive')}
+          className={cn(ROW, CARD, 'text-destructive')}
           onClick={() => {
             void signOut()
           }}
         >
           {t('me.logout')}
         </button>
-        <p className="px-4 text-center text-xs text-muted-foreground tabular-nums">
+        <p className="text-center text-xs text-muted-foreground tabular-nums">
           {t('me.version', { version: __APP_VERSION__ })}
         </p>
       </div>
