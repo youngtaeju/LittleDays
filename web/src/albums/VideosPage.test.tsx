@@ -31,6 +31,7 @@ function renderVideos(page: (url: URL) => AssetPage) {
   mockFetch({
     ...emptyFeedRoutes,
     'GET /api/auth/me': () => json(200, { user: userFixture('family') }),
+    'GET /api/albums': () => json(200, []),
     'GET /api/settings': () => json(200, settingsFixture),
     'GET /api/assets': (req) => {
       const url = new URL(req.url)
@@ -74,6 +75,13 @@ describe('VideosPage', () => {
     await user.click(screen.getByRole('button', { name: ko.me.back }))
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/albums')
+    })
+    // 도착 라우트 로드/전환 종료까지 대기. 환경 해제 후 setState 방지.
+    expect(
+      await screen.findByRole('heading', { level: 1, name: ko.albums.title }),
+    ).toBeVisible()
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
     })
   })
 
