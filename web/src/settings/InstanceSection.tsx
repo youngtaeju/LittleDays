@@ -54,6 +54,7 @@ export function InstanceSection({ settings }: { settings: Settings }) {
           default_locale: formText(form, 'default_locale'),
           derivatives_avif: form.get('derivatives_avif') === 'on',
           trash_retention_days: Number(formText(form, 'trash_retention_days')),
+          primary_baby_id: settings.primary_baby_id,
         }
         const body: SettingsPatch = {}
         if (next.instance_name !== settings.instance_name) {

@@ -33,6 +33,7 @@ export const settingsFixture: Settings = {
   default_locale: 'ko',
   derivatives_avif: false,
   trash_retention_days: 30,
+  primary_baby_id: null,
 }
 
 export function apiError(status: number, key: string): Response {

@@ -427,7 +427,8 @@
       "instanceNameInvalid": "우리 집 이름이 올바르지 않아요.",
       "invalidLocale": "지원하지 않는 언어예요.",
       "invalidTimezone": "시간대가 올바르지 않아요.",
-      "trashRetentionInvalid": "휴지통 보관 기간이 올바르지 않아요."
+      "trashRetentionInvalid": "휴지통 보관 기간이 올바르지 않아요.",
+      "primaryBabyInvalid": "대표 아기를 찾을 수 없어요."
     },
     "upload": {
       "contentType": "업로드 요청 형식이 올바르지 않아요.",

@@ -112,9 +112,26 @@ pub async fn replace(
     .ok_or(AppError::NotFound("babies.notFound"))
 }
 
-pub async fn delete(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<()> {
+pub async fn exists(exec: impl PgExecutor<'_>, id: Uuid) -> AppResult<bool> {
+    let found = sqlx::query_scalar!(
+        r#"SELECT EXISTS(SELECT 1 FROM babies WHERE id = $1) AS "exists!""#,
+        id
+    )
+    .fetch_one(exec)
+    .await?;
+    Ok(found)
+}
+
+/// 트랜잭션 연결 전제. 대표 아기 설정이 이 아기를 가리키면 함께 제거.
+pub async fn delete(conn: &mut PgConnection, id: Uuid) -> AppResult<()> {
+    sqlx::query!(
+        "DELETE FROM settings WHERE key = 'primary_baby_id' AND value = to_jsonb($1::text)",
+        id.to_string()
+    )
+    .execute(&mut *conn)
+    .await?;
     let res = sqlx::query!("DELETE FROM babies WHERE id = $1", id)
-        .execute(exec)
+        .execute(&mut *conn)
         .await?;
     if res.rows_affected() == 0 {
         return Err(AppError::NotFound("babies.notFound"));

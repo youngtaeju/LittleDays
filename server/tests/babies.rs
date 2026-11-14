@@ -637,3 +637,45 @@ async fn cover_prefers_ready(pool: PgPool) {
     let v = stats(&app, only).await;
     assert_eq!(v["age_months"][0]["cover"]["id"], ids[2].to_string());
 }
+
+async fn primary_baby_id(server: &TestServer) -> Value {
+    let res = server.get("/api/settings").await;
+    res.assert_status_ok();
+    res.json::<Value>()["primary_baby_id"].clone()
+}
+
+async fn set_primary(pool: &PgPool, id: Uuid) {
+    littledays::settings::queries::set(pool, "primary_baby_id", json!(id))
+        .await
+        .unwrap();
+}
+
+async fn delete_baby(server: &TestServer, id: Uuid) {
+    server
+        .delete(&format!("/api/babies/{id}"))
+        .add_header(XRW, XRW_VALUE)
+        .await
+        .assert_status(StatusCode::NO_CONTENT);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn delete_clears_primary(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let id = create_named(&app.server, "하늘").await;
+    set_primary(&pool, id).await;
+    assert_eq!(primary_baby_id(&app.server).await, json!(id));
+
+    delete_baby(&app.server, id).await;
+    assert_eq!(primary_baby_id(&app.server).await, Value::Null);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn delete_other_keeps_primary(pool: PgPool) {
+    let app = media_app(&pool, Role::Guardian).await;
+    let keep = create_named(&app.server, "하늘").await;
+    let other = create_named(&app.server, "바다").await;
+    set_primary(&pool, keep).await;
+
+    delete_baby(&app.server, other).await;
+    assert_eq!(primary_baby_id(&app.server).await, json!(keep));
+}

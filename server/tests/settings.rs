@@ -33,6 +33,7 @@ async fn defaults_then_patch(pool: PgPool) {
             "default_locale": "ko",
             "derivatives_avif": false,
             "trash_retention_days": 0,
+            "primary_baby_id": null,
         })
     );
 
@@ -48,6 +49,7 @@ async fn defaults_then_patch(pool: PgPool) {
         "default_locale": "ko",
         "derivatives_avif": false,
         "trash_retention_days": 0,
+        "primary_baby_id": null,
     });
     res.assert_json(&expected);
     assert_eq!(get_settings(&server).await, expected);
@@ -64,6 +66,7 @@ async fn defaults_then_patch(pool: PgPool) {
         "default_locale": "en",
         "derivatives_avif": true,
         "trash_retention_days": 0,
+        "primary_baby_id": null,
     }));
 }
 
@@ -185,6 +188,7 @@ async fn wrong_typed_stored_value_falls_back_to_default(pool: PgPool) {
             "default_locale": "ko",
             "derivatives_avif": false,
             "trash_retention_days": 0,
+            "primary_baby_id": null,
         })
     );
 }
@@ -262,4 +266,51 @@ async fn trash_retention_days_roundtrip(pool: PgPool) {
         StatusCode::BAD_REQUEST,
         "settings.trashRetentionInvalid",
     );
+}
+
+async fn insert_baby(pool: &PgPool) -> uuid::Uuid {
+    let id = uuid::Uuid::now_v7();
+    sqlx::query!(
+        "INSERT INTO babies (id, name, birth_date) VALUES ($1, '하늘', '2026-01-15')",
+        id
+    )
+    .execute(pool)
+    .await
+    .expect("insert baby");
+    id
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn primary_baby_set_and_clear(pool: PgPool) {
+    let (server, _) = server_as(&pool, "mom", Role::Owner).await;
+    let baby = insert_baby(&pool).await;
+    assert_eq!(get_settings(&server).await["primary_baby_id"], Value::Null);
+
+    let res = patch_settings(&server, json!({ "primary_baby_id": baby })).await;
+    res.assert_status_ok();
+    assert_eq!(res.json::<Value>()["primary_baby_id"], json!(baby));
+    assert_eq!(get_settings(&server).await["primary_baby_id"], json!(baby));
+
+    let res = patch_settings(&server, json!({ "primary_baby_id": null })).await;
+    res.assert_status_ok();
+    assert_eq!(res.json::<Value>()["primary_baby_id"], Value::Null);
+    assert_eq!(get_settings(&server).await["primary_baby_id"], Value::Null);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn primary_baby_owner_only(pool: PgPool) {
+    let baby = insert_baby(&pool).await;
+    let (server, _) = server_as(&pool, "dad", Role::Guardian).await;
+    assert_error(
+        &patch_settings(&server, json!({ "primary_baby_id": baby })).await,
+        StatusCode::FORBIDDEN,
+        "auth.forbidden",
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn primary_baby_unknown(pool: PgPool) {
+    let (server, _) = server_as(&pool, "mom", Role::Owner).await;
+    let res = patch_settings(&server, json!({ "primary_baby_id": uuid::Uuid::now_v7() })).await;
+    assert_error(&res, StatusCode::BAD_REQUEST, "settings.primaryBabyInvalid");
 }

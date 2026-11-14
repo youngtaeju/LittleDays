@@ -427,7 +427,8 @@
       "instanceNameInvalid": "The home name is not valid.",
       "invalidLocale": "This language is not supported.",
       "invalidTimezone": "The time zone is not valid.",
-      "trashRetentionInvalid": "The trash retention period is not valid."
+      "trashRetentionInvalid": "The trash retention period is not valid.",
+      "primaryBabyInvalid": "That baby could not be found."
     },
     "upload": {
       "contentType": "The upload request format is not valid.",

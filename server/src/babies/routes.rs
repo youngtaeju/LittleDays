@@ -157,7 +157,9 @@ async fn delete_baby(
     Path(id): Path<Uuid>,
 ) -> AppResult<StatusCode> {
     current.require(Role::Guardian)?;
-    queries::delete(&state.pool, id).await?;
+    let mut tx = state.pool.begin().await?;
+    queries::delete(&mut tx, id).await?;
+    tx.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

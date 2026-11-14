@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO babies (id, name, birth_date) VALUES ($1, '하늘', '2026-01-15')",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "56029ce38858356ee7f038389a0d5c8a95557a49af489a2c83ab114ad2915d24"
+}

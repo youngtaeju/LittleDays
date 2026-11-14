@@ -1,5 +1,6 @@
 use serde::Serialize;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 pub mod queries;
 pub mod routes;
@@ -17,6 +18,9 @@ pub struct Settings {
     /// 휴지통 자동 비우기 일수. 0 은 끔.
     #[schema(maximum = 3650)]
     pub trash_retention_days: u32,
+    /// 홈 대표 아기. 미설정이면 표시 순서 첫째.
+    #[schema(required = true)]
+    pub primary_baby_id: Option<Uuid>,
 }
 
 impl Default for Settings {
@@ -27,6 +31,7 @@ impl Default for Settings {
             default_locale: "ko".to_string(),
             derivatives_avif: false,
             trash_retention_days: 0,
+            primary_baby_id: None,
         }
     }
 }
