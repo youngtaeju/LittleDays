@@ -126,9 +126,10 @@ export function DayFeed({ filter }: { filter: DaysFilter }) {
           <h2 className="text-lg font-bold tabular-nums">
             {formatMonth(month.month, i18n.language)}
           </h2>
-          {month.days.map((day) => (
+          {month.days.map((day, i) => (
             <DayCard
               key={day.date}
+              divided={i > 0}
               day={day}
               babies={babies}
               users={users}

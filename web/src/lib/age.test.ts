@@ -6,6 +6,7 @@ import {
   ageAt,
   dayNumber,
   dueIn,
+  formatAge,
   formatAgeLine,
   formatNextAnniversary,
   formatSpecialDay,
@@ -17,10 +18,10 @@ const birth = '2024-01-31'
 
 describe('ageAt', () => {
   it.each([
-    ['2024-01-31', { kind: 'days', days: 0 }],
-    ['2024-05-09', { kind: 'days', days: 99 }],
+    ['2024-01-31', { kind: 'days', days: 1 }],
+    ['2024-05-09', { kind: 'days', days: 100 }],
     ['2024-05-10', { kind: 'monthsDays', months: 3, days: 10 }],
-    ['2024-02-29', { kind: 'days', days: 29 }],
+    ['2024-02-29', { kind: 'days', days: 30 }],
     ['2025-01-30', { kind: 'monthsDays', months: 11, days: 30 }],
     ['2025-01-31', { kind: 'yearsMonths', years: 1, months: 0 }],
     ['2026-03-01', { kind: 'yearsMonths', years: 2, months: 1 }],
@@ -38,6 +39,15 @@ describe('ageAt', () => {
 
   it('before_birth_is_null', () => {
     expect(ageAt(birth, '2024-01-30')).toBeNull()
+  })
+})
+
+describe('birth_day_is_day_one', () => {
+  it('matches_day_number', () => {
+    expect(ageAt(birth, birth)).toEqual({ kind: 'days', days: 1 })
+    expect(dayNumber(birth, birth)).toBe(1)
+    expect(ageAt(birth, '2024-05-08')).toEqual({ kind: 'days', days: 99 })
+    expect(dayNumber(birth, '2024-05-08')).toBe(99)
   })
 })
 
@@ -126,10 +136,29 @@ describe('next_anniversary', () => {
   })
 })
 
+describe('month_anniversary_drops_zero_days', () => {
+  beforeAll(() => {
+    initI18n('ko')
+  })
+
+  it('ko_en', async () => {
+    const age = ageAt('2024-01-01', '2024-05-01')
+    expect(age).toEqual({ kind: 'monthsDays', months: 4, days: 0 })
+    if (!age) throw new Error('age')
+    await i18next.changeLanguage('ko')
+    expect(formatAge(i18next.t.bind(i18next), age)).toBe('4개월')
+    await i18next.changeLanguage('en')
+    expect(formatAge(i18next.t.bind(i18next), age)).toBe('4 mo')
+    const next = ageAt('2024-01-01', '2024-05-02')
+    if (!next) throw new Error('age')
+    expect(formatAge(i18next.t.bind(i18next), next)).toBe('4 mo 1 d')
+  })
+})
+
 describe('age_matches_server_rule', () => {
   it.each([
-    ['2024-01-31', '2024-02-28', { kind: 'days', days: 28 }],
-    ['2024-01-31', '2024-04-30', { kind: 'days', days: 90 }],
+    ['2024-01-31', '2024-02-28', { kind: 'days', days: 29 }],
+    ['2024-01-31', '2024-04-30', { kind: 'days', days: 91 }],
     ['2024-02-29', '2025-02-28', { kind: 'yearsMonths', years: 1, months: 0 }],
   ])('%s_on_%s', (b, d, expected) => {
     expect(ageAt(b, d)).toEqual(expected)
@@ -152,7 +181,8 @@ describe('formatting', () => {
     )
     expect(formatSpecialDay(t, { kind: 'birthday', n: 11 })).toBe('11번째 생일')
     expect(formatAgeLine(t, '2024-03-10', '2024-03-01')).toBe('출산 예정 D-9')
-    expect(formatAgeLine(t, '2024-03-10', '2024-03-12')).toBe('생후 2일')
+    expect(formatAgeLine(t, '2024-03-10', '2024-03-12')).toBe('생후 3일')
+    expect(formatAgeLine(t, '2024-01-31', '2024-05-10')).toBe('3개월 10일')
     expect(
       formatNextAnniversary(t, { day: { kind: 'days', n: 100 }, inDays: 2 }),
     ).toBe('100일까지 2일')
@@ -191,6 +221,7 @@ describe('formatting', () => {
       '121st birthday',
     ])
     expect(formatAgeLine(t, '2024-03-10', '2024-03-01')).toBe('Due in 9 d')
+    expect(formatAgeLine(t, '2024-01-31', '2024-05-10')).toBe('3 mo 10 d')
     expect(
       formatNextAnniversary(t, { day: { kind: 'days', n: 100 }, inDays: 2 }),
     ).toBe('2 d until Day 100')

@@ -845,7 +845,7 @@ describe('ViewerPage', () => {
     expect(
       await screen.findByText('2024년 5월 10일 오후 3:24'),
     ).toBeInTheDocument()
-    expect(screen.getByText('생후 9일')).toBeInTheDocument()
+    expect(screen.getByText('생후 10일')).toBeInTheDocument()
   })
 
   it('menu_edit_taken_at_opens_editor', async () => {

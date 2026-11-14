@@ -289,6 +289,23 @@ describe('FeedPage', () => {
     )
   })
 
+  it('day_divider_between_cards', async () => {
+    renderFeed({
+      days: () =>
+        page([
+          dayFixture('2024-05-10'),
+          dayFixture('2024-05-09'),
+          dayFixture('2024-04-30'),
+        ]),
+    })
+    await screen.findByRole('heading', { name: '5월 10일 금요일' })
+    // 묶음 사이에만 선. 첫 카드와 월 제목 바로 아래 카드는 없음.
+    const lines = screen
+      .getAllByRole('article')
+      .map((a) => a.classList.contains('border-t'))
+    expect(lines).toEqual([false, true, false])
+  })
+
   it('photo_click_opens_viewer', async () => {
     const { router, user } = renderFeed({
       path: `/?baby=${SKY.id}`,

@@ -342,6 +342,7 @@
   },
   "age": {
     "days": "Day {{days}}",
+    "months": "{{months}} mo",
     "monthsDays": "{{months}} mo {{days}} d",
     "yearsMonths": "{{years}} y {{months}} mo",
     "due": "Due in {{n}} d",

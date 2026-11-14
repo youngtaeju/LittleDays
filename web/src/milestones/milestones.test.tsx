@@ -474,7 +474,7 @@ describe('milestones', () => {
     expect(links.map((l) => l.getAttribute('aria-label'))).toEqual([
       '혼자 걷기, 11월 1일, 1살 1개월, 사진 1장',
       '첫 수영, 8월 15일, 10개월 20일',
-      '첫 웃음, 2025년 11월 20일, 생후 55일',
+      '첫 웃음, 2025년 11월 20일, 생후 56일',
     ])
     expect(links.map((l) => l.getAttribute('href'))).toEqual([
       '/milestones/m1',
