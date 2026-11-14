@@ -31,7 +31,8 @@ export function ageAt(birthDate: string, date: string): Age | null {
   const today = utcDay(y, m, d)
   const days = today - utcDay(by, bm, bd)
   if (days < 0) return null
-  if (days < 100) return { kind: 'days', days }
+  // 생후 N일은 태어난 날 = 1(dayNumber 와 동일). 0 기준 100일부터 개월 표기.
+  if (days < 100) return { kind: 'days', days: days + 1 }
 
   // 같은 달 기념일이 아직이면 전달 기념일.
   let months = (y - by) * 12 + (m - bm)
@@ -118,6 +119,7 @@ export function formatAge(t: TFunction, age: Age): string {
     case 'days':
       return t('age.days', { days: age.days })
     case 'monthsDays':
+      if (age.days === 0) return t('age.months', { months: age.months })
       return t('age.monthsDays', { months: age.months, days: age.days })
     case 'yearsMonths':
       return t('age.yearsMonths', { years: age.years, months: age.months })

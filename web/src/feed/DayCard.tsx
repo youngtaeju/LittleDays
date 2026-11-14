@@ -20,6 +20,7 @@ import { Mosaic } from './Mosaic'
 // today: 인스턴스 시간대 오늘(YYYY-MM-DD).
 export const DayCard = memo(function DayCard({
   day,
+  divided,
   babies,
   users,
   baby,
@@ -27,6 +28,8 @@ export const DayCard = memo(function DayCard({
   timezone,
 }: {
   day: DaySummary
+  // 같은 달 앞 카드가 있으면 윗선.
+  divided: boolean
   babies: Baby[]
   users: User[] | undefined
   baby: string | undefined
@@ -59,7 +62,10 @@ export const DayCard = memo(function DayCard({
   } as const
 
   return (
-    <article aria-labelledby={headingId} className="pt-4">
+    <article
+      aria-labelledby={headingId}
+      className={divided ? 'border-t border-border pt-4' : 'pt-4'}
+    >
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-3">
         <h3 className="min-w-0 text-base font-bold tabular-nums">
           {/* 하루 묶음 이름은 날짜만. */}
