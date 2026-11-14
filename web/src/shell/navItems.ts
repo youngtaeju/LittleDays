@@ -1,5 +1,7 @@
 import IconCalendarFill from '~icons/material-symbols/calendar-month-rounded'
 import IconCalendar from '~icons/material-symbols/calendar-month-outline-rounded'
+import IconBabyFill from '~icons/material-symbols/child-care-rounded'
+import IconBaby from '~icons/material-symbols/child-care-outline-rounded'
 import IconHomeFill from '~icons/material-symbols/home-rounded'
 import IconHome from '~icons/material-symbols/home-outline-rounded'
 import IconPersonFill from '~icons/material-symbols/person-rounded'
@@ -8,11 +10,12 @@ import IconAlbumsFill from '~icons/material-symbols/photo-library-rounded'
 import IconAlbums from '~icons/material-symbols/photo-library-outline-rounded'
 import type { ComponentType, SVGProps } from 'react'
 import { useTranslation } from 'react-i18next'
+import { hasRole, useMe } from '@/auth/session'
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>
 
 export interface NavItem {
-  to: '/' | '/calendar' | '/albums' | '/me'
+  to: '/' | '/calendar' | '/babies' | '/albums' | '/me'
   label: string
   // 선택 = 채움, 나머지 = 외곽선.
   icon: Icon
@@ -21,40 +24,49 @@ export interface NavItem {
   paths: readonly string[]
 }
 
-// 하단 탭, 사이드바 공용.
+// 하단 탭, 사이드바 공용. 업로드 권한 없으면(family) 달력과 앨범 사이에 아기 탭.
 export function useNavItems(): NavItem[] {
   const { t } = useTranslation()
-  return [
-    {
-      to: '/',
-      label: t('nav.home'),
-      icon: IconHome,
-      activeIcon: IconHomeFill,
-      paths: [],
-    },
-    {
-      to: '/calendar',
-      label: t('nav.calendar'),
-      icon: IconCalendar,
-      activeIcon: IconCalendarFill,
-      paths: ['/calendar'],
-    },
-    {
-      to: '/albums',
-      label: t('nav.albums'),
-      icon: IconAlbums,
-      activeIcon: IconAlbumsFill,
-      paths: ['/albums'],
-    },
-    {
-      to: '/me',
-      label: t('nav.me'),
-      icon: IconPerson,
-      activeIcon: IconPersonFill,
-      // 탭이 없는 아기, 가족 화면은 나 탭 우리 집 소속.
-      paths: ['/me', '/babies', '/family'],
-    },
-  ]
+  const { user } = useMe()
+  const canUpload = hasRole(user, 'guardian')
+  const home: NavItem = {
+    to: '/',
+    label: t('nav.home'),
+    icon: IconHome,
+    activeIcon: IconHomeFill,
+    paths: [],
+  }
+  const calendar: NavItem = {
+    to: '/calendar',
+    label: t('nav.calendar'),
+    icon: IconCalendar,
+    activeIcon: IconCalendarFill,
+    paths: ['/calendar'],
+  }
+  const albums: NavItem = {
+    to: '/albums',
+    label: t('nav.albums'),
+    icon: IconAlbums,
+    activeIcon: IconAlbumsFill,
+    paths: ['/albums'],
+  }
+  const me: NavItem = {
+    to: '/me',
+    label: t('nav.me'),
+    icon: IconPerson,
+    activeIcon: IconPersonFill,
+    // 가족 화면은 나 탭 우리 집 소속. 아기 탭이 없으면 아기 화면도.
+    paths: canUpload ? ['/me', '/babies', '/family'] : ['/me', '/family'],
+  }
+  if (canUpload) return [home, calendar, albums, me]
+  const babies: NavItem = {
+    to: '/babies',
+    label: t('nav.babies'),
+    icon: IconBaby,
+    activeIcon: IconBabyFill,
+    paths: ['/babies'],
+  }
+  return [home, calendar, babies, albums, me]
 }
 
 export function isNavActive(item: NavItem, pathname: string): boolean {

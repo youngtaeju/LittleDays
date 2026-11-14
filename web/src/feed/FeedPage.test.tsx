@@ -368,10 +368,11 @@ describe('FeedPage', () => {
 
   it('header_single_vs_multi', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true, now: NOON_0510 })
-    // 1명: 이름 + D+(태어난 날 = 1일째).
+    // 1명: 우리 집 이름 + 아기 알약(태어난 날 = 1일째).
     renderFeed({ days: () => page([]) })
     let header = within(await screen.findByRole('banner'))
     expect(await header.findByText(SKY.name)).toBeInTheDocument()
+    expect(header.getByText(settingsFixture.instance_name)).toBeInTheDocument()
     expect(header.getByText('D+101')).toBeInTheDocument()
     expect(header.queryByRole('group')).toBeNull()
     cleanup()
@@ -385,7 +386,7 @@ describe('FeedPage', () => {
     expect(await header.findByText('D-22')).toBeInTheDocument()
     cleanup()
 
-    // 2명: 우리 집 이름 + 아기 칩. 전체면 배지 없음.
+    // 2명: 우리 집 이름 + 아기 칩. 전체면 대표 아기(설정 없으면 첫째) 배지.
     const { router, user, requests } = renderFeed({
       babies: [SKY, SEA],
       days: () => page([]),
@@ -399,7 +400,7 @@ describe('FeedPage', () => {
       'aria-pressed',
       'true',
     )
-    expect(header.queryByText(/^D[+-]/)).toBeNull()
+    expect(header.getByText('D+101')).toBeInTheDocument()
 
     await user.click(chips.getByRole('button', { name: SEA.name }))
 
@@ -415,6 +416,7 @@ describe('FeedPage', () => {
     )
     // 고른 아기 기준 D+. 2023-03-10 생 → 2024-05-10 은 428일째.
     expect(header.getByText('D+428')).toBeInTheDocument()
+    expect(header.queryByText('D+101')).toBeNull()
   })
 
   it('empty_state_by_role', async () => {

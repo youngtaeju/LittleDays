@@ -26,6 +26,7 @@ import { FeedPage } from '@/feed/FeedPage'
 import { pickBaby } from '@/babies/lastBaby'
 import { parseAgeParam } from '@/babies/useBabyStats'
 import { babiesQuery } from '@/timeline/useBabies'
+import { settingsQuery } from '@/settings/useSettings'
 import { storyQuery } from '@/stories/useStory'
 import { isMonth } from '@/calendar/month'
 import { isCalendarDate } from '@/lib/dates'
@@ -320,16 +321,21 @@ const calendarRoute = createRoute({
   component: CalendarPage,
 })
 
-// 마지막 본 아기(없으면 첫째)로 교체 이동. 아기 없음·조회 실패는 화면에서.
+// 마지막 본 아기(없으면 대표 아기)로 교체 이동. 아기 없음, 조회 실패는 화면에서.
 const babiesRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/babies',
   beforeLoad: async ({ context }) => {
-    // 캐시 있으면 그대로(화면이 다시 받음).
-    const babies = await context.queryClient
-      .query({ ...babiesQuery, staleTime: 'static' })
-      .catch(() => undefined)
-    const target = babies && pickBaby(babies)
+    // 캐시 있으면 그대로(화면이 다시 받음). 설정 조회 실패면 첫째.
+    const [babies, settings] = await Promise.all([
+      context.queryClient
+        .query({ ...babiesQuery, staleTime: 'static' })
+        .catch(() => undefined),
+      context.queryClient
+        .query({ ...settingsQuery, staleTime: 'static' })
+        .catch(() => undefined),
+    ])
+    const target = babies && pickBaby(babies, settings?.primary_baby_id)
     if (target) {
       throw redirect({
         to: '/babies/$id',

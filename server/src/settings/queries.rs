@@ -17,6 +17,13 @@ pub async fn set(exec: impl PgExecutor<'_>, key: &str, value: Value) -> AppResul
     Ok(())
 }
 
+pub async fn remove(exec: impl PgExecutor<'_>, key: &str) -> AppResult<()> {
+    sqlx::query!("DELETE FROM settings WHERE key = $1", key)
+        .execute(exec)
+        .await?;
+    Ok(())
+}
+
 /// 전체 키 1회 조회. 미저장 키와 형식 불일치 값은 기본값.
 pub async fn load(exec: impl PgExecutor<'_>) -> AppResult<Settings> {
     let rows = sqlx::query!("SELECT key, value FROM settings")
@@ -32,6 +39,7 @@ pub async fn load(exec: impl PgExecutor<'_>) -> AppResult<Settings> {
             "trash_retention_days" => {
                 assign(&mut settings.trash_retention_days, &row.key, row.value)
             }
+            "primary_baby_id" => assign(&mut settings.primary_baby_id, &row.key, row.value),
             _ => {}
         }
     }

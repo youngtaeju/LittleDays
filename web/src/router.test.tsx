@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Role } from '@/api/types'
 import { initI18n } from '@/i18n'
@@ -7,6 +7,7 @@ import { json, mockFetch } from '@/test/fetch'
 import {
   apiError,
   assetFixture,
+  babyFixture,
   emptyFeedRoutes,
   settingsFixture,
   userFixture,
@@ -18,6 +19,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  localStorage.clear()
   vi.restoreAllMocks()
 })
 
@@ -104,6 +106,52 @@ describe('router', () => {
       await screen.findByRole('heading', { name: ko.nav.trash }),
     ).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/me/trash')
+  })
+
+  // 마지막 본 아기 없으면 대표 아기. 있으면 마지막 본 아기.
+  it('babies_redirects_primary', async () => {
+    const SKY = babyFixture()
+    const SEA = babyFixture({
+      id: '00000000-0000-4000-8000-0000000000b2',
+      name: '바다',
+      sort_order: 1,
+    })
+    mockFetch({
+      'GET /api/auth/me': () => json(200, { user: userFixture('family') }),
+      'GET /api/settings': () =>
+        json(200, { ...settingsFixture, primary_baby_id: SEA.id }),
+      'GET /api/babies': () => json(200, [SKY, SEA]),
+      ...Object.fromEntries(
+        [SKY, SEA].flatMap((b) => [
+          [
+            `GET /api/babies/${b.id}/stats`,
+            () =>
+              json(200, {
+                photo_count: 0,
+                video_count: 0,
+                day_count: 0,
+                age_months: [],
+              }),
+          ],
+          [`GET /api/babies/${b.id}/growth`, () => json(200, [])],
+          [`GET /api/babies/${b.id}/milestones`, () => json(200, [])],
+        ]),
+      ),
+    })
+    const first = renderApp('/babies')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: SEA.name }),
+    ).toBeInTheDocument()
+    expect(first.router.state.location.pathname).toBe(`/babies/${SEA.id}`)
+    expect(first.router.history.length).toBe(1)
+    cleanup()
+
+    localStorage.setItem('ld.baby.last', SKY.id)
+    const second = renderApp('/babies')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: SKY.name }),
+    ).toBeInTheDocument()
+    expect(second.router.state.location.pathname).toBe(`/babies/${SKY.id}`)
   })
 
   it('login_redirect_keeps_new_path', async () => {

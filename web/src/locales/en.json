@@ -427,7 +427,8 @@
       "instanceNameInvalid": "The home name is not valid.",
       "invalidLocale": "This language is not supported.",
       "invalidTimezone": "The time zone is not valid.",
-      "trashRetentionInvalid": "The trash retention period is not valid."
+      "trashRetentionInvalid": "The trash retention period is not valid.",
+      "primaryBabyInvalid": "That baby could not be found."
     },
     "upload": {
       "contentType": "The upload request format is not valid.",
@@ -627,6 +628,8 @@
     "avifHint": "Smaller files, longer processing.",
     "trashRetention": "Trash retention (days)",
     "trashRetentionHint": "0 never empties the trash automatically. Up to 3650 days.",
+    "primaryBaby": "Main baby",
+    "primaryBabyHint": "Used for day counts on Home and Calendar.",
     "instanceSaved": "Home settings saved",
     "language": "Language",
     "localeKo": "한국어"

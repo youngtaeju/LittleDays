@@ -45,7 +45,7 @@ test('first_signup_and_baby', async ({ page }) => {
   await expect(page.getByRole('heading', { name: '준비됐어요' })).toBeVisible()
   await page.getByRole('button', { name: '홈으로 가기' }).click()
   await expect(page).toHaveURL(/\/$/)
-  // 데스크톱은 사이드바, 휴대폰은 머리글(아기 2명 이상일 때). 아기 1명이면 홈 머리글은 아기 이름.
+  // 우리 집 이름은 사이드바와 홈 머리글 왼쪽. 홈 머리글 오른쪽은 아기 알약.
   await expect(
     page.getByText(INSTANCE_NAME).filter({ visible: true }).first(),
   ).toBeVisible()
@@ -300,13 +300,30 @@ test('invite_family_cannot_upload', async ({
   try {
     await expect(tiles(guest)).toHaveCount(3)
     await expectThumbnailsLoaded(guest, 3)
+    // 주 메뉴: (+) 대신 아기.
     const nav = guest.getByRole('navigation', { name: '주 메뉴' })
-    await expect(nav.getByRole('link', { name: '홈' })).toBeVisible()
-    await expect(nav.getByRole('link', { name: '나' })).toBeVisible()
+    await expect(nav.getByRole('link')).toHaveText([
+      '홈',
+      '달력',
+      '아기',
+      '앨범',
+      '나',
+    ])
     await expect(guest.getByRole('button', { name: '추가하기' })).toHaveCount(0)
     await expect(
       guest.getByRole('button', { name: '사진 올리기' }),
     ).toHaveCount(0)
+
+    // 아기 탭 → 아기 화면. 아기 탭 선택.
+    await nav.getByRole('link', { name: '아기' }).click()
+    await expect(guest).toHaveURL(/\/babies\/[0-9a-f-]+$/)
+    await expect(
+      guest.getByRole('heading', { level: 1, name: BABY_NAME }),
+    ).toBeVisible()
+    await expect(nav.getByRole('link', { name: '아기' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
 
     // 주소 직접 입력도 홈으로.
     await guest.goto('/upload')
@@ -742,10 +759,26 @@ test('calendar_flow', async ({ ownerPage: page }) => {
     .click()
   await expect(page).toHaveURL(/month=2024-05/)
 
+  // 2024-03-01 생. 10단위 일수 칸만 숫자(5월 9일 = 70일).
+  await expect(
+    page
+      .getByRole('button', { name: '5월 9일, 생후 70일', exact: true })
+      .getByTestId('day-mark'),
+  ).toHaveText('70')
+  await expect(
+    page
+      .getByRole('button', { name: '5월 10일, 생후 71일', exact: true })
+      .getByTestId('day-mark'),
+  ).toHaveCount(0)
+
   // 기록 없는 칸을 먼저 골라 두면 사진 칸 첫 누름이 "고르기".
-  await page.getByRole('button', { name: '5월 15일', exact: true }).click()
+  await page
+    .getByRole('button', { name: '5월 15일, 생후 76일', exact: true })
+    .click()
   await expect(page.getByText('이 날은 기록이 없어요')).toBeVisible()
-  const cell = page.getByRole('button', { name: '5월 1일, 사진 2장' })
+  const cell = page.getByRole('button', {
+    name: '5월 1일, 생후 62일, 사진 2장',
+  })
   await expect(cell).toHaveAttribute('aria-pressed', 'false')
   await cell.click()
   await expect(cell).toHaveAttribute('aria-pressed', 'true')
@@ -760,7 +793,7 @@ test('calendar_flow', async ({ ownerPage: page }) => {
   await expect(page).toHaveURL(/\/calendar\?.*month=2024-05/)
   await expect(page).toHaveURL(/date=2024-05-01/)
   await expect(
-    page.getByRole('button', { name: '5월 1일, 사진 2장' }),
+    page.getByRole('button', { name: '5월 1일, 생후 62일, 사진 2장' }),
   ).toHaveAttribute('aria-pressed', 'true')
 })
 

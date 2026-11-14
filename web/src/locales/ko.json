@@ -427,7 +427,8 @@
       "instanceNameInvalid": "우리 집 이름이 올바르지 않아요.",
       "invalidLocale": "지원하지 않는 언어예요.",
       "invalidTimezone": "시간대가 올바르지 않아요.",
-      "trashRetentionInvalid": "휴지통 보관 기간이 올바르지 않아요."
+      "trashRetentionInvalid": "휴지통 보관 기간이 올바르지 않아요.",
+      "primaryBabyInvalid": "대표 아기를 찾을 수 없어요."
     },
     "upload": {
       "contentType": "업로드 요청 형식이 올바르지 않아요.",
@@ -626,6 +627,8 @@
     "avifHint": "용량은 줄지만 처리 시간이 늘어요.",
     "trashRetention": "휴지통 보관 일수",
     "trashRetentionHint": "0 이면 자동으로 비우지 않아요. 최대 3650일까지 정할 수 있어요.",
+    "primaryBaby": "대표 아기",
+    "primaryBabyHint": "홈과 달력의 일수 기준이에요.",
     "instanceSaved": "우리 집 설정을 저장했어요",
     "language": "언어",
     "localeKo": "한국어"

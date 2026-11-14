@@ -7542,6 +7542,14 @@
             ],
             "description": "앞뒤 공백 제거 후 1~64자."
           },
+          "primary_baby_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "대표 아기. `null` 은 해제, 생략은 유지. 없는 아기면 400."
+          },
           "timezone": {
             "type": [
               "string",
@@ -7714,7 +7722,8 @@
           "timezone",
           "default_locale",
           "derivatives_avif",
-          "trash_retention_days"
+          "trash_retention_days",
+          "primary_baby_id"
         ],
         "properties": {
           "default_locale": {
@@ -7727,6 +7736,14 @@
           },
           "instance_name": {
             "type": "string"
+          },
+          "primary_baby_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "홈 대표 아기. 미설정이면 표시 순서 첫째."
           },
           "timezone": {
             "type": "string",

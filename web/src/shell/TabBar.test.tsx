@@ -67,7 +67,7 @@ function cellNames(tabs: Awaited<ReturnType<typeof tabBar>>): string[] {
 describe('TabBar', () => {
   it('tabs_by_role', async () => {
     renderShell('guardian')
-    let tabs = await tabBar()
+    const tabs = await tabBar()
     expect(cellNames(tabs)).toEqual([
       ko.nav.home,
       ko.nav.calendar,
@@ -80,17 +80,56 @@ describe('TabBar', () => {
         tabs.getByRole('link', { name }).getAttribute('href'),
       ),
     ).toEqual(['/', '/calendar', '/albums', '/me'])
-    cleanup()
+  })
 
+  // 업로드 권한 없으면 (+) 자리에 일반 아기 탭.
+  it('family_baby_tab', async () => {
     renderShell('family')
-    tabs = await tabBar()
+    const tabs = await tabBar()
     expect(cellNames(tabs)).toEqual([
       ko.nav.home,
       ko.nav.calendar,
+      ko.nav.babies,
       ko.nav.albums,
       ko.nav.me,
     ])
+    expect(tabs.getByRole('link', { name: ko.nav.babies })).toHaveAttribute(
+      'href',
+      '/babies',
+    )
     expect(screen.queryByRole('button', { name: ko.addSheet.open })).toBeNull()
+  })
+
+  it.each([
+    [`/babies/${SKY.id}`, ko.nav.babies],
+    ['/family', ko.nav.me],
+    ['/me', ko.nav.me],
+  ])('family_selected_tab %s', async (path, name) => {
+    const { router } = renderShell('family', path)
+    const tabs = await tabBar()
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+    const current = tabs
+      .getAllByRole('link')
+      .filter((l) => l.getAttribute('aria-current') === 'page')
+    expect(current).toHaveLength(1)
+    expect(current[0]).toHaveAccessibleName(name)
+  })
+
+  // 아기 없어도 탭 유지. 누르면 아기 없음 화면.
+  it('family_tab_without_babies', async () => {
+    const { router, user } = renderShell('family', '/', [])
+    const tabs = await tabBar()
+    await user.click(tabs.getByRole('link', { name: ko.nav.babies }))
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/babies')
+    })
+    expect(await screen.findByText(ko.babies.empty)).toBeInTheDocument()
+    expect(tabs.getByRole('link', { name: ko.nav.babies })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 
   // 홈만 정확히 일치. 탭이 없어진 아기, 가족 화면은 나 탭.

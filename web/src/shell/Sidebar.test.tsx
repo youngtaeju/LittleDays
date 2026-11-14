@@ -61,7 +61,17 @@ describe('Sidebar', () => {
     // 가족: 주 메뉴만. 보조 메뉴, 추가하기 없음.
     renderShell('family')
     ;({ main, root } = await sidebar())
-    expect(main.getAllByRole('link')).toHaveLength(4)
+    expect(main.getAllByRole('link').map((l) => l.textContent)).toEqual([
+      ko.nav.home,
+      ko.nav.calendar,
+      ko.nav.babies,
+      ko.nav.albums,
+      ko.nav.me,
+    ])
+    expect(main.getByRole('link', { name: ko.nav.babies })).toHaveAttribute(
+      'href',
+      '/babies',
+    )
     expect(root.queryByRole('navigation', { name: ko.nav.more })).toBeNull()
     expect(root.queryByRole('button', { name: ko.addSheet.open })).toBeNull()
   })

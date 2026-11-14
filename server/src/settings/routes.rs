@@ -3,6 +3,7 @@ use serde::Deserialize;
 use serde_json::Value;
 use utoipa::ToSchema;
 use utoipa_axum::{router::OpenApiRouter, routes};
+use uuid::Uuid;
 
 use super::{Settings, queries};
 use crate::{
@@ -33,6 +34,10 @@ pub struct PatchSettingsRequest {
     /// 0~3650. 0 은 자동 비우기 끔.
     #[schema(maximum = 3650)]
     trash_retention_days: Option<u32>,
+    /// 대표 아기. `null` 은 해제, 생략은 유지. 없는 아기면 400.
+    #[serde(default, deserialize_with = "crate::records::present")]
+    #[schema(value_type = Option<Uuid>)]
+    primary_baby_id: Option<Option<Uuid>>,
 }
 
 #[utoipa::path(
@@ -94,9 +99,19 @@ async fn patch_settings(
         updates.push(("trash_retention_days", Value::from(days)));
     }
 
+    if let Some(Some(id)) = req.primary_baby_id {
+        if !crate::babies::queries::exists(&state.pool, id).await? {
+            return Err(AppError::bad_request("settings.primaryBabyInvalid"));
+        }
+        updates.push(("primary_baby_id", Value::String(id.to_string())));
+    }
+
     let mut tx = state.pool.begin().await?;
     for (key, value) in updates {
         queries::set(&mut *tx, key, value).await?;
+    }
+    if req.primary_baby_id == Some(None) {
+        queries::remove(&mut *tx, "primary_baby_id").await?;
     }
     let settings = queries::load(&mut *tx).await?;
     tx.commit().await?;

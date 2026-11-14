@@ -30,10 +30,15 @@ const SEA = babyFixture({
   sort_order: 1,
 })
 
-function renderHome(babies: Baby[], path = '/') {
+function renderHome(
+  babies: Baby[],
+  primary: string | null = null,
+  settings: () => Response | Promise<Response> = () =>
+    json(200, { ...settingsFixture, primary_baby_id: primary }),
+) {
   mockFetch({
     'GET /api/auth/me': () => json(200, { user: userFixture('family') }),
-    'GET /api/settings': () => json(200, settingsFixture),
+    'GET /api/settings': settings,
     'GET /api/babies': () => json(200, babies),
     'GET /api/users': () => json(200, { users: [] }),
     'GET /api/memories': () => json(200, null),
@@ -48,45 +53,127 @@ function renderHome(babies: Baby[], path = '/') {
     [`GET /api/babies/${SEA.id}/growth`]: () => json(200, []),
     [`GET /api/babies/${SEA.id}/milestones`]: () => json(200, []),
   })
-  return renderApp(path)
+  return renderApp('/')
 }
 
-// 셸 머리글. 아기 화면 링크는 아바타 + 이름.
+// 셸 머리글.
 async function header() {
   return within(await screen.findByRole('banner'))
 }
 
 describe('HomeHeader', () => {
-  it('avatar_entry', async () => {
-    // 1명: 아바타 + 이름 링크.
+  it('title_is_instance_name', async () => {
+    // 아이 1명이어도 제목은 우리 집 이름. 아기는 알약.
     renderHome([SKY])
-    let banner = await header()
-    const single = await banner.findByRole('link', { name: SKY.name })
-    expect(single).toHaveAttribute('href', `/babies/${SKY.id}`)
-    expect(single.querySelector('[aria-hidden]')).toHaveTextContent('하')
-    expect(banner.getByText('D+101')).toBeInTheDocument()
-    cleanup()
+    const banner = await header()
+    expect(
+      await banner.findByRole('link', { name: SKY.name }),
+    ).toBeInTheDocument()
+    expect(banner.getByText(settingsFixture.instance_name)).toBeInTheDocument()
+    expect(banner.queryByRole('group')).toBeNull()
+  })
 
-    // 2명 + 전체: 우리 집 이름, 아바타 링크 없음.
-    const { user, router } = renderHome([SKY, SEA])
-    banner = await header()
+  it('pill_primary_on_all', async () => {
+    // 전체: 대표 아기(둘째로 설정).
+    renderHome([SKY, SEA], SEA.id)
+    const banner = await header()
     const chips = within(
       await banner.findByRole('group', { name: ko.feed.babyFilter }),
     )
-    expect(banner.getByText(settingsFixture.instance_name)).toBeInTheDocument()
+    expect(chips.getByRole('button', { name: ko.feed.all })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    const pill = await banner.findByRole('link', { name: SEA.name })
+    expect(within(pill).getByText('D+428')).toBeInTheDocument()
+    expect(pill.querySelector('[aria-hidden]')).toHaveTextContent('바')
     expect(banner.queryByRole('link', { name: SKY.name })).toBeNull()
+    expect(banner.getByText(settingsFixture.instance_name)).toBeInTheDocument()
+  })
+
+  it('pill_follows_chip', async () => {
+    const { user } = renderHome([SKY, SEA], SEA.id)
+    const banner = await header()
+    const chips = within(
+      await banner.findByRole('group', { name: ko.feed.babyFilter }),
+    )
+    await banner.findByRole('link', { name: SEA.name })
+
+    // 칩으로 1명 고르면 그 아이.
+    await user.click(chips.getByRole('button', { name: SKY.name }))
+    const picked = await banner.findByRole('link', { name: SKY.name })
+    expect(within(picked).getByText('D+101')).toBeInTheDocument()
     expect(banner.queryByRole('link', { name: SEA.name })).toBeNull()
+    expect(banner.getByText(settingsFixture.instance_name)).toBeInTheDocument()
 
-    // 칩으로 1명 고르면 그 아이 아바타, 이름, D+.
-    await user.click(chips.getByRole('button', { name: SEA.name }))
-    const picked = await banner.findByRole('link', { name: SEA.name })
-    expect(picked).toHaveAttribute('href', `/babies/${SEA.id}`)
-    expect(banner.queryByText(settingsFixture.instance_name)).toBeNull()
-    expect(banner.getByText('D+428')).toBeInTheDocument()
+    // 전체로 돌아가면 대표 아기.
+    await user.click(chips.getByRole('button', { name: ko.feed.all }))
+    expect(
+      await banner.findByRole('link', { name: SEA.name }),
+    ).toBeInTheDocument()
+  })
 
-    await user.click(picked)
+  it('pill_links_baby', async () => {
+    const { user, router } = renderHome([SKY, SEA], SEA.id)
+    const banner = await header()
+    const pill = await banner.findByRole('link', { name: SEA.name })
+    expect(pill).toHaveAttribute('href', `/babies/${SEA.id}`)
+    // 배지는 설명으로 읽힘.
+    expect(pill).toHaveAccessibleDescription('D+428')
+
+    await user.click(pill)
     await waitFor(() => {
       expect(router.state.location.pathname).toBe(`/babies/${SEA.id}`)
     })
+  })
+
+  it('pill_waits_for_settings', async () => {
+    // 설정 조회 중: 알약 없음(첫째로 먼저 그리지 않음). 응답 뒤 대표 아기.
+    let resolve: ((r: Response) => void) | undefined
+    renderHome(
+      [SKY, SEA],
+      SEA.id,
+      () =>
+        new Promise<Response>((r) => {
+          resolve = r
+        }),
+    )
+    const banner = await header()
+    await banner.findByRole('group', { name: ko.feed.babyFilter })
+    await waitFor(() => {
+      expect(resolve).toBeDefined()
+    })
+    expect(banner.queryByRole('link')).toBeNull()
+    expect(banner.queryByText(/^D[+-]/)).toBeNull()
+
+    resolve?.(json(200, { ...settingsFixture, primary_baby_id: SEA.id }))
+    expect(
+      await banner.findByRole('link', { name: SEA.name }),
+    ).toBeInTheDocument()
+    expect(banner.queryByRole('link', { name: SKY.name })).toBeNull()
+  })
+
+  it('header_due_baby', async () => {
+    const due = babyFixture({ birth_date: '2024-06-01' })
+    renderHome([due])
+    const banner = await header()
+    const pill = await banner.findByRole('link', { name: due.name })
+    expect(within(pill).getByText('D-22')).toBeInTheDocument()
+    expect(banner.queryByText(/^D\+/)).toBeNull()
+  })
+
+  it('no_babies_header', async () => {
+    const { queryClient } = renderHome([])
+    const banner = await header()
+    expect(
+      await banner.findByText(settingsFixture.instance_name),
+    ).toBeInTheDocument()
+    // 아기 목록 조회 끝난 뒤에도 알약 없음.
+    await waitFor(() => {
+      expect(queryClient.getQueryData(['babies'])).toEqual([])
+    })
+    expect(banner.queryByRole('link')).toBeNull()
+    expect(banner.queryByText(/^D[+-]/)).toBeNull()
+    expect(banner.queryByRole('group')).toBeNull()
   })
 })

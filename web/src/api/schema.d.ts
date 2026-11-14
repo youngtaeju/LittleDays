@@ -1651,6 +1651,11 @@ export interface components {
             derivatives_avif?: boolean | null;
             /** @description 앞뒤 공백 제거 후 1~64자. */
             instance_name?: string | null;
+            /**
+             * Format: uuid
+             * @description 대표 아기. `null` 은 해제, 생략은 유지. 없는 아기면 400.
+             */
+            primary_baby_id?: string | null;
             /** @description IANA 시간대 이름. 예: `Asia/Seoul`. */
             timezone?: string | null;
             /**
@@ -1706,6 +1711,11 @@ export interface components {
             /** @description AVIF 파생물 생성 여부. */
             derivatives_avif: boolean;
             instance_name: string;
+            /**
+             * Format: uuid
+             * @description 홈 대표 아기. 미설정이면 표시 순서 첫째.
+             */
+            primary_baby_id: string | null;
             /** @description IANA 시간대. 날짜 묶음 기준. */
             timezone: string;
             /**

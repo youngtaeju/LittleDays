@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM settings WHERE key = 'primary_baby_id' AND value = to_jsonb($1::text)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "097606c67d8409b8943ebc2d668ad78117a01657d42361a83f1d52d5cc9621ed"
+}
