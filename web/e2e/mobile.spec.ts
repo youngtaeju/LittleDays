@@ -192,7 +192,7 @@ test('auth_screens_fit_width', async ({ page, request }) => {
   await expectNoHorizontalOverflow(page)
 })
 
-// 가족 초대로 가입한 새 컨텍스트. 하단 탭은 (+) 대신 아기.
+// 가족 초대로 가입한 새 컨텍스트. 하단 탭은 다른 역할과 같고 떠 있는 (+) 없음.
 test('family_tab_bar_fits_width', async ({ page, request }) => {
   await page.goto(await createInvitePath(request))
   await page.getByLabel('표시 이름').fill('삼촌')
@@ -292,9 +292,9 @@ test('viewer_nav_buttons_visible', async ({ ownerPage: page }) => {
 test('upload_sheet_and_pill', async ({ ownerPage: page }) => {
   await page.goto('/')
   await expect(tiles(page)).toHaveCount(3)
-  // 탭 바 (+) → 추가 시트 → 선택창 → 아래 확인 시트. 이미 올린 사진이라 "이미 있어요"로 끝남.
+  // 떠 있는 (+) → 추가 시트 → 선택창 → 아래 확인 시트. 이미 올린 사진이라 "이미 있어요"로 끝남.
   await page
-    .getByTestId('tab-bar')
+    .getByTestId('add-fab')
     .getByRole('button', { name: '추가하기' })
     .click()
   const add = page.getByRole('dialog', { name: '무엇을 남길까요?' })
@@ -316,6 +316,74 @@ test('upload_sheet_and_pill', async ({ ownerPage: page }) => {
   if (!pillBox || !barBox) throw new Error('알약·탭 바 위치 없음')
   expect(pillBox.y + pillBox.height).toBeLessThanOrEqual(barBox.y)
   await expect(pill).toBeHidden({ timeout: 10_000 })
+})
+
+// 떠 있는 (+) 는 탭 바 위, 본문 마지막 줄을 가리지 않음. 알약은 버튼 왼쪽.
+test('fab_and_pill_fit', async ({ ownerPage: page }) => {
+  const baby = await firstBaby(page)
+  const fab = page.getByTestId('add-fab')
+  const bar = page.getByTestId('tab-bar')
+  for (const path of ['/', '/calendar', '/albums', `/babies/${baby.id}`]) {
+    await page.goto(path)
+    await expect(fab.getByRole('button', { name: '추가하기' })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    const fabBox = await fab.boundingBox()
+    const barBox = await bar.boundingBox()
+    const viewport = page.viewportSize()
+    if (!fabBox || !barBox || !viewport)
+      throw new Error('버튼, 탭 바 위치 없음')
+    expect(fabBox.y + fabBox.height, path).toBeLessThanOrEqual(barBox.y)
+    expect(fabBox.x + fabBox.width, path).toBeLessThanOrEqual(viewport.width)
+    // 맨 아래로 스크롤해도 본문 내용 끝이 버튼 위.
+    const contentBottom = await page.getByRole('main').evaluate((m) => {
+      window.scrollTo(0, document.documentElement.scrollHeight)
+      const pad = parseFloat(getComputedStyle(m).paddingBottom)
+      return m.getBoundingClientRect().bottom - pad
+    })
+    expect(contentBottom, path).toBeLessThanOrEqual(fabBox.y)
+  }
+  for (const path of [
+    '/me',
+    '/albums/favorites',
+    `/babies/${baby.id}/growth`,
+  ]) {
+    await page.goto(path)
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+    await expect(fab).toHaveCount(0)
+  }
+
+  // 새로고침 전 남은 업로드(이어 올리기 대기) 알약. 끝나면 지움.
+  await page.goto('/')
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'ld.upload.pending',
+      JSON.stringify([
+        {
+          id: 'e2e-pill',
+          name: 'a.jpg',
+          size: 1,
+          lastModified: 1,
+          babyIds: [],
+        },
+      ]),
+    )
+  })
+  try {
+    await page.reload()
+    const pill = page.getByRole('button', { name: '이어서 올릴 사진 1개' })
+    await expect(pill).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    const pillBox = await pill.boundingBox()
+    const fabBox = await fab.boundingBox()
+    const barBox = await bar.boundingBox()
+    if (!pillBox || !fabBox || !barBox) throw new Error('알약, 버튼 위치 없음')
+    expect(pillBox.x + pillBox.width).toBeLessThanOrEqual(fabBox.x)
+    expect(pillBox.y + pillBox.height).toBeLessThanOrEqual(barBox.y)
+  } finally {
+    await page.evaluate(() => {
+      localStorage.removeItem('ld.upload.pending')
+    })
+  }
 })
 
 test('viewer_zoom_and_dismiss', async ({ ownerPage: page }) => {
@@ -412,10 +480,10 @@ test('story_screens_fit_width', async ({ ownerPage: page }) => {
     await expect(page.getByRole('link', { name: / 이야기: / })).toBeVisible()
     await expectNoHorizontalOverflow(page)
 
-    // 탭 바 (+) → 이야기 쓰기.
+    // 떠 있는 (+) → 이야기 쓰기.
     await page.goto('/')
     await page
-      .getByTestId('tab-bar')
+      .getByTestId('add-fab')
       .getByRole('button', { name: '추가하기' })
       .click()
     await page

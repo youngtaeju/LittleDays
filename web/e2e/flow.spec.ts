@@ -300,7 +300,7 @@ test('invite_family_cannot_upload', async ({
   try {
     await expect(tiles(guest)).toHaveCount(3)
     await expectThumbnailsLoaded(guest, 3)
-    // 주 메뉴: (+) 대신 아기.
+    // 주 메뉴는 역할 무관. 추가하기 없음.
     const nav = guest.getByRole('navigation', { name: '주 메뉴' })
     await expect(nav.getByRole('link')).toHaveText([
       '홈',

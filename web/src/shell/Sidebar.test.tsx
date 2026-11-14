@@ -36,31 +36,14 @@ async function sidebar() {
 }
 
 describe('Sidebar', () => {
-  it('sidebar_items', async () => {
-    renderShell('guardian')
-    let { main, root } = await sidebar()
-    expect(main.getAllByRole('link').map((l) => l.textContent)).toEqual([
-      ko.nav.home,
-      ko.nav.calendar,
-      ko.nav.albums,
-      ko.nav.me,
-    ])
-    expect(
-      root.getByRole('button', { name: ko.addSheet.open }),
-    ).toBeInTheDocument()
-    const more = within(root.getByRole('navigation', { name: ko.nav.more }))
-    expect(more.getAllByRole('link').map((l) => l.textContent)).toEqual([
-      ko.nav.trash,
-    ])
-    expect(more.getByRole('link', { name: ko.nav.trash })).toHaveAttribute(
-      'href',
-      '/me/trash',
-    )
-    cleanup()
-
-    // 가족: 주 메뉴만. 보조 메뉴, 추가하기 없음.
-    renderShell('family')
-    ;({ main, root } = await sidebar())
+  // 주 메뉴는 역할 무관 다섯. 보조 메뉴, 추가하기는 보호자 이상.
+  it.each([
+    ['owner', true],
+    ['guardian', true],
+    ['family', false],
+  ] as const)('sidebar_main_menu %s', async (role, canUpload) => {
+    renderShell(role)
+    const { main, root } = await sidebar()
     expect(main.getAllByRole('link').map((l) => l.textContent)).toEqual([
       ko.nav.home,
       ko.nav.calendar,
@@ -72,8 +55,22 @@ describe('Sidebar', () => {
       'href',
       '/babies',
     )
-    expect(root.queryByRole('navigation', { name: ko.nav.more })).toBeNull()
-    expect(root.queryByRole('button', { name: ko.addSheet.open })).toBeNull()
+    if (!canUpload) {
+      expect(root.queryByRole('navigation', { name: ko.nav.more })).toBeNull()
+      expect(root.queryByRole('button', { name: ko.addSheet.open })).toBeNull()
+      return
+    }
+    expect(
+      root.getByRole('button', { name: ko.addSheet.open }),
+    ).toBeInTheDocument()
+    const more = within(root.getByRole('navigation', { name: ko.nav.more }))
+    expect(more.getAllByRole('link').map((l) => l.textContent)).toEqual([
+      ko.nav.trash,
+    ])
+    expect(more.getByRole('link', { name: ko.nav.trash })).toHaveAttribute(
+      'href',
+      '/me/trash',
+    )
   })
 
   // 보조 메뉴 주소에서는 그 항목만 선택(나 표시 없음).

@@ -56,7 +56,7 @@ async function tabBar() {
   return within(await screen.findByTestId('tab-bar'))
 }
 
-// 칸마다 링크 또는 (+) 버튼의 접근성 이름.
+// 칸마다 링크 또는 버튼의 접근성 이름.
 function cellNames(tabs: Awaited<ReturnType<typeof tabBar>>): string[] {
   return tabs.getAllByRole('listitem').map((li: HTMLElement) => {
     const el = li.querySelector('a, button')
@@ -65,47 +65,42 @@ function cellNames(tabs: Awaited<ReturnType<typeof tabBar>>): string[] {
 }
 
 describe('TabBar', () => {
-  it('tabs_by_role', async () => {
-    renderShell('guardian')
-    const tabs = await tabBar()
-    expect(cellNames(tabs)).toEqual([
-      ko.nav.home,
-      ko.nav.calendar,
-      ko.addSheet.open,
-      ko.nav.albums,
-      ko.nav.me,
-    ])
-    expect(
-      [ko.nav.home, ko.nav.calendar, ko.nav.albums, ko.nav.me].map((name) =>
-        tabs.getByRole('link', { name }).getAttribute('href'),
-      ),
-    ).toEqual(['/', '/calendar', '/albums', '/me'])
-  })
-
-  // 업로드 권한 없으면 (+) 자리에 일반 아기 탭.
-  it('family_baby_tab', async () => {
-    renderShell('family')
-    const tabs = await tabBar()
-    expect(cellNames(tabs)).toEqual([
-      ko.nav.home,
-      ko.nav.calendar,
-      ko.nav.babies,
-      ko.nav.albums,
-      ko.nav.me,
-    ])
-    expect(tabs.getByRole('link', { name: ko.nav.babies })).toHaveAttribute(
-      'href',
-      '/babies',
-    )
-    expect(screen.queryByRole('button', { name: ko.addSheet.open })).toBeNull()
-  })
+  // 역할 무관 다섯 탭. (+) 는 탭 바 밖(떠 있는 버튼).
+  it.each(['owner', 'guardian', 'family'] as const)(
+    'tabs_same_for_all_roles %s',
+    async (role) => {
+      renderShell(role)
+      const tabs = await tabBar()
+      expect(cellNames(tabs)).toEqual([
+        ko.nav.home,
+        ko.nav.calendar,
+        ko.nav.babies,
+        ko.nav.albums,
+        ko.nav.me,
+      ])
+      expect(
+        [
+          ko.nav.home,
+          ko.nav.calendar,
+          ko.nav.babies,
+          ko.nav.albums,
+          ko.nav.me,
+        ].map((name) => tabs.getByRole('link', { name }).getAttribute('href')),
+      ).toEqual(['/', '/calendar', '/babies', '/albums', '/me'])
+      expect(tabs.queryByRole('button')).toBeNull()
+    },
+  )
 
   it.each([
-    [`/babies/${SKY.id}`, ko.nav.babies],
-    ['/family', ko.nav.me],
-    ['/me', ko.nav.me],
-  ])('family_selected_tab %s', async (path, name) => {
-    const { router } = renderShell('family', path)
+    ['owner', `/babies/${SKY.id}`, ko.nav.babies],
+    ['guardian', `/babies/${SKY.id}`, ko.nav.babies],
+    ['family', `/babies/${SKY.id}`, ko.nav.babies],
+    ['guardian', `/babies/${SKY.id}/growth`, ko.nav.babies],
+    ['guardian', '/family', ko.nav.me],
+    ['family', '/family', ko.nav.me],
+    ['family', '/me', ko.nav.me],
+  ] as const)('baby_tab_selected_all_roles %s %s', async (role, path, name) => {
+    const { router } = renderShell(role, path)
     const tabs = await tabBar()
     await waitFor(() => {
       expect(router.state.status).toBe('idle')
@@ -132,7 +127,7 @@ describe('TabBar', () => {
     )
   })
 
-  // 홈만 정확히 일치. 탭이 없어진 아기, 가족 화면은 나 탭.
+  // 홈만 정확히 일치. 가족 화면은 나 탭.
   it.each([
     ['/', ko.nav.home],
     ['/?baby=x', ko.nav.home],
@@ -141,7 +136,7 @@ describe('TabBar', () => {
     ['/albums/favorites', ko.nav.albums],
     ['/me', ko.nav.me],
     ['/me/devices', ko.nav.me],
-    [`/babies/${SKY.id}`, ko.nav.me],
+    [`/babies/${SKY.id}`, ko.nav.babies],
     ['/family', ko.nav.me],
   ])('selected_tab %s', async (path, name) => {
     const { router } = renderShell('guardian', path)

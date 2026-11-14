@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Baby, Role } from '@/api/types'
 import { meQueryKey } from '@/auth/session'
@@ -85,7 +85,9 @@ describe('AppShell', () => {
     const click = vi.spyOn(HTMLInputElement.prototype, 'click')
     const { user } = await renderShell('guardian')
     await user.click(
-      within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
+      within(screen.getByTestId('add-fab')).getByRole('button', {
+        name: ko.addSheet.open,
+      }),
     )
     const sheet = await screen.findByRole('dialog', {
       name: ko.addSheet.title,
@@ -131,7 +133,9 @@ describe('AppShell', () => {
     )
     async function openSheet() {
       await user.click(
-        within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
+        within(screen.getByTestId('add-fab')).getByRole('button', {
+          name: ko.addSheet.open,
+        }),
       )
       return screen.findByRole('dialog', { name: ko.addSheet.title })
     }
@@ -210,7 +214,9 @@ describe('AppShell', () => {
     const due = babyFixture({ birth_date: '2099-01-01' })
     const { user } = await renderShell('guardian', '/', [due])
     await user.click(
-      within(tabBar()).getByRole('button', { name: ko.addSheet.open }),
+      within(screen.getByTestId('add-fab')).getByRole('button', {
+        name: ko.addSheet.open,
+      }),
     )
     const sheet = await screen.findByRole('dialog', {
       name: ko.addSheet.title,
@@ -226,6 +232,46 @@ describe('AppShell', () => {
     expect(
       within(sheet).getByRole('button', { name: ko.addSheet.story }),
     ).toBeInTheDocument()
+  })
+
+  // 떠 있는 버튼이 보이는 화면은 본문 아래 여백 추가, 알약 왼쪽 정렬.
+  it('pill_shifts_with_fab', async () => {
+    act(() => {
+      uploadStore.startRun()
+      uploadStore.put({
+        id: 'f1',
+        name: 'f1.jpg',
+        status: 'uploading',
+        progress: 0.4,
+      })
+    })
+    const { router } = await renderShell('guardian', '/', [], {
+      'GET /api/invites': () => json(200, { invites: [] }),
+    })
+    const pillRow = () => {
+      const row = screen.getByRole('button', {
+        name: '1개 올리는 중 · 40%',
+      }).parentElement
+      if (!row) throw new Error('알약 줄 없음')
+      return row
+    }
+    expect(screen.getByTestId('add-fab')).toBeInTheDocument()
+    expect(pillRow()).toHaveClass('justify-start')
+    expect(pillRow()).not.toHaveClass('justify-center')
+    expect(screen.getByRole('main')).toHaveClass(
+      'pb-[calc(8.5rem+env(safe-area-inset-bottom))]',
+    )
+
+    await router.navigate({ to: '/me' })
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+    })
+    expect(screen.queryByTestId('add-fab')).toBeNull()
+    expect(pillRow()).toHaveClass('justify-center')
+    expect(pillRow()).not.toHaveClass('justify-start')
+    expect(screen.getByRole('main')).toHaveClass(
+      'pb-[calc(5rem+env(safe-area-inset-bottom))]',
+    )
   })
 
   // 데스크톱 사이드바도 휴대폰 (+) 와 같은 추가 시트.

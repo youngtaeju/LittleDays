@@ -23,7 +23,7 @@ const LINK =
 const LINK_ACTIVE = 'font-semibold text-accent-ink'
 
 // 1024px 이상 왼쪽 220px. 우리 집 이름, 탭과 같은 메뉴, 보조 메뉴(휴지통), 맨 아래 추가하기.
-// onAdd: 휴대폰 (+) 와 같은 셸의 추가 시트 열기.
+// onAdd: 휴대폰 떠 있는 (+) 와 같은 셸의 추가 시트 열기.
 export function Sidebar({
   instanceName,
   onAdd,
