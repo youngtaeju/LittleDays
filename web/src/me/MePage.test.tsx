@@ -81,27 +81,23 @@ describe('MePage', () => {
   })
 
   // 시안 M1: 옅은 바탕 위 둥근 카드, 라벨은 카드 바깥 위.
-  it('me_cards', async () => {
+  it('me_groups_divided_by_line', async () => {
     renderMe('owner')
     const heading = await screen.findByRole('heading', { name: ko.me.home })
     const section = heading.closest('section')
     if (!section) throw new Error('그룹 없음')
-    const card = section.querySelector('ul')
-    if (!card) throw new Error('카드 없음')
-    expect(card).toHaveClass('bg-card', 'rounded-xl')
-    expect(card).not.toHaveClass('border-y')
-    expect(card.contains(heading)).toBe(false)
-    expect(
-      heading.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy()
-    const page = section.parentElement
-    expect(page).toHaveClass('bg-muted')
-    const profile = screen.getByRole('link', { name: /@/ })
-    expect(profile).toHaveClass('bg-card', 'rounded-xl')
-    expect(screen.getByRole('button', { name: '로그아웃' })).toHaveClass(
-      'bg-card',
-      'rounded-xl',
-    )
+    // 그룹 사이 실선, 그룹 첫 줄 진한 라벨, 항목 사이 선 없음, 바탕 한 색.
+    expect(section).toHaveClass('border-t', 'border-border')
+    expect(heading).toHaveClass('text-foreground', 'font-bold')
+    const list = section.querySelector('ul')
+    if (!list) throw new Error('목록 없음')
+    expect(list).not.toHaveClass('divide-y')
+    expect(list).not.toHaveClass('bg-card')
+    expect(section.parentElement).not.toHaveClass('bg-muted')
+    expect(screen.getByRole('link', { name: /@/ })).not.toHaveClass('bg-card')
+    const logout = screen.getByRole('button', { name: '로그아웃' })
+    expect(logout).not.toHaveClass('bg-card')
+    expect(logout.closest('section')).toHaveClass('border-t')
   })
 
   it('shows_name_username_role', async () => {
