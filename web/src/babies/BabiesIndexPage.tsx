@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { hasRole, useMe } from '@/auth/session'
 import { Button } from '@/components/ui/button'
 import { errorMessage } from '@/i18n'
+import { useSettingsQuery } from '@/settings/useSettings'
 import { useBabies } from '@/timeline/useBabies'
 import { BabyEditSheet } from './BabyEditSheet'
 import { pickBaby } from './lastBaby'
@@ -14,7 +15,13 @@ export function BabiesIndexPage() {
   const { user } = useMe()
   const babies = useBabies()
   const [adding, setAdding] = useState(false)
-  const target = babies.data && pickBaby(babies.data)
+  const settings = useSettingsQuery()
+  // 설정 확정 전엔 이동 보류(usePrimaryBaby 와 같은 규칙). 설정 조회 실패면 첫째.
+  const settled = settings.data !== undefined || settings.isError
+  const target =
+    babies.data &&
+    settled &&
+    pickBaby(babies.data, settings.data?.primary_baby_id)
 
   // 추가 직후 또는 조회 실패 후 다시 받은 목록.
   if (target) {
@@ -30,7 +37,7 @@ export function BabiesIndexPage() {
       </div>
     )
   }
-  if (!babies.data) {
+  if (!babies.data || (babies.data.length > 0 && !settled)) {
     return (
       <p className="py-4 text-sm text-muted-foreground">
         {t('common.loading')}

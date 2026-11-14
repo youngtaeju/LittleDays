@@ -627,6 +627,8 @@
     "avifHint": "용량은 줄지만 처리 시간이 늘어요.",
     "trashRetention": "휴지통 보관 일수",
     "trashRetentionHint": "0 이면 자동으로 비우지 않아요. 최대 3650일까지 정할 수 있어요.",
+    "primaryBaby": "대표 아기",
+    "primaryBabyHint": "홈과 달력의 일수 기준이에요.",
     "instanceSaved": "우리 집 설정을 저장했어요",
     "language": "언어",
     "localeKo": "한국어"

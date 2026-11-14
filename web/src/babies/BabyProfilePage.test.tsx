@@ -4,6 +4,7 @@ import type { Baby, BabyStats, Role } from '@/api/types'
 import { initI18n } from '@/i18n'
 import { json, mockFetch } from '@/test/fetch'
 import {
+  apiError,
   assetSummaryFixture,
   babyFixture,
   settingsFixture,
@@ -242,5 +243,47 @@ describe('BabyProfilePage', () => {
       await screen.findByText('아직 등록된 아기가 없어요'),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '아기 추가' })).toBeNull()
+  })
+  // 첫 조회 실패 후 다시 받는 중. 설정 확정 전엔 이동 보류(첫째로 갔다 바뀌지 않게).
+  it('index_waits_for_settings', async () => {
+    let babiesCalls = 0
+    let settingsCalls = 0
+    let resolveSettings: (r: Response) => void = () => undefined
+    mockFetch({
+      'GET /api/auth/me': () => json(200, { user: userFixture('guardian') }),
+      'GET /api/settings': () => {
+        settingsCalls += 1
+        if (settingsCalls === 1) return apiError(500, 'internal')
+        return new Promise<Response>((resolve) => {
+          resolveSettings = resolve
+        })
+      },
+      'GET /api/babies': () => {
+        babiesCalls += 1
+        return babiesCalls === 1
+          ? apiError(500, 'internal')
+          : json(200, [SKY, SEA])
+      },
+      ...Object.fromEntries(
+        [SKY, SEA].flatMap((b) => [
+          [`GET /api/babies/${b.id}/stats`, () => json(200, stats())],
+          [`GET /api/babies/${b.id}/growth`, () => json(200, [])],
+          [`GET /api/babies/${b.id}/milestones`, () => json(200, [])],
+        ]),
+      ),
+    })
+    const { router } = renderApp('/babies')
+    await waitFor(() => {
+      expect(babiesCalls).toBe(2)
+      expect(settingsCalls).toBe(2)
+    })
+    expect(await screen.findByText('불러오는 중…')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/babies')
+
+    resolveSettings(json(200, { ...settingsFixture, primary_baby_id: SEA.id }))
+    expect(
+      await screen.findByRole('heading', { level: 1, name: '바다' }),
+    ).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe(`/babies/${SEA.id}`)
   })
 })

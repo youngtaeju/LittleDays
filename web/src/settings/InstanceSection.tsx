@@ -7,6 +7,8 @@ import { Field, FormError, formText } from '@/components/Field'
 import { SelectField } from '@/components/NativeSelect'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { primaryBaby } from '@/babies/usePrimaryBaby'
+import { useBabies } from '@/timeline/useBabies'
 import { settingsQueryKey } from './useSettings'
 
 type SettingsPatch = Partial<Settings>
@@ -24,6 +26,11 @@ function timeZones(current: string): string[] {
 export function InstanceSection({ settings }: { settings: Settings }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
+  const babies = useBabies().data
+  // 고르기는 2명 이상일 때만. 설정 없음, 지워진 아기면 첫째가 선택된 상태.
+  const picker = babies && babies.length >= 2 ? babies : undefined
+  const shownPrimary =
+    picker && primaryBaby(picker, settings.primary_baby_id)?.id
   const save = useMutation({
     mutationFn: (body: SettingsPatch) =>
       call(api.PATCH('/api/settings', { body })),
@@ -54,7 +61,9 @@ export function InstanceSection({ settings }: { settings: Settings }) {
           default_locale: formText(form, 'default_locale'),
           derivatives_avif: form.get('derivatives_avif') === 'on',
           trash_retention_days: Number(formText(form, 'trash_retention_days')),
-          primary_baby_id: settings.primary_baby_id,
+          primary_baby_id: picker
+            ? formText(form, 'primary_baby_id')
+            : settings.primary_baby_id,
         }
         const body: SettingsPatch = {}
         if (next.instance_name !== settings.instance_name) {
@@ -69,6 +78,10 @@ export function InstanceSection({ settings }: { settings: Settings }) {
         }
         if (next.trash_retention_days !== settings.trash_retention_days) {
           body.trash_retention_days = next.trash_retention_days
+        }
+        // 보이는 선택과 비교. 그대로 두면 보내지 않음.
+        if (picker && next.primary_baby_id !== shownPrimary) {
+          body.primary_baby_id = next.primary_baby_id
         }
         if (Object.keys(body).length > 0) save.mutate(body)
       }}
@@ -100,6 +113,20 @@ export function InstanceSection({ settings }: { settings: Settings }) {
         <option value="ko">{t('settings.localeKo')}</option>
         <option value="en">{t('settings.localeEn')}</option>
       </SelectField>
+      {picker && (
+        <SelectField
+          label={t('settings.primaryBaby')}
+          hint={t('settings.primaryBabyHint')}
+          name="primary_baby_id"
+          defaultValue={shownPrimary}
+        >
+          {picker.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.name}
+            </option>
+          ))}
+        </SelectField>
+      )}
       <div className="grid gap-1">
         <div className="flex items-center gap-2">
           <input

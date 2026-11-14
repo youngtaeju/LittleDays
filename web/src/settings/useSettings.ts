@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { api, call } from '@/api/client'
 import type { Settings } from '@/api/types'
@@ -25,16 +25,18 @@ function rememberInstanceName(name: string): void {
   }
 }
 
+export const settingsQuery = queryOptions({
+  queryKey: settingsQueryKey,
+  queryFn: async () => {
+    const settings = await call(api.GET('/api/settings'))
+    rememberInstanceName(settings.instance_name)
+    return settings
+  },
+  staleTime: 5 * 60_000,
+})
+
 export function useSettingsQuery() {
-  return useQuery({
-    queryKey: settingsQueryKey,
-    queryFn: async () => {
-      const settings = await call(api.GET('/api/settings'))
-      rememberInstanceName(settings.instance_name)
-      return settings
-    },
-    staleTime: 5 * 60_000,
-  })
+  return useQuery(settingsQuery)
 }
 
 export function useSettings(): Settings | undefined {

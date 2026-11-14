@@ -5,6 +5,7 @@ import { initI18n } from '@/i18n'
 import { json, mockFetch } from '@/test/fetch'
 import {
   apiError,
+  babyFixture,
   emptyFeedRoutes,
   settingsFixture,
   userFixture,
@@ -172,6 +173,89 @@ describe('me sub pages', () => {
     await user.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => {
       expect(bodies).toEqual([{ trash_retention_days: 30 }])
+    })
+  })
+
+  it('primary_baby_picker', async () => {
+    const SKY = babyFixture()
+    const SEA = babyFixture({
+      id: '00000000-0000-4000-8000-0000000000b2',
+      name: '바다',
+      sort_order: 1,
+    })
+    // 아기 1명: 고르기 없음.
+    const one = renderPage(
+      { 'GET /api/babies': () => json(200, [SKY]) },
+      { role: 'owner', path: '/me/instance' },
+    )
+    await screen.findByLabelText('휴지통 보관 일수')
+    await waitFor(() => {
+      expect(one.queryClient.getQueryData(['babies'])).toEqual([SKY])
+    })
+    expect(screen.queryByLabelText('대표 아기')).toBeNull()
+    cleanup()
+
+    // 2명: 설정 없으면 첫째가 선택된 상태. 바꾸면 그 필드만 PATCH, 뒤에 설정 다시 조회.
+    const bodies: unknown[] = []
+    let current: Settings = settingsFixture
+    let gets = 0
+    const { user, queryClient } = renderPage(
+      {
+        'GET /api/babies': () => json(200, [SKY, SEA]),
+        'GET /api/settings': () => {
+          gets += 1
+          return json(200, current)
+        },
+        'PATCH /api/settings': async (req) => {
+          bodies.push(await req.json())
+          current = { ...settingsFixture, primary_baby_id: SEA.id }
+          return json(200, current)
+        },
+      },
+      { role: 'owner', path: '/me/instance' },
+    )
+    const picker = await screen.findByLabelText('대표 아기')
+    expect(picker).toHaveValue(SKY.id)
+    const getsBefore = gets
+    expect(picker).toHaveAccessibleDescription('홈과 달력의 일수 기준이에요.')
+    await user.selectOptions(picker, SEA.id)
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => {
+      expect(bodies).toEqual([{ primary_baby_id: SEA.id }])
+    })
+    await waitFor(() => {
+      expect(gets).toBe(getsBefore + 1)
+    })
+    expect(
+      queryClient.getQueryData<Settings>(['settings'])?.primary_baby_id,
+    ).toBe(SEA.id)
+  })
+
+  it('primary_baby_unchanged_not_sent', async () => {
+    const SKY = babyFixture()
+    const SEA = babyFixture({
+      id: '00000000-0000-4000-8000-0000000000b2',
+      name: '바다',
+      sort_order: 1,
+    })
+    const bodies: unknown[] = []
+    const { user } = renderPage(
+      {
+        'GET /api/babies': () => json(200, [SKY, SEA]),
+        'PATCH /api/settings': async (req) => {
+          bodies.push(await req.json())
+          return json(200, { ...settingsFixture, trash_retention_days: 7 })
+        },
+      },
+      { role: 'owner', path: '/me/instance' },
+    )
+    await screen.findByLabelText('대표 아기')
+    const input = screen.getByLabelText('휴지통 보관 일수')
+    await user.clear(input)
+    await user.type(input, '7')
+    await user.click(screen.getByRole('button', { name: '저장' }))
+    await waitFor(() => {
+      expect(bodies).toEqual([{ trash_retention_days: 7 }])
     })
   })
 

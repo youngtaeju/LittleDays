@@ -8,7 +8,7 @@ import { pickBaby } from '@/babies/lastBaby'
 import { Field, FormError } from '@/components/Field'
 import { Button } from '@/components/ui/button'
 import { isCalendarDate } from '@/lib/dates'
-import { useToday } from '@/settings/useSettings'
+import { useSettings, useToday } from '@/settings/useSettings'
 import { useBabies } from '@/timeline/useBabies'
 import { AdaptiveSheet } from '@/upload/AdaptiveSheet'
 import { growthKey, isBorn } from './useGrowth'
@@ -108,8 +108,9 @@ function GrowthForm({
 }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
+  const primaryId = useSettings()?.primary_baby_id
   const [selectedId, setSelectedId] = useState(
-    () => fixed?.id ?? pickBaby(babies)?.id ?? '',
+    () => fixed?.id ?? pickBaby(babies, primaryId)?.id ?? '',
   )
   const baby = fixed ?? babies.find((b) => b.id === selectedId)
   const [date, setDate] = useState(record?.measured_on ?? today)

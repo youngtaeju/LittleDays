@@ -11,7 +11,7 @@ import { isBorn } from '@/growth/useGrowth'
 import { errorMessage } from '@/i18n'
 import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import { useToday } from '@/settings/useSettings'
+import { useSettings, useToday } from '@/settings/useSettings'
 import { useBabies } from '@/timeline/useBabies'
 import { AdaptiveSheet } from '@/upload/AdaptiveSheet'
 import { milestoneLabel } from './labels'
@@ -39,7 +39,9 @@ export function MilestonePickerSheet({
   const born = (babies.data ?? []).filter((b) => isBorn(b, today))
   const fixed = babyId ? babies.data?.find((b) => b.id === babyId) : undefined
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const baby = fixed ?? born.find((b) => b.id === selectedId) ?? pickBaby(born)
+  const primaryId = useSettings()?.primary_baby_id
+  const baby =
+    fixed ?? born.find((b) => b.id === selectedId) ?? pickBaby(born, primaryId)
   // undefined: 고르는 중. null: 직접 입력.
   const [form, setForm] = useState<string | null | undefined>(undefined)
 
