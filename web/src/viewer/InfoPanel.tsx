@@ -269,10 +269,7 @@ function AvatarDialog({ asset, babies }: { asset: Asset; babies: Baby[] }) {
       <DialogTrigger asChild>
         <Button variant="outline">{t('viewer.setAvatar')}</Button>
       </DialogTrigger>
-      <DialogContent
-        aria-describedby={undefined}
-        className="dark text-foreground"
-      >
+      <DialogContent aria-describedby={undefined} className="text-foreground">
         <DialogHeader>
           <DialogTitle>{t('viewer.setAvatarTitle')}</DialogTitle>
         </DialogHeader>

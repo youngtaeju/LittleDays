@@ -6,12 +6,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { usePortalTheme } from '@/lib/portalTheme'
 import { cn } from '@/lib/utils'
 import { useUsers } from '@/members/useUsers'
 import { useLikes, type ReactionTarget } from './useReactions'
 
-// 테마는 포털 테마(뷰어 위면 어둡게). 데스크톱도 아래에서, 폭만 제한.
+// 데스크톱도 아래에서, 폭만 제한.
 export function LikersSheet({
   target,
   open,
@@ -24,7 +23,6 @@ export function LikersSheet({
   const { t } = useTranslation()
   const likes = useLikes(target, open)
   const users = useUsers().data?.users
-  const theme = usePortalTheme()
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -32,7 +30,6 @@ export function LikersSheet({
         side="bottom"
         aria-describedby={undefined}
         className={cn(
-          theme,
           'mx-auto max-h-[85dvh] w-full max-w-lg overflow-y-auto text-foreground',
         )}
       >

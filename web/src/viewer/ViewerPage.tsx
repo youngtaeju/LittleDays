@@ -39,7 +39,6 @@ import {
 import { useFavorites } from '@/favorites/useFavorites'
 import { ageParts } from '@/feed/dayMeta'
 import { errorMessage } from '@/i18n'
-import { PortalThemeContext } from '@/lib/portalTheme'
 import { useMediaQuery, WIDE } from '@/lib/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { LikersSheet } from '@/reactions/LikersSheet'
@@ -181,16 +180,7 @@ function PanelTab({
   )
 }
 
-// 포털로 뜨는 댓글, 누른 가족 시트와 메뉴도 테마와 무관하게 어둡게.
 export function ViewerPage() {
-  return (
-    <PortalThemeContext value="dark">
-      <Viewer />
-    </PortalThemeContext>
-  )
-}
-
-function Viewer() {
   const { t, i18n } = useTranslation()
   const { id } = route.useParams()
   const { baby, from, of } = route.useSearch()
@@ -657,12 +647,13 @@ function Viewer() {
   return (
     <div
       className={cn(
-        'dark fixed inset-0 flex text-white transition-opacity starting:opacity-0',
+        'fixed inset-0 flex transition-opacity starting:opacity-0',
         closing && 'opacity-0',
       )}
       style={{ backgroundColor: `rgb(0 0 0 / ${String(backdrop)})` }}
     >
-      <div className="relative min-w-0 flex-1 overflow-hidden">
+      {/* 무대와 막대는 앱 테마와 무관하게 어둡게. 패널과 시트는 앱 테마. */}
+      <div className="dark relative min-w-0 flex-1 overflow-hidden text-white">
         <main
           ref={stage}
           {...swipe}
@@ -895,7 +886,7 @@ function Viewer() {
             <SheetContent
               side="bottom"
               aria-describedby={undefined}
-              className="dark max-h-[85dvh] overflow-y-auto text-foreground"
+              className="max-h-[85dvh] overflow-y-auto text-foreground"
             >
               <SheetHeader>
                 <SheetTitle>{t('viewer.info')}</SheetTitle>

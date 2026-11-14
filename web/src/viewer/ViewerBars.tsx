@@ -319,7 +319,7 @@ export function ViewerBars({
 
       {trash && (
         <Dialog open={trash.open} onOpenChange={trash.onOpenChange}>
-          <DialogContent className="dark text-foreground">
+          <DialogContent className="text-foreground">
             <DialogHeader>
               <DialogTitle>{t('viewer.trashTitle')}</DialogTitle>
               <DialogDescription>

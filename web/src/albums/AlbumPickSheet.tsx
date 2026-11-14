@@ -17,7 +17,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { errorMessage } from '@/i18n'
-import { usePortalTheme } from '@/lib/portalTheme'
 import { cn } from '@/lib/utils'
 import { useBrowserOnline } from '@/pwa/OfflineBanner'
 import { thumbUrl } from '@/timeline/media'
@@ -67,7 +66,6 @@ function Cover({ album }: { album: AlbumSummary }) {
 }
 
 // 뷰어 ⋮ "앨범에 담기". 체크 즉시 넣기/빼기(저장 버튼 없음). 체크 상태는 사진 상세 album_ids.
-// 테마는 포털 테마(뷰어 위면 어둡게).
 export function AlbumPickSheet({
   assetId,
   onClose,
@@ -77,7 +75,6 @@ export function AlbumPickSheet({
 }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const theme = usePortalTheme()
   const online = useBrowserOnline()
   const albums = useAlbums()
   const asset = useQuery(assetQuery(assetId)).data
@@ -140,7 +137,6 @@ export function AlbumPickSheet({
           side="bottom"
           aria-describedby={undefined}
           className={cn(
-            theme,
             'mx-auto max-h-[85dvh] w-full max-w-lg gap-0 overflow-y-auto text-foreground',
           )}
         >

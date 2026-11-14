@@ -1127,8 +1127,7 @@ describe('ViewerPage', () => {
     const sheet = await screen.findByRole('dialog', {
       name: ko.reactions.likersTitle,
     })
-    // 뷰어 위 시트는 앱 테마와 무관하게 어둡게.
-    expect(sheet).toHaveClass('dark')
+    expect(sheet.closest('.dark')).toBeNull()
     // 최신순.
     const items = await within(sheet).findAllByRole('listitem')
     expect(items).toHaveLength(2)
@@ -2022,6 +2021,76 @@ async function clickMenu(
     within(await screen.findByRole('menu')).getByRole('menuitem', { name }),
   )
 }
+
+describe('ViewerPage theme', () => {
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  const photo = { a: assetFixture('a', { comment_count: 1, like_count: 1 }) }
+  const extra: Routes = {
+    'GET /api/assets/a/comments': () =>
+      json(200, { items: [commentFixture('c1')], next_cursor: null }),
+    'GET /api/assets/a/likes': () => json(200, []),
+    'GET /api/albums': () => json(200, []),
+  }
+
+  it('desktop_panel_follows_app_theme', async () => {
+    wideScreen()
+    const wide = renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: photo,
+      extra,
+    })
+    await wide.user.click(
+      await screen.findByRole('button', { name: '댓글 보기, 1개' }),
+    )
+    const panel = await screen.findByRole('complementary', {
+      name: ko.comments.label,
+    })
+    expect(panel.closest('.dark')).toBeNull()
+    document.documentElement.classList.add('dark')
+    expect(panel.closest('.dark')).toBe(document.documentElement)
+  })
+
+  it('mobile_sheets_follow_app_theme', async () => {
+    const mobile = renderViewer({
+      path: '/photos/a',
+      ids: ['a'],
+      assets: photo,
+      extra,
+    })
+    await mobile.user.click(
+      await screen.findByRole('button', { name: '댓글 보기, 1개' }),
+    )
+    const comments = await screen.findByRole('dialog', { name: '댓글 1' })
+    expect(comments.closest('.dark')).toBeNull()
+    await mobile.user.keyboard('{Escape}')
+
+    await mobile.user.click(
+      screen.getByRole('button', { name: ko.viewer.more }),
+    )
+    await mobile.user.click(
+      within(await screen.findByRole('menu')).getByRole('menuitem', {
+        name: ko.albums.addTo,
+      }),
+    )
+    const pick = await screen.findByRole('dialog', { name: ko.albums.addTo })
+    expect(pick.closest('.dark')).toBeNull()
+  })
+
+  it('bars_stay_dark', async () => {
+    const { user } = renderViewer({ path: '/photos/a', ids: ['a'] })
+    const info = await screen.findByRole('button', { name: ko.viewer.info })
+    const bar = info.closest('.dark')
+    expect(bar).not.toBeNull()
+    expect(bar).not.toBe(document.documentElement)
+    await user.click(screen.getByRole('button', { name: ko.viewer.more }))
+    const menu = await screen.findByRole('menu')
+    expect(menu.closest('.dark')).not.toBeNull()
+  })
+})
 
 function wideScreen() {
   vi.spyOn(window, 'matchMedia').mockImplementation(

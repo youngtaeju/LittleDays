@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { User } from '@/api/types'
 import { Button } from '@/components/ui/button'
-import { usePortalTheme } from '@/lib/portalTheme'
 import { cn } from '@/lib/utils'
 import { toSegments } from './mentions'
 import type { AnyComment } from './useComments'
@@ -40,7 +39,6 @@ function CommentItem({
   // 길게 누르기로 연 직후의 기본 메뉴(contextmenu) 차단용.
   const pressed = useRef(false)
   const hasMenu = canEdit || canDelete
-  const theme = usePortalTheme()
 
   function cancelPress() {
     if (press.current) window.clearTimeout(press.current.timer)
@@ -133,7 +131,6 @@ function CommentItem({
               align="end"
               sideOffset={4}
               className={cn(
-                theme,
                 'z-50 min-w-40 rounded-xl border bg-popover p-1 text-popover-foreground shadow-lg',
               )}
               onCloseAutoFocus={(e) => {
